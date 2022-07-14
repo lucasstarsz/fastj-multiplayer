@@ -2,9 +2,7 @@ package unittest;
 
 import tech.fastj.math.Maths;
 
-import java.awt.Point;
 import java.io.IOException;
-import java.net.DatagramPacket;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
@@ -55,11 +53,11 @@ class ConnectionTests {
         assertDoesNotThrow(() -> {
             ClientListener clientListener = new ClientListener() {
                 @Override
-                public void receiveTCP(int identifier, Client client) {
+                public void receiveTCP(byte[] data, Client client) {
                 }
 
                 @Override
-                public void receiveUDP(DatagramPacket packet, Client client) {
+                public void receiveUDP(byte[] data, Client client) {
                 }
             };
 
@@ -67,23 +65,19 @@ class ConnectionTests {
             Client client = new Client(clientConfig);
             client.connect();
             client.sendTCP(4);
-            client.sendUDP(ByteBuffer.allocate(4).put(3, (byte) 4).array());
+            client.sendUDP(4);
         });
     }
 
     @Test
     void checkSendDataToServer() throws InterruptedException {
         int tcpIdentifier = ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
-        Object tcpData = new Point();
+        byte[] tcpData = new byte[Client.PacketBufferLength - Integer.BYTES];
+        ThreadLocalRandom.current().nextBytes(tcpData);
 
         int udpIdentifier = ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
-        byte[] randomUdpData = new byte[Client.PacketBufferLength - 4];
-        ThreadLocalRandom.current().nextBytes(randomUdpData);
-
-        byte[] udpData = ByteBuffer.allocate(Client.PacketBufferLength)
-                .putInt(udpIdentifier)
-                .put(randomUdpData)
-                .array();
+        byte[] udpData = new byte[Client.PacketBufferLength - Integer.BYTES];
+        ThreadLocalRandom.current().nextBytes(udpData);
 
         AtomicBoolean receivedTCPData = new AtomicBoolean();
         AtomicBoolean receivedUDPData = new AtomicBoolean();
@@ -91,23 +85,18 @@ class ConnectionTests {
 
         assertDoesNotThrow(() -> {
 
-            BiConsumer<Integer, Client> serverTCPListener = (identifier, client) -> {
-                assertEquals(tcpIdentifier, identifier, "The TCP identifier should match.");
-
+            BiConsumer<byte[], Client> serverTCPListener = (data, client) -> {
                 try {
-                    Object data = client.getTcpIn().readObject();
-                    assertEquals(tcpData, data, "The TCP data should match.");
-                } catch (IOException | ClassNotFoundException exception) {
-                    fail(exception);
+                    assertEquals(udpIdentifier, ByteBuffer.wrap(data).getInt(), "The TCP identifier should match.");
+                    assertEquals(udpData, data, "The UDP data should match.");
                 } finally {
                     receivedTCPData.set(true);
                     latch.countDown();
                 }
             };
 
-            BiConsumer<DatagramPacket, Client> serverUDPListener = (packet, client) -> {
+            BiConsumer<byte[], Client> serverUDPListener = (data, client) -> {
                 try {
-                    byte[] data = packet.getData();
                     assertEquals(udpIdentifier, ByteBuffer.wrap(data).getInt(), "The UDP identifier should match.");
                     assertEquals(udpData, data, "The UDP data should match.");
                 } finally {
@@ -121,11 +110,11 @@ class ConnectionTests {
 
             ClientListener clientListener = new ClientListener() {
                 @Override
-                public void receiveTCP(int identifier, Client client) {
+                public void receiveTCP(byte[] data, Client client) {
                 }
 
                 @Override
-                public void receiveUDP(DatagramPacket packet, Client client) {
+                public void receiveUDP(byte[] data, Client client) {
                 }
             };
 
@@ -133,7 +122,7 @@ class ConnectionTests {
             Client client = new Client(clientConfig);
             client.connect();
             client.sendTCP(tcpIdentifier, tcpData);
-            client.sendUDP(udpData);
+            client.sendUDP(udpIdentifier, udpData);
         });
 
         boolean success = latch.await(5, TimeUnit.SECONDS);

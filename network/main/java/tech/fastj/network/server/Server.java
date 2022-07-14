@@ -1,12 +1,10 @@
 package tech.fastj.network.server;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -28,8 +26,8 @@ public class Server implements ClientListener {
     private final ServerSocket tcpServer;
     private final DatagramSocket udpServer;
 
-    private final Map<Integer, BiConsumer<Integer, Client>> tcpActions;
-    private final Map<Integer, BiConsumer<DatagramPacket, Client>> udpActions;
+    private final Map<Integer, BiConsumer<byte[], Client>> tcpActions;
+    private final Map<Integer, BiConsumer<byte[], Client>> udpActions;
 
     private ExecutorService clientAccepter;
 
@@ -52,11 +50,11 @@ public class Server implements ClientListener {
         return Collections.unmodifiableList(clients);
     }
 
-    public Map<Integer, BiConsumer<Integer, Client>> getTcpActions() {
+    public Map<Integer, BiConsumer<byte[], Client>> getTcpActions() {
         return tcpActions;
     }
 
-    public Map<Integer, BiConsumer<DatagramPacket, Client>> getUdpActions() {
+    public Map<Integer, BiConsumer<byte[], Client>> getUdpActions() {
         return udpActions;
     }
 
@@ -154,17 +152,17 @@ public class Server implements ClientListener {
     }
 
     @Override
-    public void receiveTCP(int identifier, Client client) {
+    public void receiveTCP(byte[] data, Client client) {
+        int identifier = ByteBuffer.wrap(data).getInt();
         serverLogger.debug("Received TCP identifier {} from client {}", identifier, client.getClientId());
-        tcpActions.getOrDefault(identifier, (i, c) -> {}).accept(identifier, client);
+        tcpActions.getOrDefault(identifier, (i, c) -> {}).accept(data, client);
     }
 
     @Override
-    public void receiveUDP(DatagramPacket packet, Client client) {
-        byte[] data = packet.getData();
+    public void receiveUDP(byte[] data, Client client) {
         int identifier = ByteBuffer.wrap(data).getInt();
         serverLogger.debug("Received UDP identifier {} from client {}", identifier, client.getClientId());
-        udpActions.getOrDefault(identifier, (p, c) -> {}).accept(packet, client);
+        udpActions.getOrDefault(identifier, (p, c) -> {}).accept(data, client);
     }
 
     public void start() {

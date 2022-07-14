@@ -1,8 +1,10 @@
 package tech.fastj.network.client;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
@@ -21,12 +23,12 @@ public class Client implements Runnable {
 
     public static final byte Leave = -1;
     public static final byte Join = 0;
-    public static final int PacketBufferLength = 256;
+    public static final int PacketBufferLength = 1024;
 
     private final Socket tcpSocket;
     private final DatagramSocket udpSocket;
-    private ObjectInputStream tcpIn;
-    private ObjectOutputStream tcpOut;
+    private InputStream tcpIn;
+    private OutputStream tcpOut;
 
     private final ClientConfig clientConfig;
     private final UUID clientId;
@@ -71,13 +73,17 @@ public class Client implements Runnable {
         if (!isServerSide) {
             clientLogger.debug("{} checking server connection status...", clientId);
 
-            int verification = tcpIn.readInt();
+            int verification = ByteBuffer.wrap(tcpIn.readNBytes(4)).getInt();
             if (verification != Client.Join) {
                 throw new IOException("Failed to join server " + clientConfig.address() + ":" + clientConfig.port() + ", connection status was " + verification + ".");
             }
 
             clientLogger.debug("{} connection status satisfactory. Connected to {}:{}.", clientId, clientConfig.address(), clientConfig.port());
         } else {
+            while (tcpIn.available() > 0) {
+                tcpIn.skipNBytes(tcpIn.available());
+            }
+
             clientLogger.debug("{} connection status satisfactory. Joined server {}:{}.", clientId, clientConfig.address(), clientConfig.port());
         }
     }
@@ -90,59 +96,52 @@ public class Client implements Runnable {
         return clientId;
     }
 
-    public ObjectInputStream getTcpIn() {
-        return tcpIn;
-    }
-
     public void sendTCP(int identifier) throws IOException {
         sendTCP(identifier, null);
     }
 
-    public synchronized void sendTCP(int identifier, Object data) throws IOException {
-        if (tcpOut == null) {
-            return;
-        }
+    public synchronized void sendTCP(int identifier, byte[] data) throws IOException {
+        assert data == null || data.length <= PacketBufferLength;
 
         clientLogger.trace("{} sending tcp {} to {}:{}", clientId, identifier, clientConfig.address(), clientConfig.port());
 
-        tcpOut.writeInt(identifier);
-
-        if (data != null) {
-            if (data instanceof String s) {
-                tcpOut.writeUTF(s);
-            } else if (data instanceof Integer i) {
-                tcpOut.writeInt(i);
-            } else if (data instanceof Double d) {
-                tcpOut.writeDouble(d);
-            } else if (data instanceof Long l) {
-                tcpOut.writeLong(l);
-            } else if (data instanceof Float f) {
-                tcpOut.writeFloat(f);
-            } else if (data instanceof Byte b) {
-                tcpOut.writeByte(b);
-            } else if (data instanceof Boolean b) {
-                tcpOut.writeBoolean(b);
-            } else if (data instanceof Character c) {
-                tcpOut.writeChar(c);
-            } else if (data instanceof Short s) {
-                tcpOut.writeShort(s);
-            } else if (data instanceof byte[] bytes) {
-                tcpOut.write(bytes);
-            } else {
-                tcpOut.writeObject(data);
-            }
-        }
+        byte[] packetData = buildPacketData(identifier, data);
+        tcpOut.write(packetData);
 
         tcpOut.flush();
     }
 
-    public void sendUDP(byte[] data) throws IOException {
-        assert data.length <= PacketBufferLength;
+    public void sendUDP(int identifier) throws IOException {
+        sendUDP(identifier, null);
+    }
 
-        clientLogger.trace("{} sending udp {} to {}:{}", clientId, ByteBuffer.wrap(data).getInt(), clientConfig.address(), clientConfig.port());
+    public void sendUDP(int identifier, byte[] data) throws IOException {
+        assert data == null || data.length <= PacketBufferLength;
 
-        DatagramPacket packet = new DatagramPacket(data, data.length, clientConfig.address(), clientConfig.port());
+        clientLogger.trace("{} sending udp {} to {}:{}", clientId, identifier, clientConfig.address(), clientConfig.port());
+
+        byte[] packetData = buildPacketData(identifier, data);
+
+        DatagramPacket packet = new DatagramPacket(packetData, packetData.length, clientConfig.address(), clientConfig.port());
         udpSocket.send(packet);
+    }
+
+    private byte[] buildPacketData(int identifier, byte[] data) {
+        ByteBuffer packetDataBuffer = ByteBuffer.allocate(PacketBufferLength);
+
+        if (data != null) {
+            packetDataBuffer.putInt(identifier).put(data);
+
+            if (packetDataBuffer.hasRemaining()) {
+                byte[] padding = new byte[PacketBufferLength - (data.length + Integer.BYTES)];
+                packetDataBuffer.put(padding);
+            }
+        } else {
+            byte[] padding = new byte[PacketBufferLength - Integer.BYTES];
+            packetDataBuffer.put(padding);
+        }
+
+        return packetDataBuffer.array();
     }
 
     @Override
@@ -175,12 +174,12 @@ public class Client implements Runnable {
                     clientLogger.trace("{} waiting for new TCP data...", clientId);
                 }
 
-                int identifier = tcpIn.readInt();
+                byte[] data = tcpIn.readNBytes(PacketBufferLength);
 
                 if (!isServerSide) {
                     clientLogger.trace("{} received new TCP data.", clientId);
                 }
-                clientConfig.clientListener().receiveTCP(identifier, this);
+                clientConfig.clientListener().receiveTCP(data, this);
             } catch (IOException exception) {
                 tryCloseConnection(exception);
                 break;
@@ -202,7 +201,7 @@ public class Client implements Runnable {
                 udpSocket.receive(packet);
 
                 clientLogger.debug("{} received new UDP packet.", clientId);
-                clientConfig.clientListener().receiveUDP(packet, this);
+                clientConfig.clientListener().receiveUDP(packet.getData(), this);
             } catch (IOException exception) {
                 if (!udpSocket.isClosed() && isRunning) {
                     clientLogger.error(clientId + " Error receiving UDP packet", exception);
