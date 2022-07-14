@@ -1,10 +1,8 @@
 package tech.fastj.network.client;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
@@ -23,12 +21,12 @@ public class Client implements Runnable {
 
     public static final byte Leave = -1;
     public static final byte Join = 0;
-    public static final int PacketBufferLength = 1024;
+    public static final int PacketBufferLength = 508;
 
     private final Socket tcpSocket;
     private final DatagramSocket udpSocket;
-    private InputStream tcpIn;
-    private OutputStream tcpOut;
+    private DataInputStream tcpIn;
+    private DataOutputStream tcpOut;
 
     private final ClientConfig clientConfig;
     private final UUID clientId;
@@ -65,26 +63,29 @@ public class Client implements Runnable {
             tcpSocket.connect(address);
         }
 
-        tcpOut = new ObjectOutputStream(tcpSocket.getOutputStream());
+        tcpOut = new DataOutputStream(tcpSocket.getOutputStream());
         tcpOut.flush();
 
-        tcpIn = new ObjectInputStream(tcpSocket.getInputStream());
+        tcpIn = new DataInputStream(tcpSocket.getInputStream());
 
         if (!isServerSide) {
             clientLogger.debug("{} checking server connection status...", clientId);
 
-            int verification = ByteBuffer.wrap(tcpIn.readNBytes(4)).getInt();
+            // skip the first data length sent, since it is not necessary
+            tcpIn.readInt();
+
+            int verification = tcpIn.readInt();
             if (verification != Client.Join) {
                 throw new IOException("Failed to join server " + clientConfig.address() + ":" + clientConfig.port() + ", connection status was " + verification + ".");
             }
 
             clientLogger.debug("{} connection status satisfactory. Connected to {}:{}.", clientId, clientConfig.address(), clientConfig.port());
         } else {
-            while (tcpIn.available() > 0) {
-                tcpIn.skipNBytes(tcpIn.available());
-            }
-
             clientLogger.debug("{} connection status satisfactory. Joined server {}:{}.", clientId, clientConfig.address(), clientConfig.port());
+        }
+
+        while (tcpIn.available() > 0) {
+            tcpIn.skipNBytes(tcpIn.available());
         }
     }
 
@@ -105,7 +106,7 @@ public class Client implements Runnable {
 
         clientLogger.trace("{} sending tcp {} to {}:{}", clientId, identifier, clientConfig.address(), clientConfig.port());
 
-        byte[] packetData = buildPacketData(identifier, data);
+        byte[] packetData = buildPacketData(true, identifier, data);
         tcpOut.write(packetData);
 
         tcpOut.flush();
@@ -120,28 +121,33 @@ public class Client implements Runnable {
 
         clientLogger.trace("{} sending udp {} to {}:{}", clientId, identifier, clientConfig.address(), clientConfig.port());
 
-        byte[] packetData = buildPacketData(identifier, data);
+        byte[] packetData = buildPacketData(false, identifier, data);
 
         DatagramPacket packet = new DatagramPacket(packetData, packetData.length, clientConfig.address(), clientConfig.port());
         udpSocket.send(packet);
     }
 
-    private byte[] buildPacketData(int identifier, byte[] data) {
-        ByteBuffer packetDataBuffer = ByteBuffer.allocate(PacketBufferLength);
+    private byte[] buildPacketData(boolean needsLengthSpecified, int identifier, byte[] data) {
+        ByteBuffer packetDataBuffer;
 
-        if (data != null) {
-            packetDataBuffer.putInt(identifier).put(data);
-
-            if (packetDataBuffer.hasRemaining()) {
-                byte[] padding = new byte[PacketBufferLength - (data.length + Integer.BYTES)];
-                packetDataBuffer.put(padding);
+        if (data == null) {
+            if (needsLengthSpecified) {
+                packetDataBuffer = ByteBuffer.allocate(Integer.BYTES * 2);
+                return packetDataBuffer.putInt(Integer.BYTES).putInt(identifier).array();
+            } else {
+                packetDataBuffer = ByteBuffer.allocate(Integer.BYTES);
+                return packetDataBuffer.putInt(identifier).array();
             }
         } else {
-            byte[] padding = new byte[PacketBufferLength - Integer.BYTES];
-            packetDataBuffer.put(padding);
-        }
+            if (needsLengthSpecified) {
+                packetDataBuffer = ByteBuffer.allocate((Integer.BYTES * 2) + data.length);
+                packetDataBuffer.putInt(Integer.BYTES + data.length);
+            } else {
+                packetDataBuffer = ByteBuffer.allocate(Integer.BYTES + data.length);
+            }
 
-        return packetDataBuffer.array();
+            return packetDataBuffer.putInt(identifier).put(data).array();
+        }
     }
 
     @Override
@@ -174,7 +180,8 @@ public class Client implements Runnable {
                     clientLogger.trace("{} waiting for new TCP data...", clientId);
                 }
 
-                byte[] data = tcpIn.readNBytes(PacketBufferLength);
+                int dataLength = tcpIn.readInt();
+                byte[] data = tcpIn.readNBytes(dataLength);
 
                 if (!isServerSide) {
                     clientLogger.trace("{} received new TCP data.", clientId);
@@ -201,7 +208,10 @@ public class Client implements Runnable {
                 udpSocket.receive(packet);
 
                 clientLogger.debug("{} received new UDP packet.", clientId);
-                clientConfig.clientListener().receiveUDP(packet.getData(), this);
+                byte[] data = new byte[packet.getLength()];
+                System.arraycopy(packet.getData(), 0, data, 0, data.length);
+
+                clientConfig.clientListener().receiveUDP(data, this);
             } catch (IOException exception) {
                 if (!udpSocket.isClosed() && isRunning) {
                     clientLogger.error(clientId + " Error receiving UDP packet", exception);
