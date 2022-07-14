@@ -5,6 +5,7 @@ import tech.fastj.math.Maths;
 import java.awt.Point;
 import java.io.IOException;
 import java.net.DatagramPacket;
+import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
@@ -54,7 +55,7 @@ class ConnectionTests {
         assertDoesNotThrow(() -> {
             ClientListener clientListener = new ClientListener() {
                 @Override
-                public void receiveTCP(byte identifier, Client client) {
+                public void receiveTCP(int identifier, Client client) {
                 }
 
                 @Override
@@ -65,20 +66,24 @@ class ConnectionTests {
             ClientConfig clientConfig = new ClientConfig(Port, clientListener);
             Client client = new Client(clientConfig);
             client.connect();
-            client.sendTCP((byte) 4);
-            client.sendUDP(new byte[]{(byte) 4});
+            client.sendTCP(4);
+            client.sendUDP(ByteBuffer.allocate(4).put(3, (byte) 4).array());
         });
     }
 
     @Test
     void checkSendDataToServer() throws InterruptedException {
-        byte tcpIdentifier = (byte) ThreadLocalRandom.current().nextInt(1, Byte.MAX_VALUE);
+        int tcpIdentifier = ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
         Object tcpData = new Point();
 
-        byte udpIdentifier = (byte) ThreadLocalRandom.current().nextInt(1, Byte.MAX_VALUE);
-        byte[] udpData = new byte[Client.PacketBufferLength];
-        ThreadLocalRandom.current().nextBytes(udpData);
-        udpData[0] = udpIdentifier;
+        int udpIdentifier = ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
+        byte[] randomUdpData = new byte[Client.PacketBufferLength - 4];
+        ThreadLocalRandom.current().nextBytes(randomUdpData);
+
+        byte[] udpData = ByteBuffer.allocate(Client.PacketBufferLength)
+                .putInt(udpIdentifier)
+                .put(randomUdpData)
+                .array();
 
         AtomicBoolean receivedTCPData = new AtomicBoolean();
         AtomicBoolean receivedUDPData = new AtomicBoolean();
@@ -86,7 +91,7 @@ class ConnectionTests {
 
         assertDoesNotThrow(() -> {
 
-            BiConsumer<Byte, Client> serverTCPListener = (identifier, client) -> {
+            BiConsumer<Integer, Client> serverTCPListener = (identifier, client) -> {
                 assertEquals(tcpIdentifier, identifier, "The TCP identifier should match.");
 
                 try {
@@ -103,7 +108,7 @@ class ConnectionTests {
             BiConsumer<DatagramPacket, Client> serverUDPListener = (packet, client) -> {
                 try {
                     byte[] data = packet.getData();
-                    assertEquals(udpIdentifier, data[0], "The UDP identifier should match.");
+                    assertEquals(udpIdentifier, ByteBuffer.wrap(data).getInt(), "The UDP identifier should match.");
                     assertEquals(udpData, data, "The UDP data should match.");
                 } finally {
                     receivedUDPData.set(true);
@@ -116,7 +121,7 @@ class ConnectionTests {
 
             ClientListener clientListener = new ClientListener() {
                 @Override
-                public void receiveTCP(byte identifier, Client client) {
+                public void receiveTCP(int identifier, Client client) {
                 }
 
                 @Override

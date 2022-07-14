@@ -7,6 +7,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -70,7 +71,7 @@ public class Client implements Runnable {
         if (!isServerSide) {
             clientLogger.debug("{} checking server connection status...", clientId);
 
-            byte verification = (byte) tcpIn.read();
+            int verification = tcpIn.readInt();
             if (verification != Client.Join) {
                 throw new IOException("Failed to join server " + clientConfig.address() + ":" + clientConfig.port() + ", connection status was " + verification + ".");
             }
@@ -93,18 +94,18 @@ public class Client implements Runnable {
         return tcpIn;
     }
 
-    public void sendTCP(byte identifier) throws IOException {
+    public void sendTCP(int identifier) throws IOException {
         sendTCP(identifier, null);
     }
 
-    public synchronized void sendTCP(byte identifier, Object data) throws IOException {
+    public synchronized void sendTCP(int identifier, Object data) throws IOException {
         if (tcpOut == null) {
             return;
         }
 
         clientLogger.trace("{} sending tcp {} to {}:{}", clientId, identifier, clientConfig.address(), clientConfig.port());
 
-        tcpOut.writeByte(identifier);
+        tcpOut.writeInt(identifier);
 
         if (data != null) {
             if (data instanceof String s) {
@@ -138,7 +139,7 @@ public class Client implements Runnable {
     public void sendUDP(byte[] data) throws IOException {
         assert data.length <= PacketBufferLength;
 
-        clientLogger.trace("{} sending udp {} to {}:{}", clientId, data[0], clientConfig.address(), clientConfig.port());
+        clientLogger.trace("{} sending udp {} to {}:{}", clientId, ByteBuffer.wrap(data).getInt(), clientConfig.address(), clientConfig.port());
 
         DatagramPacket packet = new DatagramPacket(data, data.length, clientConfig.address(), clientConfig.port());
         udpSocket.send(packet);
@@ -173,7 +174,8 @@ public class Client implements Runnable {
                 if (!isServerSide) {
                     clientLogger.trace("{} waiting for new TCP data...", clientId);
                 }
-                byte identifier = tcpIn.readByte();
+
+                int identifier = tcpIn.readInt();
 
                 if (!isServerSide) {
                     clientLogger.trace("{} received new TCP data.", clientId);
