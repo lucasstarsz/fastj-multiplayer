@@ -1,5 +1,8 @@
 package tech.fastj.network.client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -12,16 +15,18 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class Client implements Runnable {
 
     private final Logger clientLogger = LoggerFactory.getLogger(Client.class);
 
     public static final byte Leave = -1;
     public static final byte Join = 0;
-    public static final int PacketBufferLength = 508;
+
+    /** Maximum length of a UDP packet's data -- this does not account for the data length. */
+    public static final int UdpPacketDataLength = 504;
+
+    /** Maximum length of a UDP packet, including both the identifier and the data length. */
+    public static final int UdpPacketBufferLength = UdpPacketDataLength + Integer.BYTES;
 
     private final Socket tcpSocket;
     private final DatagramSocket udpSocket;
@@ -102,7 +107,8 @@ public class Client implements Runnable {
     }
 
     public synchronized void sendTCP(int identifier, byte[] data) throws IOException {
-        assert data == null || data.length <= PacketBufferLength;
+        assert data == null || data.length <= UdpPacketBufferLength;
+        assert identifier >= 0;
 
         clientLogger.trace("{} sending tcp {} to {}:{}", clientId, identifier, clientConfig.address(), clientConfig.port());
 
@@ -117,7 +123,8 @@ public class Client implements Runnable {
     }
 
     public void sendUDP(int identifier, byte[] data) throws IOException {
-        assert data == null || data.length <= PacketBufferLength;
+        assert data == null || data.length <= UdpPacketBufferLength;
+        assert identifier >= 0;
 
         clientLogger.trace("{} sending udp {} to {}:{}", clientId, identifier, clientConfig.address(), clientConfig.port());
 
@@ -143,7 +150,7 @@ public class Client implements Runnable {
                 packetDataBuffer = ByteBuffer.allocate((Integer.BYTES * 2) + data.length);
                 packetDataBuffer.putInt(Integer.BYTES + data.length);
             } else {
-                packetDataBuffer = ByteBuffer.allocate(Integer.BYTES + data.length);
+                packetDataBuffer = ByteBuffer.allocate(Math.min(UdpPacketBufferLength, Integer.BYTES + data.length));
             }
 
             return packetDataBuffer.putInt(identifier).put(data).array();
@@ -201,8 +208,8 @@ public class Client implements Runnable {
 
         while (isRunning && !udpSocket.isClosed()) {
             try {
-                byte[] receivePacketBuffer = new byte[PacketBufferLength];
-                DatagramPacket packet = new DatagramPacket(receivePacketBuffer, PacketBufferLength);
+                byte[] receivePacketBuffer = new byte[UdpPacketBufferLength];
+                DatagramPacket packet = new DatagramPacket(receivePacketBuffer, UdpPacketBufferLength);
 
                 clientLogger.debug("{} waiting for new UDP packet...", clientId);
                 udpSocket.receive(packet);

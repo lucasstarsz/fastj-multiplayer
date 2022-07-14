@@ -72,11 +72,11 @@ class ConnectionTests {
     @Test
     void checkSendDataToServer() throws InterruptedException {
         int tcpIdentifier = ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
-        byte[] tcpData = new byte[Client.PacketBufferLength - Integer.BYTES];
+        byte[] tcpData = new byte[Client.UdpPacketBufferLength];
         ThreadLocalRandom.current().nextBytes(tcpData);
 
         int udpIdentifier = ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
-        byte[] udpData = new byte[Client.PacketBufferLength - Integer.BYTES];
+        byte[] udpData = new byte[Client.UdpPacketDataLength];
         ThreadLocalRandom.current().nextBytes(udpData);
 
         AtomicBoolean receivedTCPData = new AtomicBoolean();
