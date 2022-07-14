@@ -1,0 +1,10 @@
+[versions]
+fastj-core = "98b89d6e23"
+slf4j-simple = "2.0.0-alpha7"
+
+[libraries]
+fastj-library = { module = "com.github.lucasstarsz:FastJ", version.ref = "fastj-core" }
+fastj-logging = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j-simple" }
+
+[bundles]
+fastj = ["fastj-library", "fastj-logging"]
