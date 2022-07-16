@@ -43,7 +43,7 @@ class ConnectionTests {
     }
 
     @AfterEach
-    public void cleanServer() {
+    void cleanServer() {
         server.getTcpActions().clear();
         server.getUdpActions().clear();
     }
