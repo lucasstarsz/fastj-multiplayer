@@ -31,7 +31,7 @@ public class Serializer {
     }
 
     public <T extends Networkable> void registerSerializer(byte id, Class<T> networkableType) {
-        registerSerializer(id, RecordSerializerUtils.generateRecordSerializer(this, networkableType));
+        registerSerializer(id, RecordSerializerUtils.generate(this, networkableType));
     }
 
     public synchronized <T extends Networkable> void registerSerializer(byte id, NetworkableSerializer<T> serializer) {

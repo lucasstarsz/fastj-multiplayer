@@ -23,19 +23,22 @@ public class RecordSerializerUtils {
     public static <T extends Networkable> RecordSerializer<T> get(Serializer serializer, Class<T> networkableClass) {
         return (RecordSerializer<T>) generatedMessageTypes.computeIfAbsent(
                 new Pair<>(networkableClass, serializer),
-                p -> generateRecordSerializer(serializer, (Class<T>) p.getLeft())
+                p -> generate(serializer, (Class<T>) p.getLeft())
         );
     }
 
-    public static <T extends Networkable> RecordSerializer<T> generateRecordSerializer(Serializer serializer, Class<T> networkableType) {
+    public static <T extends Networkable> RecordSerializer<T> generate(Serializer serializer, Class<T> networkableType) {
         RecordComponent[] components = networkableType.getRecordComponents();
         if (components == null) {
             throw new IllegalArgumentException("Cannot generate a MessageTypeSerializer for non-record class " + networkableType.getSimpleName());
         }
         Constructor<T> constructor;
         try {
-            constructor = networkableType.getDeclaredConstructor(Arrays.stream(components)
-                    .map(RecordComponent::getType).toArray(Class<?>[]::new));
+            constructor = networkableType.getDeclaredConstructor(
+                    Arrays.stream(components)
+                            .map(RecordComponent::getType)
+                            .toArray(Class<?>[]::new)
+            );
         } catch (NoSuchMethodException exception) {
             throw new IllegalArgumentException(exception);
         }
