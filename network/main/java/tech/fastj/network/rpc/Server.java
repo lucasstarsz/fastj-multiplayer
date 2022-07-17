@@ -183,7 +183,7 @@ public class Server extends CommandHandler {
             clients.add(client);
         } catch (IOException exception) {
             if (client != null && client.isConnected()) {
-                client.getTcpOut().writeInt(Client.Join);
+                client.getTcpOut().writeInt(Client.Leave);
                 client.getTcpOut().flush();
                 client.disconnect();
             }
