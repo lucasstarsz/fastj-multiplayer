@@ -3,22 +3,20 @@ package unittest;
 import tech.fastj.math.Maths;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiConsumer;
 
+import mock.ChatMessage;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import tech.fastj.network.client.Client;
 import tech.fastj.network.client.ClientConfig;
-import tech.fastj.network.client.ClientListener;
-import tech.fastj.network.server.Server;
-import tech.fastj.network.server.ServerConfig;
+import tech.fastj.network.rpc.Server;
+import tech.fastj.network.rpc.ServerConfig;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -44,85 +42,49 @@ class ConnectionTests {
 
     @AfterEach
     void cleanServer() {
-        server.getTcpActions().clear();
-        server.getUdpActions().clear();
     }
 
     @Test
     void checkConnectClientToServer() {
         assertDoesNotThrow(() -> {
-            ClientListener clientListener = new ClientListener() {
-                @Override
-                public void receiveTCP(byte[] data, Client client) {
-                }
-
-                @Override
-                public void receiveUDP(byte[] data, Client client) {
-                }
-            };
-
-            ClientConfig clientConfig = new ClientConfig(Port, clientListener);
+            ClientConfig clientConfig = new ClientConfig(Port);
             Client client = new Client(clientConfig);
+
             client.connect();
-            client.sendTCP(4);
-            client.sendUDP(4);
         });
     }
 
     @Test
     void checkSendDataToServer() throws InterruptedException {
-        int tcpIdentifier = ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
-        byte[] tcpData = new byte[Client.UdpPacketBufferLength];
-        ThreadLocalRandom.current().nextBytes(tcpData);
-
-        int udpIdentifier = ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
-        byte[] udpData = new byte[Client.UdpPacketDataLength];
-        ThreadLocalRandom.current().nextBytes(udpData);
+        ChatMessage tcpData = new ChatMessage(UUID.randomUUID().toString(), System.currentTimeMillis(), UUID.randomUUID().toString());
+        ChatMessage udpData = new ChatMessage(UUID.randomUUID().toString(), System.currentTimeMillis(), UUID.randomUUID().toString());
 
         AtomicBoolean receivedTCPData = new AtomicBoolean();
         AtomicBoolean receivedUDPData = new AtomicBoolean();
         CountDownLatch latch = new CountDownLatch(2);
 
         assertDoesNotThrow(() -> {
+            String ReceiveTCPChatMessage = "Receive TCP Chat Message";
+            String ReceiveUDPChatMessage = "Receive UDP Chat Message";
 
-            BiConsumer<byte[], Client> serverTCPListener = (data, client) -> {
-                try {
-                    assertEquals(udpIdentifier, ByteBuffer.wrap(data).getInt(), "The TCP identifier should match.");
-                    assertEquals(udpData, data, "The UDP data should match.");
-                } finally {
-                    receivedTCPData.set(true);
-                    latch.countDown();
-                }
-            };
+            server.addCommand(ReceiveTCPChatMessage, ChatMessage.class, (client, chatMessage) -> {
+                assertEquals(tcpData, chatMessage, "The TCP data should match.");
+                receivedTCPData.set(true);
+                latch.countDown();
+            });
 
-            BiConsumer<byte[], Client> serverUDPListener = (data, client) -> {
-                try {
-                    assertEquals(udpIdentifier, ByteBuffer.wrap(data).getInt(), "The UDP identifier should match.");
-                    assertEquals(udpData, data, "The UDP data should match.");
-                } finally {
-                    receivedUDPData.set(true);
-                    latch.countDown();
-                }
-            };
+            server.addCommand(ReceiveUDPChatMessage, ChatMessage.class, (client, chatMessage) -> {
+                assertEquals(udpData, chatMessage, "The UDP data should match.");
+                receivedUDPData.set(true);
+                latch.countDown();
+            });
 
-            server.getTcpActions().put(tcpIdentifier, serverTCPListener);
-            server.getUdpActions().put(udpIdentifier, serverUDPListener);
-
-            ClientListener clientListener = new ClientListener() {
-                @Override
-                public void receiveTCP(byte[] data, Client client) {
-                }
-
-                @Override
-                public void receiveUDP(byte[] data, Client client) {
-                }
-            };
-
-            ClientConfig clientConfig = new ClientConfig(Port, clientListener);
+            ClientConfig clientConfig = new ClientConfig(Port);
             Client client = new Client(clientConfig);
             client.connect();
-            client.sendTCP(tcpIdentifier, tcpData);
-            client.sendUDP(udpIdentifier, udpData);
+            client.getSerializer().registerSerializer(ChatMessage.class);
+            client.sendTCP(ReceiveTCPChatMessage, tcpData);
+            client.sendUDP(ReceiveUDPChatMessage, udpData);
         });
 
         boolean success = latch.await(5, TimeUnit.SECONDS);

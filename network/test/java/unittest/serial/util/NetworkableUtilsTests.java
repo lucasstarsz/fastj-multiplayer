@@ -2,7 +2,6 @@ package unittest.serial.util;
 
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 
 import mock.ChatMessage;
 import org.junit.jupiter.api.Test;
@@ -28,7 +27,7 @@ class NetworkableUtilsTests {
         int expectedMessageSize = NetworkableUtils.MinNetworkableBytes + (NetworkableUtils.MinStringBytes + username.length()) + Long.BYTES + (NetworkableUtils.MinStringBytes + message.length());
 
         Serializer serializer = new Serializer();
-        byte chatMessageId = (byte) ThreadLocalRandom.current().nextInt(0, Byte.MAX_VALUE);
+        UUID chatMessageId = UUID.randomUUID();
         serializer.registerSerializer(chatMessageId, ChatMessage.class);
 
         assertEquals(NetworkableUtils.MinNetworkableBytes, NetworkableUtils.bytesLength(serializer, (Networkable) null), "The length of a written null networkable should be the minimum amount.");

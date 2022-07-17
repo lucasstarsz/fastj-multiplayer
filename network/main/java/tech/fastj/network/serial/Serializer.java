@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import tech.fastj.network.serial.read.NetworkableInputStream;
 import tech.fastj.network.serial.util.NetworkableUtils;
@@ -14,7 +15,7 @@ import tech.fastj.network.serial.util.RecordSerializerUtils;
 import tech.fastj.network.serial.write.NetworkableOutputStream;
 
 public class Serializer {
-    private final Map<NetworkableSerializer<?>, Byte> serializersToTypes;
+    private final Map<NetworkableSerializer<?>, UUID> serializersToTypes;
     private final Map<Class<?>, NetworkableSerializer<?>> typeClassesToSerializers;
 
     public Serializer() {
@@ -22,7 +23,7 @@ public class Serializer {
         typeClassesToSerializers = new HashMap<>();
     }
 
-    public Serializer(Map<Byte, Class<? extends Networkable>> premappings) {
+    public Serializer(Map<UUID, Class<? extends Networkable>> premappings) {
         this();
 
         for (var networkableType : premappings.entrySet()) {
@@ -30,11 +31,15 @@ public class Serializer {
         }
     }
 
-    public <T extends Networkable> void registerSerializer(byte id, Class<T> networkableType) {
+    public <T extends Networkable> void registerSerializer(Class<T> networkableType) {
+        registerSerializer(UUID.randomUUID(), RecordSerializerUtils.generate(this, networkableType));
+    }
+
+    public <T extends Networkable> void registerSerializer(UUID id, Class<T> networkableType) {
         registerSerializer(id, RecordSerializerUtils.generate(this, networkableType));
     }
 
-    public synchronized <T extends Networkable> void registerSerializer(byte id, NetworkableSerializer<T> serializer) {
+    public synchronized <T extends Networkable> void registerSerializer(UUID id, NetworkableSerializer<T> serializer) {
         serializersToTypes.put(serializer, id);
         typeClassesToSerializers.put(serializer.networkableClass(), serializer);
     }
@@ -72,7 +77,7 @@ public class Serializer {
             outputStream.writeBoolean(networkable == null);
 
             if (networkable != null) {
-                Byte networkableId = serializersToTypes.get(typeClassesToSerializers.get(networkable.getClass()));
+                UUID networkableId = serializersToTypes.get(typeClassesToSerializers.get(networkable.getClass()));
                 if (networkableId == null) {
                     throw new IOException("Unsupported networkable type '" + networkable.getClass().getSimpleName() + "'");
                 }

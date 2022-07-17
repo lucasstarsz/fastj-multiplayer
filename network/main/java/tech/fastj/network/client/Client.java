@@ -1,10 +1,6 @@
 package tech.fastj.network.client;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -15,12 +11,22 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class Client implements Runnable {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import tech.fastj.network.rpc.CommandHandler;
+import tech.fastj.network.rpc.Server;
+import tech.fastj.network.serial.Networkable;
+import tech.fastj.network.serial.Serializer;
+import tech.fastj.network.serial.read.NetworkableInputStream;
+import tech.fastj.network.serial.util.NetworkableUtils;
+import tech.fastj.network.serial.write.NetworkableOutputStream;
+
+public class Client extends CommandHandler implements Runnable {
 
     private final Logger clientLogger = LoggerFactory.getLogger(Client.class);
 
-    public static final byte Leave = -1;
-    public static final byte Join = 0;
+    public static final int Leave = 1;
+    public static final int Join = 0;
 
     /** Maximum length of a UDP packet's data -- this does not account for the data length. */
     public static final int UdpPacketDataLength = 504;
@@ -30,33 +36,41 @@ public class Client implements Runnable {
 
     private final Socket tcpSocket;
     private final DatagramSocket udpSocket;
-    private DataInputStream tcpIn;
-    private DataOutputStream tcpOut;
+    private final Serializer serializer;
+    private NetworkableInputStream tcpIn;
+    private NetworkableOutputStream tcpOut;
 
     private final ClientConfig clientConfig;
     private final UUID clientId;
 
     private ExecutorService connectionListener;
-    private boolean isRunning;
+    private boolean isConnected;
+    private boolean isListening;
+
+    private final Server server;
     private final boolean isServerSide;
 
-    public Client(Socket socket, ClientListener clientListener, DatagramSocket udpServer) throws IOException {
-        this.clientConfig = new ClientConfig(socket.getLocalAddress(), socket.getLocalPort(), clientListener);
+    public Client(Socket socket, Server server, DatagramSocket udpServer) throws IOException {
+        this.clientConfig = new ClientConfig(socket.getLocalAddress(), socket.getLocalPort());
         this.clientId = UUID.randomUUID();
+        this.server = server;
 
         tcpSocket = socket;
         tcpSocket.setSoTimeout(10000);
         udpSocket = udpServer;
+        serializer = new Serializer();
         isServerSide = true;
     }
 
     public Client(ClientConfig clientConfig) throws IOException {
         this.clientConfig = clientConfig;
         this.clientId = UUID.randomUUID();
+        this.server = null;
 
         tcpSocket = new Socket();
         tcpSocket.setSoTimeout(10000);
         udpSocket = new DatagramSocket();
+        serializer = new Serializer();
         isServerSide = false;
     }
 
@@ -66,23 +80,23 @@ public class Client implements Runnable {
             clientLogger.debug("{} connecting TCP to {}:{}...", clientId, clientConfig.address(), clientConfig.port());
 
             tcpSocket.connect(address);
+            isConnected = true;
         }
 
-        tcpOut = new DataOutputStream(tcpSocket.getOutputStream());
+        tcpOut = new NetworkableOutputStream(tcpSocket.getOutputStream(), serializer);
         tcpOut.flush();
 
-        tcpIn = new DataInputStream(tcpSocket.getInputStream());
+        tcpIn = new NetworkableInputStream(tcpSocket.getInputStream(), serializer);
 
         if (!isServerSide) {
             clientLogger.debug("{} checking server connection status...", clientId);
-
-            // skip the first data length sent, since it is not necessary
-            tcpIn.readInt();
 
             int verification = tcpIn.readInt();
             if (verification != Client.Join) {
                 throw new IOException("Failed to join server " + clientConfig.address() + ":" + clientConfig.port() + ", connection status was " + verification + ".");
             }
+
+            readCommandAliases();
 
             clientLogger.debug("{} connection status satisfactory. Connected to {}:{}.", clientId, clientConfig.address(), clientConfig.port());
         } else {
@@ -94,6 +108,17 @@ public class Client implements Runnable {
         }
     }
 
+    private void readCommandAliases() throws IOException {
+        int aliasCount = tcpIn.readInt();
+
+        for (int i = 0; i < aliasCount; i++) {
+            String alias = (String) tcpIn.readObject(String.class);
+            UUID aliasId = (UUID) tcpIn.readObject(UUID.class);
+            clientLogger.debug("Recevied command alias \"{}\":{}", alias, aliasId);
+            assignAliasId(alias, aliasId);
+        }
+    }
+
     public ClientConfig getClientConfig() {
         return clientConfig;
     }
@@ -102,69 +127,86 @@ public class Client implements Runnable {
         return clientId;
     }
 
-    public void sendTCP(int identifier) throws IOException {
-        sendTCP(identifier, null);
+    public Serializer getSerializer() {
+        return serializer;
     }
 
-    public synchronized void sendTCP(int identifier, byte[] data) throws IOException {
-        assert data == null || data.length <= UdpPacketBufferLength;
-        assert identifier >= 0;
+    public NetworkableOutputStream getTcpOut() {
+        return tcpOut;
+    }
 
-        clientLogger.trace("{} sending tcp {} to {}:{}", clientId, identifier, clientConfig.address(), clientConfig.port());
+    public boolean isConnected() {
+        return isConnected;
+    }
 
-        byte[] packetData = buildPacketData(true, identifier, data);
+    public boolean isListening() {
+        return isListening;
+    }
+
+    public void sendTCP(String identifier) throws IOException {
+        sendTCP(identifier, (byte[]) null);
+    }
+
+    public synchronized void sendTCP(String identifier, byte[] data) throws IOException {
+        clientLogger.trace("{} sending tcp \"{}\" to {}:{}", clientId, identifier, clientConfig.address(), clientConfig.port());
+
+        UUID aliasId = getAliasId(identifier);
+        byte[] packetData = buildPacketData(aliasId, data);
         tcpOut.write(packetData);
 
         tcpOut.flush();
     }
 
-    public void sendUDP(int identifier) throws IOException {
-        sendUDP(identifier, null);
+    public void sendTCP(String identifier, Networkable networkable) throws IOException {
+        byte[] networkableData = serializer.writeNetworkable(networkable);
+        sendTCP(identifier, networkableData);
     }
 
-    public void sendUDP(int identifier, byte[] data) throws IOException {
-        assert data == null || data.length <= UdpPacketBufferLength;
-        assert identifier >= 0;
+    public void sendUDP(String identifier) throws IOException {
+        sendUDP(identifier, (byte[]) null);
+    }
 
+    public void sendUDP(String identifier, byte[] data) throws IOException {
+        assert data == null || data.length <= UdpPacketBufferLength;
         clientLogger.trace("{} sending udp {} to {}:{}", clientId, identifier, clientConfig.address(), clientConfig.port());
 
-        byte[] packetData = buildPacketData(false, identifier, data);
+        UUID aliasId = getAliasId(identifier);
+        byte[] packetData = buildPacketData(aliasId, data);
 
         DatagramPacket packet = new DatagramPacket(packetData, packetData.length, clientConfig.address(), clientConfig.port());
         udpSocket.send(packet);
     }
 
-    private byte[] buildPacketData(boolean needsLengthSpecified, int identifier, byte[] data) {
+    public void sendUDP(String identifier, Networkable networkable) throws IOException {
+        byte[] networkableData = serializer.writeNetworkable(networkable);
+        sendUDP(identifier, networkableData);
+    }
+
+    private byte[] buildPacketData(UUID identifier, byte[] data) {
         ByteBuffer packetDataBuffer;
 
         if (data == null) {
-            if (needsLengthSpecified) {
-                packetDataBuffer = ByteBuffer.allocate(Integer.BYTES * 2);
-                return packetDataBuffer.putInt(Integer.BYTES).putInt(identifier).array();
-            } else {
-                packetDataBuffer = ByteBuffer.allocate(Integer.BYTES);
-                return packetDataBuffer.putInt(identifier).array();
-            }
+            packetDataBuffer = ByteBuffer.allocate(NetworkableUtils.UuidBytes);
+            return packetDataBuffer.putLong(identifier.getMostSignificantBits())
+                    .putLong(identifier.getLeastSignificantBits())
+                    .array();
         } else {
-            if (needsLengthSpecified) {
-                packetDataBuffer = ByteBuffer.allocate((Integer.BYTES * 2) + data.length);
-                packetDataBuffer.putInt(Integer.BYTES + data.length);
-            } else {
-                packetDataBuffer = ByteBuffer.allocate(Math.min(UdpPacketBufferLength, Integer.BYTES + data.length));
-            }
-
-            return packetDataBuffer.putInt(identifier).put(data).array();
+            packetDataBuffer = ByteBuffer.allocate(Math.min(UdpPacketBufferLength, NetworkableUtils.UuidBytes + data.length));
+            return packetDataBuffer.putLong(identifier.getMostSignificantBits())
+                    .putLong(identifier.getLeastSignificantBits())
+                    .put(data)
+                    .array();
         }
     }
 
     @Override
     public void run() {
-        if (isRunning) {
+        if (isListening) {
             clientLogger.warn("Client {} is already listening to {}:{}.", clientId, clientConfig.address(), clientConfig.port());
             return;
         }
 
-        isRunning = true;
+        isListening = true;
 
         if (connectionListener != null) {
             if (!connectionListener.isShutdown()) {
@@ -181,22 +223,24 @@ public class Client implements Runnable {
     private void listenTCP() {
         clientLogger.debug("{} {} begin listening on TCP.", isServerSide ? "Server-side" : "Client-side", clientId);
 
-        while (isRunning && !tcpSocket.isClosed()) {
+        while (isListening && !tcpSocket.isClosed()) {
             try {
-                if (!isServerSide) {
-                    clientLogger.trace("{} waiting for new TCP data...", clientId);
-                }
+                clientLogger.trace("{} {} waiting for new TCP data...", isServerSide ? "Server-side" : "Client-side", clientId);
 
-                int dataLength = tcpIn.readInt();
-                byte[] data = tcpIn.readNBytes(dataLength);
+                UUID commandId = (UUID) tcpIn.readObject(UUID.class);
 
-                if (!isServerSide) {
-                    clientLogger.trace("{} received new TCP data.", clientId);
+                clientLogger.trace("{} {} received new TCP data.", isServerSide ? "Server-side" : "Client-side", clientId);
+
+                if (isServerSide) {
+                    server.receiveCommand(commandId, this, tcpIn);
+                } else {
+                    readCommand(commandId, tcpIn, this);
                 }
-                clientConfig.clientListener().receiveTCP(data, this);
             } catch (IOException exception) {
-                tryCloseConnection(exception);
-                break;
+                if (!udpSocket.isClosed() && isListening) {
+                    clientLogger.error(clientId + " Error receiving UDP packet", exception);
+                    break;
+                }
             }
         }
 
@@ -206,21 +250,30 @@ public class Client implements Runnable {
     private void listenUDP() {
         clientLogger.debug("{} {} begin listening on UDP.", isServerSide ? "Server-side" : "Client-side", clientId);
 
-        while (isRunning && !udpSocket.isClosed()) {
+        while (isListening && !udpSocket.isClosed()) {
             try {
                 byte[] receivePacketBuffer = new byte[UdpPacketBufferLength];
                 DatagramPacket packet = new DatagramPacket(receivePacketBuffer, UdpPacketBufferLength);
 
-                clientLogger.debug("{} waiting for new UDP packet...", clientId);
+                clientLogger.debug("{} {} waiting for new UDP packet...", isServerSide ? "Server-side" : "Client-side", clientId);
                 udpSocket.receive(packet);
 
-                clientLogger.debug("{} received new UDP packet.", clientId);
+                clientLogger.debug("{} {} received new UDP packet.", isServerSide ? "Server-side" : "Client-side", clientId);
                 byte[] data = new byte[packet.getLength()];
                 System.arraycopy(packet.getData(), 0, data, 0, data.length);
 
-                clientConfig.clientListener().receiveUDP(data, this);
+                NetworkableInputStream tempStream = new NetworkableInputStream(new ByteArrayInputStream(data), serializer);
+                UUID commandId = (UUID) tempStream.readObject(UUID.class);
+
+                if (isServerSide) {
+                    server.receiveCommand(commandId, this, tempStream);
+                } else {
+                    readCommand(commandId, tempStream, this);
+                }
+
+//                clientConfig.clientListener().receiveUDP(data, this);
             } catch (IOException exception) {
-                if (!udpSocket.isClosed() && isRunning) {
+                if (!udpSocket.isClosed() && isListening) {
                     clientLogger.error(clientId + " Error receiving UDP packet", exception);
                     break;
                 }
@@ -230,20 +283,11 @@ public class Client implements Runnable {
         clientLogger.debug("{} {} no longer listening on UDP.", isServerSide ? "Server-side" : "Client-side", clientId);
     }
 
-    private void tryCloseConnection(IOException ioException) {
+    public void disconnect() {
         try {
-            if (tcpIn.read() == Client.Leave) {
-                clientLogger.debug("{} Connection closed.", clientId);
-            }
-        } catch (IOException closeCheckException) {
-            clientLogger.error(clientId + " Error reading connection close check (1/2)", ioException);
-            clientLogger.error(clientId + " Error reading connection close check (2/2)", closeCheckException);
-        } finally {
-            try {
-                shutdown();
-            } catch (IOException shutdownException) {
-                clientLogger.error(clientId + " Error shutting down socket(s)", shutdownException);
-            }
+            shutdown();
+        } catch (IOException shutdownException) {
+            clientLogger.error(clientId + " Error shutting down socket(s)", shutdownException);
         }
     }
 

@@ -4,7 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
 
 import mock.ChatMessage;
 import org.junit.jupiter.api.Test;
@@ -19,8 +19,8 @@ class SerializerTests {
 
     @Test
     void checkCreateSerializer_withNetworkableMapping() {
-        byte chatMessageId = (byte) ThreadLocalRandom.current().nextInt(0, Byte.MAX_VALUE);
-        Map<Byte, Class<? extends Networkable>> networkableTypes = Map.of(chatMessageId, ChatMessage.class);
+        UUID chatMessageId = UUID.randomUUID();
+        Map<UUID, Class<? extends Networkable>> networkableTypes = Map.of(chatMessageId, ChatMessage.class);
         Serializer serializer = new Serializer(networkableTypes);
 
         assertNotNull(
@@ -33,7 +33,7 @@ class SerializerTests {
     void checkReadAndWriteMessage() throws IOException {
         Serializer serializer = new Serializer();
 
-        byte chatMessageId = (byte) ThreadLocalRandom.current().nextInt(0, Byte.MAX_VALUE);
+        UUID chatMessageId = UUID.randomUUID();
         serializer.registerSerializer(chatMessageId, ChatMessage.class);
 
         ChatMessage messageOut = new ChatMessage("lucasstarsz", System.currentTimeMillis(), "Hello world!");
@@ -55,7 +55,7 @@ class SerializerTests {
     void checkReadAndWriteMessage_noStreamSpecified() throws IOException {
         Serializer serializer = new Serializer();
 
-        byte chatMessageId = (byte) ThreadLocalRandom.current().nextInt(0, Byte.MAX_VALUE);
+        UUID chatMessageId = UUID.randomUUID();
         serializer.registerSerializer(chatMessageId, ChatMessage.class);
 
         ChatMessage messageOut = new ChatMessage("lucasstarsz", System.currentTimeMillis(), "Hello world!");
