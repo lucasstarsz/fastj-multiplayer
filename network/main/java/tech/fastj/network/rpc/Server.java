@@ -17,7 +17,6 @@ import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.fastj.network.client.Client;
-import tech.fastj.network.client.ClientListener;
 import tech.fastj.network.rpc.commands.Command0;
 import tech.fastj.network.rpc.commands.Command1;
 import tech.fastj.network.rpc.commands.Command2;
@@ -29,7 +28,7 @@ import tech.fastj.network.serial.read.NetworkableInputStream;
 import tech.fastj.network.serial.util.NetworkableStreamUtils;
 import tech.fastj.network.serial.util.NetworkableUtils;
 
-public class Server extends CommandHandler implements ClientListener {
+public class Server extends CommandHandler {
 
     private final List<Client> clients;
 
@@ -195,20 +194,6 @@ public class Server extends CommandHandler implements ClientListener {
                     exception
             );
         }
-    }
-
-    @Override
-    public void receiveTCP(byte[] data, Client client) {
-        int identifier = ByteBuffer.wrap(data).getInt();
-        serverLogger.debug("Received TCP identifier {} from client {}", identifier, client.getClientId());
-//        tcpActions.getOrDefault(identifier, (i, c) -> {}).accept(data, client);
-    }
-
-    @Override
-    public void receiveUDP(byte[] data, Client client) {
-        int identifier = ByteBuffer.wrap(data).getInt();
-        serverLogger.debug("Received UDP identifier {} from client {}", identifier, client.getClientId());
-//        udpActions.getOrDefault(identifier, (p, c) -> {}).accept(data, client);
     }
 
     public void start() {
