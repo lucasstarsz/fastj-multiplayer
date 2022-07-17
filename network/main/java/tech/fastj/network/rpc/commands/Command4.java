@@ -1,6 +1,6 @@
 package tech.fastj.network.rpc.commands;
 
-import tech.fastj.network.client.Client;
+import tech.fastj.network.rpc.Client;
 
 @FunctionalInterface
 public interface Command4<T1, T2, T3, T4> extends Command {

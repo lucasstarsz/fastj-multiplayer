@@ -1,4 +1,4 @@
-package tech.fastj.network.client;
+package tech.fastj.network.rpc;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -13,8 +13,7 @@ import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tech.fastj.network.rpc.CommandHandler;
-import tech.fastj.network.rpc.Server;
+import tech.fastj.network.config.ClientConfig;
 import tech.fastj.network.serial.Networkable;
 import tech.fastj.network.serial.Serializer;
 import tech.fastj.network.serial.read.NetworkableInputStream;

@@ -16,7 +16,7 @@ import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tech.fastj.network.client.Client;
+import tech.fastj.network.config.ServerConfig;
 import tech.fastj.network.rpc.commands.Command0;
 import tech.fastj.network.rpc.commands.Command1;
 import tech.fastj.network.rpc.commands.Command2;

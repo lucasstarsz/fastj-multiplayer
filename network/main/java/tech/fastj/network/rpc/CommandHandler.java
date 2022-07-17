@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import tech.fastj.network.client.Client;
 import tech.fastj.network.rpc.classes.Classes;
 import tech.fastj.network.rpc.classes.Classes0;
 import tech.fastj.network.rpc.classes.Classes1;

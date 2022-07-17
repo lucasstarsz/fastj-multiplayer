@@ -1,4 +1,4 @@
-package tech.fastj.network.client;
+package tech.fastj.network.config;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;

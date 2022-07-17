@@ -13,10 +13,10 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import tech.fastj.network.client.Client;
-import tech.fastj.network.client.ClientConfig;
+import tech.fastj.network.config.ClientConfig;
+import tech.fastj.network.config.ServerConfig;
+import tech.fastj.network.rpc.Client;
 import tech.fastj.network.rpc.Server;
-import tech.fastj.network.rpc.ServerConfig;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
