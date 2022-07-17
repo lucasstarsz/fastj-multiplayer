@@ -93,6 +93,7 @@ public class Client extends CommandHandler implements Runnable {
 
             int verification = tcpIn.readInt();
             if (verification != Client.Join) {
+                disconnect();
                 throw new IOException("Failed to join server " + clientConfig.address() + ":" + clientConfig.port() + ", connection status was " + verification + ".");
             }
 
