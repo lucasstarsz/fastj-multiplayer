@@ -1,10 +1,5 @@
 package tech.fastj.network.rpc;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-
 import tech.fastj.network.rpc.classes.Classes;
 import tech.fastj.network.rpc.classes.Classes0;
 import tech.fastj.network.rpc.classes.Classes1;
@@ -25,84 +20,78 @@ import tech.fastj.network.serial.Networkable;
 import tech.fastj.network.serial.Serializer;
 import tech.fastj.network.serial.read.NetworkableInputStream;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
 public abstract class CommandHandler {
 
     private final Map<UUID, Command> commands;
-    private final Map<UUID, Classes> idsToClasses;
-    private final Map<String, UUID> aliasesToIds;
+    private final Map<UUID, Classes> commandClasses;
+    private final Map<UUID, Command.Id> idsToCommandIds;
+    private final Set<Command.Id> commandIds;
 
     private final Serializer serializer;
 
     protected CommandHandler() {
         commands = new HashMap<>();
-        idsToClasses = new HashMap<>();
-        aliasesToIds = new HashMap<>();
+        commandClasses = new HashMap<>();
+        idsToCommandIds = new HashMap<>();
+        commandIds = new HashSet<>();
         serializer = new Serializer();
     }
 
-    public void addCommand(String alias, Command0 command) {
-        UUID id = aliasCheck(alias);
-        commands.put(id, command);
-        idsToClasses.put(id, new Classes0());
+    public void addCommand(Command.Id id, Command0 command) {
+        Classes classes = new Classes0();
+        registerCommand(id, classes, command);
     }
 
-    public <T1> void addCommand(String alias, Class<T1> class1, Command1<T1> command) {
-        UUID id = aliasCheck(alias);
-        commands.put(id, command);
-        idsToClasses.put(id, new Classes1<>(class1));
+    public <T1> void addCommand(Command.Id id, Class<T1> class1, Command1<T1> command) {
+        Classes classes = new Classes1<>(class1);
+        registerCommand(id, classes, command);
         tryAddSerializer(class1);
     }
 
-    public <T1, T2> void addCommand(String alias, Class<T1> class1, Class<T2> class2, Command2<T1, T2> command) {
-        UUID id = aliasCheck(alias);
-        commands.put(id, command);
-        idsToClasses.put(id, new Classes2<>(class1, class2));
+    public <T1, T2> void addCommand(Command.Id id, Class<T1> class1, Class<T2> class2, Command2<T1, T2> command) {
+        Classes classes = new Classes2<>(class1, class2);
+        registerCommand(id, classes, command);
         tryAddSerializer(class1, class2);
     }
 
-    public <T1, T2, T3> void addCommand(String alias, Class<T1> class1, Class<T2> class2, Class<T3> class3,
+    public <T1, T2, T3> void addCommand(Command.Id id, Class<T1> class1, Class<T2> class2, Class<T3> class3,
                                         Command3<T1, T2, T3> command) {
-        UUID id = aliasCheck(alias);
-        commands.put(id, command);
-        idsToClasses.put(id, new Classes3<>(class1, class2, class3));
+        Classes classes = new Classes3<>(class1, class2, class3);
+        registerCommand(id, classes, command);
         tryAddSerializer(class1, class2, class3);
     }
 
-    public <T1, T2, T3, T4> void addCommand(String alias, Class<T1> class1, Class<T2> class2, Class<T3> class3,
+    public <T1, T2, T3, T4> void addCommand(Command.Id id, Class<T1> class1, Class<T2> class2, Class<T3> class3,
                                             Class<T4> class4, Command4<T1, T2, T3, T4> command) {
-        UUID id = aliasCheck(alias);
-        commands.put(id, command);
-        idsToClasses.put(id, new Classes4<>(class1, class2, class3, class4));
+        Classes classes = new Classes4<>(class1, class2, class3, class4);
+        registerCommand(id, classes, command);
         tryAddSerializer(class1, class2, class3, class4);
     }
 
-    public <T1, T2, T3, T4, T5> void addCommand(String alias, Class<T1> class1, Class<T2> class2, Class<T3> class3,
+    public <T1, T2, T3, T4, T5> void addCommand(Command.Id id, Class<T1> class1, Class<T2> class2, Class<T3> class3,
                                                 Class<T4> class4, Class<T5> class5, Command5<T1, T2, T3, T4, T5> command) {
-        UUID id = aliasCheck(alias);
-        commands.put(id, command);
-        idsToClasses.put(id, new Classes5<>(class1, class2, class3, class4, class5));
+        Classes classes = new Classes5<>(class1, class2, class3, class4, class5);
+        registerCommand(id, classes, command);
         tryAddSerializer(class1, class2, class3, class4, class5);
     }
 
-    public <T1, T2, T3, T4, T5, T6> void addCommand(String alias, Class<T1> class1, Class<T2> class2, Class<T3> class3,
+    public <T1, T2, T3, T4, T5, T6> void addCommand(Command.Id id, Class<T1> class1, Class<T2> class2, Class<T3> class3,
                                                     Class<T4> class4, Class<T5> class5, Class<T6> class6,
                                                     Command6<T1, T2, T3, T4, T5, T6> command) {
-        UUID id = aliasCheck(alias);
-        commands.put(id, command);
-        idsToClasses.put(id, new Classes6<>(class1, class2, class3, class4, class5, class6));
+        Classes classes = new Classes6<>(class1, class2, class3, class4, class5, class6);
+        registerCommand(id, classes, command);
         tryAddSerializer(class1, class2, class3, class4, class5, class6);
     }
 
-    private UUID aliasCheck(String alias) {
-        UUID id = aliasesToIds.get(alias);
-
-        if (id == null) {
-            throw new IllegalArgumentException(
-                    "Command alias \"" + alias + "\" has not been registered. Please add the alias on the server side."
-            );
-        }
-
-        return id;
+    public Command.Id getCommandId(UUID uuid) {
+        return idsToCommandIds.get(uuid);
     }
 
     @SuppressWarnings("unchecked")
@@ -116,6 +105,9 @@ public abstract class CommandHandler {
 
     protected void readCommand(UUID commandId, NetworkableInputStream inputStream, Client client) throws IOException {
         Classes classes = getClasses(commandId);
+        if (classes == null) {
+            throw new IOException("Invalid command: " + idsToCommandIds.get(commandId).formattedToString());
+        }
 
         if (classes instanceof Classes0) {
             runCommand(commandId, client);
@@ -209,24 +201,23 @@ public abstract class CommandHandler {
         command.runCommand(client, t1, t2, t3, t4, t5, t6);
     }
 
-    protected UUID getAliasId(String alias) {
-        return aliasesToIds.get(alias);
-    }
-
     @SuppressWarnings("unchecked")
     protected <T extends Classes> T getClasses(UUID id) {
-        return (T) idsToClasses.get(id);
+        return (T) commandClasses.get(id);
     }
 
-    protected void assignAliasId(String alias, UUID aliasId) {
-        aliasesToIds.put(alias, aliasId);
+    private void registerCommand(Command.Id id, Classes classes, Command command) {
+        idRegisterCheck(id);
+
+        commandIds.add(id);
+        commands.put(id.uuid(), command);
+        commandClasses.put(id.uuid(), classes);
+        idsToCommandIds.put(id.uuid(), id);
     }
 
-    Map<String, UUID> getAliasesToIds() {
-        return aliasesToIds;
-    }
-
-    void registerAliasId(String alias) {
-        aliasesToIds.put(alias, UUID.randomUUID());
+    void idRegisterCheck(Command.Id id) {
+        if (commandIds.contains(id)) {
+            throw new IllegalArgumentException("Command (" + id.formattedToString() + ") has already been registered.");
+        }
     }
 }

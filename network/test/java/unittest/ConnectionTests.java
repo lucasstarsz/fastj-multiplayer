@@ -17,6 +17,7 @@ import tech.fastj.network.config.ClientConfig;
 import tech.fastj.network.config.ServerConfig;
 import tech.fastj.network.rpc.Client;
 import tech.fastj.network.rpc.Server;
+import tech.fastj.network.rpc.commands.Command;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -64,16 +65,16 @@ class ConnectionTests {
         CountDownLatch latch = new CountDownLatch(2);
 
         assertDoesNotThrow(() -> {
-            String ReceiveTCPChatMessage = "Receive TCP Chat Message";
-            String ReceiveUDPChatMessage = "Receive UDP Chat Message";
+            Command.Id receiveTcpChatMessage = Command.named("Receive TCP Chat Message");
+            Command.Id receiveUDPChatMessage = Command.named("Receive UDP Chat Message");
 
-            server.addCommand(ReceiveTCPChatMessage, ChatMessage.class, (client, chatMessage) -> {
+            server.addCommand(receiveTcpChatMessage, ChatMessage.class, (client, chatMessage) -> {
                 assertEquals(tcpData, chatMessage, "The TCP data should match.");
                 receivedTCPData.set(true);
                 latch.countDown();
             });
 
-            server.addCommand(ReceiveUDPChatMessage, ChatMessage.class, (client, chatMessage) -> {
+            server.addCommand(receiveUDPChatMessage, ChatMessage.class, (client, chatMessage) -> {
                 assertEquals(udpData, chatMessage, "The UDP data should match.");
                 receivedUDPData.set(true);
                 latch.countDown();
@@ -83,8 +84,8 @@ class ConnectionTests {
             Client client = new Client(clientConfig);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
-            client.sendTCP(ReceiveTCPChatMessage, tcpData);
-            client.sendUDP(ReceiveUDPChatMessage, udpData);
+            client.sendTCP(receiveTcpChatMessage, tcpData);
+            client.sendUDP(receiveUDPChatMessage, udpData);
         });
 
         boolean success = latch.await(5, TimeUnit.SECONDS);

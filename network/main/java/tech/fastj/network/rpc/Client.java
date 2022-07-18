@@ -1,5 +1,13 @@
 package tech.fastj.network.rpc;
 
+import tech.fastj.network.config.ClientConfig;
+import tech.fastj.network.rpc.commands.Command;
+import tech.fastj.network.serial.Networkable;
+import tech.fastj.network.serial.Serializer;
+import tech.fastj.network.serial.read.NetworkableInputStream;
+import tech.fastj.network.serial.util.NetworkableUtils;
+import tech.fastj.network.serial.write.NetworkableOutputStream;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -13,12 +21,6 @@ import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tech.fastj.network.config.ClientConfig;
-import tech.fastj.network.serial.Networkable;
-import tech.fastj.network.serial.Serializer;
-import tech.fastj.network.serial.read.NetworkableInputStream;
-import tech.fastj.network.serial.util.NetworkableUtils;
-import tech.fastj.network.serial.write.NetworkableOutputStream;
 
 public class Client extends CommandHandler implements Runnable {
 
@@ -96,8 +98,6 @@ public class Client extends CommandHandler implements Runnable {
                 throw new IOException("Failed to join server " + clientConfig.address() + ":" + clientConfig.port() + ", connection status was " + verification + ".");
             }
 
-            readCommandAliases();
-
             clientLogger.debug("{} connection status satisfactory. Connected to {}:{}.", clientId, clientConfig.address(), clientConfig.port());
         } else {
             clientLogger.debug("{} connection status satisfactory. Joined server {}:{}.", clientId, clientConfig.address(), clientConfig.port());
@@ -105,17 +105,6 @@ public class Client extends CommandHandler implements Runnable {
 
         while (tcpIn.available() > 0) {
             tcpIn.skipNBytes(tcpIn.available());
-        }
-    }
-
-    private void readCommandAliases() throws IOException {
-        int aliasCount = tcpIn.readInt();
-
-        for (int i = 0; i < aliasCount; i++) {
-            String alias = (String) tcpIn.readObject(String.class);
-            UUID aliasId = (UUID) tcpIn.readObject(UUID.class);
-            clientLogger.debug("Recevied command alias \"{}\":{}", alias, aliasId);
-            assignAliasId(alias, aliasId);
         }
     }
 
@@ -143,43 +132,41 @@ public class Client extends CommandHandler implements Runnable {
         return isListening;
     }
 
-    public void sendTCP(String identifier) throws IOException {
-        sendTCP(identifier, (byte[]) null);
+    public void sendTCP(Command.Id commandId) throws IOException {
+        sendTCP(commandId, (byte[]) null);
     }
 
-    public synchronized void sendTCP(String identifier, byte[] data) throws IOException {
-        clientLogger.trace("{} sending tcp \"{}\" to {}:{}", clientId, identifier, clientConfig.address(), clientConfig.port());
+    public synchronized void sendTCP(Command.Id commandId, byte[] data) throws IOException {
+        clientLogger.trace("{} sending tcp \"{}\" to {}:{}", clientId, commandId.name(), clientConfig.address(), clientConfig.port());
 
-        UUID aliasId = getAliasId(identifier);
-        byte[] packetData = buildPacketData(aliasId, data);
+        byte[] packetData = buildPacketData(commandId.uuid(), data);
         tcpOut.write(packetData);
 
         tcpOut.flush();
     }
 
-    public void sendTCP(String identifier, Networkable networkable) throws IOException {
-        byte[] networkableData = serializer.writeNetworkable(networkable);
-        sendTCP(identifier, networkableData);
+    public void sendTCP(Command.Id commandId, Networkable networkable) throws IOException {
+        byte[] data = serializer.writeNetworkable(networkable);
+        sendTCP(commandId, data);
     }
 
-    public void sendUDP(String identifier) throws IOException {
-        sendUDP(identifier, (byte[]) null);
+    public void sendUDP(Command.Id commandId) throws IOException {
+        sendUDP(commandId, (byte[]) null);
     }
 
-    public void sendUDP(String identifier, byte[] data) throws IOException {
+    public void sendUDP(Command.Id commandId, byte[] data) throws IOException {
         assert data == null || data.length <= UdpPacketBufferLength;
-        clientLogger.trace("{} sending udp {} to {}:{}", clientId, identifier, clientConfig.address(), clientConfig.port());
+        clientLogger.trace("{} sending udp {} to {}:{}", clientId, commandId.name(), clientConfig.address(), clientConfig.port());
 
-        UUID aliasId = getAliasId(identifier);
-        byte[] packetData = buildPacketData(aliasId, data);
+        byte[] packetData = buildPacketData(commandId.uuid(), data);
 
         DatagramPacket packet = new DatagramPacket(packetData, packetData.length, clientConfig.address(), clientConfig.port());
         udpSocket.send(packet);
     }
 
-    public void sendUDP(String identifier, Networkable networkable) throws IOException {
-        byte[] networkableData = serializer.writeNetworkable(networkable);
-        sendUDP(identifier, networkableData);
+    public void sendUDP(Command.Id commandId, Networkable networkable) throws IOException {
+        byte[] data = serializer.writeNetworkable(networkable);
+        sendUDP(commandId, data);
     }
 
     private byte[] buildPacketData(UUID identifier, byte[] data) {
@@ -270,8 +257,6 @@ public class Client extends CommandHandler implements Runnable {
                 } else {
                     readCommand(commandId, tempStream, this);
                 }
-
-//                clientConfig.clientListener().receiveUDP(data, this);
             } catch (IOException exception) {
                 if (!udpSocket.isClosed() && isListening) {
                     clientLogger.error(clientId + " Error receiving UDP packet", exception);
