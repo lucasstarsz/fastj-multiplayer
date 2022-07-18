@@ -69,8 +69,16 @@ public class NetworkableUtils {
             return EnumBytes;
         } else if (object instanceof byte[]) {
             return Integer.BYTES + ((byte[]) object).length;
-        } else if (object.getClass().isArray() && Networkable.class.isAssignableFrom(object.getClass().getComponentType())) {
-            return bytesLength(serializer, (Networkable[]) object);
+        }  else if (object instanceof int[]) {
+            return Integer.BYTES + ((int[]) object).length;
+        }  else if (object instanceof float[]) {
+            return Integer.BYTES + ((float[]) object).length;
+        } else if (object.getClass().isArray()) {
+            if (Networkable.class.isAssignableFrom(object.getClass().getComponentType())) {
+                return bytesLength(serializer, (Networkable[]) object);
+            } else {
+                return bytesLength(serializer, (Object[]) object);
+            }
         } else if (object instanceof Networkable) {
             return bytesLength(serializer, (Networkable) object);
         } else {

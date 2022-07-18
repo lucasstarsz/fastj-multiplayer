@@ -1,5 +1,10 @@
 package tech.fastj.network.serial;
 
+import tech.fastj.network.serial.read.NetworkableInputStream;
+import tech.fastj.network.serial.util.NetworkableUtils;
+import tech.fastj.network.serial.util.RecordSerializerUtils;
+import tech.fastj.network.serial.write.NetworkableOutputStream;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -7,16 +12,27 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
-
-import tech.fastj.network.serial.read.NetworkableInputStream;
-import tech.fastj.network.serial.util.NetworkableUtils;
-import tech.fastj.network.serial.util.RecordSerializerUtils;
-import tech.fastj.network.serial.write.NetworkableOutputStream;
 
 public class Serializer {
     private final Map<NetworkableSerializer<?>, UUID> serializersToTypes;
     private final Map<Class<?>, NetworkableSerializer<?>> typeClassesToSerializers;
+
+    private static final Set<Class<?>> DefaultAllowedTypes = Set.of(
+            boolean.class, Boolean.class,
+            byte.class, Byte.class,
+            short.class, Short.class,
+            int.class, Integer.class,
+            long.class, Long.class,
+            float.class, Float.class,
+            double.class, Double.class,
+            byte[].class,
+            int[].class,
+            float[].class,
+            String.class,
+            UUID.class
+    );
 
     public Serializer() {
         serializersToTypes = new HashMap<>();
@@ -49,7 +65,8 @@ public class Serializer {
         return (NetworkableSerializer<T>) typeClassesToSerializers.get(networkableType);
     }
 
-    public Networkable readNetworkable(NetworkableInputStream inputStream, Class<? extends Networkable> networkableClass) throws IOException {
+    public Networkable readNetworkable(NetworkableInputStream inputStream, Class<? extends Networkable> networkableClass)
+            throws IOException {
         try {
             boolean isNetworkableNull = inputStream.readBoolean();
 
@@ -105,5 +122,69 @@ public class Serializer {
 
         writeNetworkable(outputStream, networkable);
         return outputStream.toByteArray();
+    }
+
+    public byte[] writeNetworkables(Networkable... networkables) throws IOException {
+        int length = 0;
+
+        for (Networkable networkable : networkables) {
+            length += NetworkableUtils.bytesLength(this, networkable);
+        }
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream(length);
+        var writeStream = new NetworkableOutputStream(outputStream, this);
+
+        for (Networkable networkable : networkables) {
+            writeNetworkable(writeStream, networkable);
+        }
+
+        return outputStream.toByteArray();
+    }
+
+    public <T> byte[] writeObject(T value) throws IOException {
+        typeCheck(value.getClass());
+
+        int length = NetworkableUtils.bytesLength(this, value);
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream(length);
+        new NetworkableOutputStream(outputStream, this).writeObject(value, value.getClass());
+
+        return outputStream.toByteArray();
+    }
+
+    public final byte[] writeObjects(Object... objects) throws IOException {
+        int length = 0;
+
+        for (Object object : objects) {
+            typeCheck(object.getClass());
+
+            length += NetworkableUtils.bytesLength(this, object);
+        }
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream(length);
+        var writeStream = new NetworkableOutputStream(outputStream, this);
+
+        for (Object object : objects) {
+            writeStream.writeObject(object, object.getClass());
+        }
+
+        return outputStream.toByteArray();
+    }
+
+    private void typeCheck(Class<?> type) throws IOException {
+        if (DefaultAllowedTypes.contains(type)) {
+            return;
+        } else if (Enum.class.isAssignableFrom(type)) {
+            return;
+        } else if (Networkable.class.isAssignableFrom(type)) {
+            UUID networkableId = serializersToTypes.get(typeClassesToSerializers.get(type));
+
+            if (networkableId == null) {
+                throw new IOException("Unsupported networkable type '" + type.getSimpleName() + "'");
+            }
+
+            return;
+        }
+
+        throw new IOException("Unsupoprted type " + type);
     }
 }

@@ -90,10 +90,6 @@ public abstract class CommandHandler {
         tryAddSerializer(class1, class2, class3, class4, class5, class6);
     }
 
-    public Command.Id getCommandId(UUID uuid) {
-        return idsToCommandIds.get(uuid);
-    }
-
     @SuppressWarnings("unchecked")
     private void tryAddSerializer(Class<?>... possibleClasses) {
         for (Class<?> possibleClass : possibleClasses) {

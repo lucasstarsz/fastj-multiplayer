@@ -150,6 +150,21 @@ public class Client extends CommandHandler implements Runnable {
         sendTCP(commandId, data);
     }
 
+    public void sendTCP(Command.Id commandId, Networkable... networkables) throws IOException {
+        byte[] data = serializer.writeNetworkables(networkables);
+        sendTCP(commandId, data);
+    }
+
+    public void sendTCP(Command.Id commandId, Object... objects) throws IOException {
+        byte[] data = serializer.writeObjects(objects);
+        sendTCP(commandId, data);
+    }
+
+    public <T> void sendTCP(Command.Id commandId, T object) throws IOException {
+        byte[] data = serializer.writeObject(object);
+        sendTCP(commandId, data);
+    }
+
     public void sendUDP(Command.Id commandId) throws IOException {
         sendUDP(commandId, (byte[]) null);
     }
@@ -166,6 +181,21 @@ public class Client extends CommandHandler implements Runnable {
 
     public void sendUDP(Command.Id commandId, Networkable networkable) throws IOException {
         byte[] data = serializer.writeNetworkable(networkable);
+        sendUDP(commandId, data);
+    }
+
+    public void sendUDP(Command.Id commandId, Networkable... networkables) throws IOException {
+        byte[] data = serializer.writeNetworkables(networkables);
+        sendUDP(commandId, data);
+    }
+
+    public void sendUDP(Command.Id commandId, Object... objects) throws IOException {
+        byte[] data = serializer.writeObjects(objects);
+        sendUDP(commandId, data);
+    }
+
+    public <T> void sendUDP(Command.Id commandId, T object) throws IOException {
+        byte[] data = serializer.writeObject(object);
         sendUDP(commandId, data);
     }
 
