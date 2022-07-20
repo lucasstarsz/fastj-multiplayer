@@ -247,8 +247,8 @@ class ConnectionTests {
         boolean tcpData1 = random.nextBoolean();
         byte tcpData2 = (byte) random.nextInt(Byte.MIN_VALUE, Byte.MAX_VALUE);
         short tcpData3 = (short) random.nextInt(Short.MIN_VALUE, Short.MAX_VALUE);
-        byte[] tcpData4 = new byte[random.nextInt(10, 100)];
-        int[] tcpData5 = random.ints(random.nextInt(10, 100), Integer.MIN_VALUE, Integer.MAX_VALUE).toArray();
+        byte[] tcpData4 = new byte[random.nextInt(10, 20)];
+        int[] tcpData5 = random.ints(random.nextInt(10, 20), Integer.MIN_VALUE, Integer.MAX_VALUE).toArray();
         String tcpData6 = UUID.randomUUID().toString();
 
         random.nextBytes(tcpData4);
@@ -257,7 +257,7 @@ class ConnectionTests {
         float udpData2 = random.nextFloat(Float.MIN_VALUE, Float.MAX_VALUE);
         double udpData3 = random.nextDouble(Double.MIN_VALUE, Double.MAX_VALUE);
         long udpData4 = random.nextLong(Long.MIN_VALUE, Long.MAX_VALUE);
-        float[] udpData5 = new float[random.nextInt(10, 100)];
+        float[] udpData5 = new float[random.nextInt(10, 20)];
         ChatMessage udpData6 = new ChatMessage(UUID.randomUUID().toString(), System.currentTimeMillis(), UUID.randomUUID().toString());
 
         for (int i = 0; i < udpData5.length; i++) {
