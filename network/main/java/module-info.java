@@ -1,6 +1,5 @@
 module fastj.network {
-    requires transitive fastj.library;
-
+    requires org.slf4j;
     exports tech.fastj.network.config;
 
     exports tech.fastj.network.rpc;

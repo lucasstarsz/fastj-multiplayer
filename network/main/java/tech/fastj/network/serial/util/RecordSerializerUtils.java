@@ -1,6 +1,10 @@
 package tech.fastj.network.serial.util;
 
-import tech.fastj.systems.collections.Pair;
+import tech.fastj.network.serial.Networkable;
+import tech.fastj.network.serial.RecordSerializer;
+import tech.fastj.network.serial.Serializer;
+import tech.fastj.network.serial.read.NetworkableReader;
+import tech.fastj.network.serial.write.NetworkableWriter;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.RecordComponent;
@@ -9,21 +13,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
-import tech.fastj.network.serial.Networkable;
-import tech.fastj.network.serial.RecordSerializer;
-import tech.fastj.network.serial.Serializer;
-import tech.fastj.network.serial.read.NetworkableReader;
-import tech.fastj.network.serial.write.NetworkableWriter;
-
 public class RecordSerializerUtils {
 
-    private static final Map<Pair<Class<?>, Serializer>, RecordSerializer<?>> generatedMessageTypes = new HashMap<>();
+    private static final Map<MessageType<?>, RecordSerializer<?>> generatedMessageTypes = new HashMap<>();
 
     @SuppressWarnings("unchecked")
-    public static <T extends Networkable> RecordSerializer<T> get(Serializer serializer, Class<T> networkableClass) {
+    public static <T extends Networkable> RecordSerializer<T> get(Serializer serializer, Class<T> networkableType) {
         return (RecordSerializer<T>) generatedMessageTypes.computeIfAbsent(
-                new Pair<>(networkableClass, serializer),
-                p -> generate(serializer, (Class<T>) p.getLeft())
+                new MessageType<>(serializer, networkableType),
+                messageType -> generate(serializer, (Class<T>) messageType.networkableType())
         );
     }
 
