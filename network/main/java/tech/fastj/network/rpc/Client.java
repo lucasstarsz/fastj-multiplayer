@@ -5,7 +5,6 @@ import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.serial.Networkable;
 import tech.fastj.network.serial.Serializer;
 import tech.fastj.network.serial.read.NetworkableInputStream;
-import tech.fastj.network.serial.util.NetworkableUtils;
 import tech.fastj.network.serial.write.NetworkableOutputStream;
 
 import java.io.ByteArrayInputStream;
@@ -14,7 +13,6 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.nio.ByteBuffer;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,12 +26,6 @@ public class Client extends CommandHandler implements Runnable {
 
     public static final int Leave = 1;
     public static final int Join = 0;
-
-    /** Maximum length of a UDP packet's data -- this does not account for the data length. */
-    public static final int UdpPacketDataLength = 504;
-
-    /** Maximum length of a UDP packet, including both the identifier and the data length. */
-    public static final int UdpPacketBufferLength = UdpPacketDataLength + Integer.BYTES;
 
     private final Socket tcpSocket;
     private final DatagramSocket udpSocket;
@@ -138,11 +130,7 @@ public class Client extends CommandHandler implements Runnable {
 
     public synchronized void sendTCP(Command.Id commandId, byte[] data) throws IOException {
         clientLogger.trace("{} sending tcp \"{}\" to {}:{}", clientId, commandId.name(), clientConfig.address(), clientConfig.port());
-
-        byte[] packetData = buildPacketData(commandId.uuid(), data);
-        tcpOut.write(packetData);
-
-        tcpOut.flush();
+        SendUtils.sendTCP(tcpOut, commandId, data);
     }
 
     public void sendTCP(Command.Id commandId, Networkable networkable) throws IOException {
@@ -169,14 +157,11 @@ public class Client extends CommandHandler implements Runnable {
         sendUDP(commandId, (byte[]) null);
     }
 
-    public void sendUDP(Command.Id commandId, byte[] data) throws IOException {
-        assert data == null || data.length <= UdpPacketBufferLength;
+    public void sendUDP(Command.Id commandId, byte[] rawData) throws IOException {
+        SendUtils.checkUDPPacketSize(rawData);
+
         clientLogger.trace("{} sending udp {} to {}:{}", clientId, commandId.name(), clientConfig.address(), clientConfig.port());
-
-        byte[] packetData = buildPacketData(commandId.uuid(), data);
-
-        DatagramPacket packet = new DatagramPacket(packetData, packetData.length, clientConfig.address(), clientConfig.port());
-        udpSocket.send(packet);
+        SendUtils.sendUDP(udpSocket, clientConfig, commandId, rawData);
     }
 
     public void sendUDP(Command.Id commandId, Networkable networkable) throws IOException {
@@ -197,23 +182,6 @@ public class Client extends CommandHandler implements Runnable {
     public <T> void sendUDP(Command.Id commandId, T object) throws IOException {
         byte[] data = serializer.writeObject(object);
         sendUDP(commandId, data);
-    }
-
-    private byte[] buildPacketData(UUID identifier, byte[] data) {
-        ByteBuffer packetDataBuffer;
-
-        if (data == null) {
-            packetDataBuffer = ByteBuffer.allocate(NetworkableUtils.UuidBytes);
-            return packetDataBuffer.putLong(identifier.getMostSignificantBits())
-                    .putLong(identifier.getLeastSignificantBits())
-                    .array();
-        } else {
-            packetDataBuffer = ByteBuffer.allocate(Math.min(UdpPacketBufferLength, NetworkableUtils.UuidBytes + data.length));
-            return packetDataBuffer.putLong(identifier.getMostSignificantBits())
-                    .putLong(identifier.getLeastSignificantBits())
-                    .put(data)
-                    .array();
-        }
     }
 
     @Override
@@ -269,8 +237,8 @@ public class Client extends CommandHandler implements Runnable {
 
         while (isListening && !udpSocket.isClosed()) {
             try {
-                byte[] receivePacketBuffer = new byte[UdpPacketBufferLength];
-                DatagramPacket packet = new DatagramPacket(receivePacketBuffer, UdpPacketBufferLength);
+                byte[] receivePacketBuffer = new byte[SendUtils.UdpPacketBufferLength];
+                DatagramPacket packet = new DatagramPacket(receivePacketBuffer, SendUtils.UdpPacketBufferLength);
 
                 clientLogger.debug("{} {} waiting for new UDP packet...", isServerSide ? "Server-side" : "Client-side", clientId);
                 udpSocket.receive(packet);
