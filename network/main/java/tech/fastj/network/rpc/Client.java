@@ -1,8 +1,8 @@
 package tech.fastj.network.rpc;
 
+import tech.fastj.network.CommandSender;
 import tech.fastj.network.config.ClientConfig;
 import tech.fastj.network.rpc.commands.Command;
-import tech.fastj.network.serial.Networkable;
 import tech.fastj.network.serial.Serializer;
 import tech.fastj.network.serial.read.NetworkableInputStream;
 import tech.fastj.network.serial.write.NetworkableOutputStream;
@@ -20,7 +20,7 @@ import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Client extends CommandHandler implements Runnable {
+public class Client extends CommandSender implements Runnable {
 
     private final Logger clientLogger = LoggerFactory.getLogger(Client.class);
 
@@ -29,7 +29,6 @@ public class Client extends CommandHandler implements Runnable {
 
     private final Socket tcpSocket;
     private final DatagramSocket udpSocket;
-    private final Serializer serializer;
     private NetworkableInputStream tcpIn;
     private NetworkableOutputStream tcpOut;
 
@@ -51,7 +50,6 @@ public class Client extends CommandHandler implements Runnable {
         tcpSocket = socket;
         tcpSocket.setSoTimeout(10000);
         udpSocket = udpServer;
-        serializer = new Serializer();
         isServerSide = true;
     }
 
@@ -63,7 +61,6 @@ public class Client extends CommandHandler implements Runnable {
         tcpSocket = new Socket();
         tcpSocket.setSoTimeout(10000);
         udpSocket = new DatagramSocket();
-        serializer = new Serializer();
         isServerSide = false;
     }
 
@@ -124,64 +121,16 @@ public class Client extends CommandHandler implements Runnable {
         return isListening;
     }
 
-    public void sendTCP(Command.Id commandId) throws IOException {
-        sendTCP(commandId, (byte[]) null);
-    }
-
-    public synchronized void sendTCP(Command.Id commandId, byte[] data) throws IOException {
+    @Override
+    public synchronized void sendTCP(Command.Id commandId, byte[] rawData) throws IOException {
         clientLogger.trace("{} sending tcp \"{}\" to {}:{}", clientId, commandId.name(), clientConfig.address(), clientConfig.port());
-        SendUtils.sendTCP(tcpOut, commandId, data);
+        SendUtils.sendTCP(tcpOut, commandId, rawData);
     }
 
-    public void sendTCP(Command.Id commandId, Networkable networkable) throws IOException {
-        byte[] data = serializer.writeNetworkable(networkable);
-        sendTCP(commandId, data);
-    }
-
-    public void sendTCP(Command.Id commandId, Networkable... networkables) throws IOException {
-        byte[] data = serializer.writeNetworkables(networkables);
-        sendTCP(commandId, data);
-    }
-
-    public void sendTCP(Command.Id commandId, Object... objects) throws IOException {
-        byte[] data = serializer.writeObjects(objects);
-        sendTCP(commandId, data);
-    }
-
-    public <T> void sendTCP(Command.Id commandId, T object) throws IOException {
-        byte[] data = serializer.writeObject(object);
-        sendTCP(commandId, data);
-    }
-
-    public void sendUDP(Command.Id commandId) throws IOException {
-        sendUDP(commandId, (byte[]) null);
-    }
-
+    @Override
     public void sendUDP(Command.Id commandId, byte[] rawData) throws IOException {
-        SendUtils.checkUDPPacketSize(rawData);
-
         clientLogger.trace("{} sending udp {} to {}:{}", clientId, commandId.name(), clientConfig.address(), clientConfig.port());
         SendUtils.sendUDP(udpSocket, clientConfig, commandId, rawData);
-    }
-
-    public void sendUDP(Command.Id commandId, Networkable networkable) throws IOException {
-        byte[] data = serializer.writeNetworkable(networkable);
-        sendUDP(commandId, data);
-    }
-
-    public void sendUDP(Command.Id commandId, Networkable... networkables) throws IOException {
-        byte[] data = serializer.writeNetworkables(networkables);
-        sendUDP(commandId, data);
-    }
-
-    public void sendUDP(Command.Id commandId, Object... objects) throws IOException {
-        byte[] data = serializer.writeObjects(objects);
-        sendUDP(commandId, data);
-    }
-
-    public <T> void sendUDP(Command.Id commandId, T object) throws IOException {
-        byte[] data = serializer.writeObject(object);
-        sendUDP(commandId, data);
     }
 
     @Override

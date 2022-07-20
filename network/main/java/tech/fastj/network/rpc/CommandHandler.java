@@ -34,7 +34,7 @@ public abstract class CommandHandler {
     private final Map<UUID, Command.Id> idsToCommandIds;
     private final Set<Command.Id> commandIds;
 
-    private final Serializer serializer;
+    protected final Serializer serializer;
 
     protected CommandHandler() {
         commands = new HashMap<>();
