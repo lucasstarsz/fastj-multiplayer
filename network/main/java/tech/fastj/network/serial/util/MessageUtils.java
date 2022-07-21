@@ -1,18 +1,19 @@
 package tech.fastj.network.serial.util;
 
+import tech.fastj.network.serial.Message;
+import tech.fastj.network.serial.MessageSerializer;
+import tech.fastj.network.serial.Serializer;
+
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
-import tech.fastj.network.serial.Networkable;
-import tech.fastj.network.serial.NetworkableSerializer;
-import tech.fastj.network.serial.Serializer;
+public class MessageUtils {
 
-public class NetworkableUtils {
-
+    public static final int Null = -1;
     public static final int UuidBytes = 2 * Long.BYTES;
     public static final int EnumBytes = Integer.BYTES;
     public static final int MinStringBytes = Integer.BYTES;
-    public static final int MinNetworkableBytes = 1;
+    public static final int MinMessageBytes = 1;
 
     public static int bytesLength(String string) {
         return MinStringBytes + (string == null ? 0 : string.getBytes(StandardCharsets.UTF_8).length);
@@ -28,16 +29,16 @@ public class NetworkableUtils {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T extends Networkable> int bytesLength(Serializer serializer, T networkable) {
+    public static <T extends Message> int bytesLength(Serializer serializer, T networkable) {
         if (networkable == null) {
-            return MinNetworkableBytes;
+            return MinMessageBytes;
         } else {
-            NetworkableSerializer<T> typeSerializer = (NetworkableSerializer<T>) serializer.getSerializer(networkable.getClass());
-            return MinNetworkableBytes + typeSerializer.byteLengthFunction().apply(networkable);
+            MessageSerializer<T> typeSerializer = (MessageSerializer<T>) serializer.getSerializer(networkable.getClass());
+            return MinMessageBytes + typeSerializer.byteLengthFunction().apply(networkable);
         }
     }
 
-    public static <T extends Networkable> int bytesLength(Serializer serializer, T[] items) {
+    public static <T extends Message> int bytesLength(Serializer serializer, T[] items) {
         int count = Integer.BYTES;
         for (var item : items) {
             count += bytesLength(serializer, item);
@@ -69,18 +70,18 @@ public class NetworkableUtils {
             return EnumBytes;
         } else if (object instanceof byte[]) {
             return Integer.BYTES + ((byte[]) object).length;
-        }  else if (object instanceof int[]) {
+        } else if (object instanceof int[]) {
             return Integer.BYTES + ((int[]) object).length;
-        }  else if (object instanceof float[]) {
+        } else if (object instanceof float[]) {
             return Integer.BYTES + ((float[]) object).length;
         } else if (object.getClass().isArray()) {
-            if (Networkable.class.isAssignableFrom(object.getClass().getComponentType())) {
-                return bytesLength(serializer, (Networkable[]) object);
+            if (Message.class.isAssignableFrom(object.getClass().getComponentType())) {
+                return bytesLength(serializer, (Message[]) object);
             } else {
                 return bytesLength(serializer, (Object[]) object);
             }
-        } else if (object instanceof Networkable) {
-            return bytesLength(serializer, (Networkable) object);
+        } else if (object instanceof Message) {
+            return bytesLength(serializer, (Message) object);
         } else {
             throw new IllegalArgumentException("Unsupported object type: " + object.getClass().getSimpleName());
         }

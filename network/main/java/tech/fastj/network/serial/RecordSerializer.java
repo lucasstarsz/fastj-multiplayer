@@ -2,11 +2,11 @@ package tech.fastj.network.serial;
 
 import java.util.function.Function;
 
-import tech.fastj.network.serial.read.NetworkableReader;
-import tech.fastj.network.serial.write.NetworkableWriter;
+import tech.fastj.network.serial.read.MessageReader;
+import tech.fastj.network.serial.write.MessageWriter;
 
-public record RecordSerializer<T extends Networkable>(Class<T> networkableClass,
-                                                      Function<T, Integer> byteLengthFunction,
-                                                      NetworkableReader<T> reader, NetworkableWriter<T> writer
-) implements NetworkableSerializer<T> {
+public record RecordSerializer<T extends Message>(Class<T> networkableClass,
+                                                  Function<T, Integer> byteLengthFunction,
+                                                  MessageReader<T> reader, MessageWriter<T> writer
+) implements MessageSerializer<T> {
 }

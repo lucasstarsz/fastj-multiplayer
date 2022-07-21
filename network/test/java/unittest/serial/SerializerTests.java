@@ -8,9 +8,9 @@ import java.util.UUID;
 
 import mock.ChatMessage;
 import org.junit.jupiter.api.Test;
-import tech.fastj.network.serial.Networkable;
+import tech.fastj.network.serial.Message;
 import tech.fastj.network.serial.Serializer;
-import tech.fastj.network.serial.util.NetworkableUtils;
+import tech.fastj.network.serial.util.MessageUtils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -18,9 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 class SerializerTests {
 
     @Test
-    void checkCreateSerializer_withNetworkableMapping() {
+    void checkCreateSerializer_withMessageMapping() {
         UUID chatMessageId = UUID.randomUUID();
-        Map<UUID, Class<? extends Networkable>> networkableTypes = Map.of(chatMessageId, ChatMessage.class);
+        Map<UUID, Class<? extends Message>> networkableTypes = Map.of(chatMessageId, ChatMessage.class);
         Serializer serializer = new Serializer(networkableTypes);
 
         assertNotNull(
@@ -39,15 +39,15 @@ class SerializerTests {
         ChatMessage messageOut = new ChatMessage("lucasstarsz", System.currentTimeMillis(), "Hello world!");
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        serializer.writeNetworkable(outputStream, messageOut);
+        serializer.writeMessage(outputStream, messageOut);
         byte[] data = outputStream.toByteArray();
 
         assertEquals(
-                NetworkableUtils.bytesLength(serializer, messageOut), data.length,
+                MessageUtils.bytesLength(serializer, messageOut), data.length,
                 "The length of the written networkable should only involve the networkable data."
         );
 
-        ChatMessage messageIn = (ChatMessage) serializer.readNetworkable(new ByteArrayInputStream(data), ChatMessage.class);
+        ChatMessage messageIn = (ChatMessage) serializer.readMessage(new ByteArrayInputStream(data), ChatMessage.class);
         assertEquals(messageOut, messageIn, "The networkable read in should match the networkable written out.");
     }
 
@@ -60,14 +60,14 @@ class SerializerTests {
 
         ChatMessage messageOut = new ChatMessage("lucasstarsz", System.currentTimeMillis(), "Hello world!");
 
-        byte[] data = serializer.writeNetworkable(messageOut);
+        byte[] data = serializer.writeMessage(messageOut);
 
         assertEquals(
-                NetworkableUtils.bytesLength(serializer, messageOut), data.length,
+                MessageUtils.bytesLength(serializer, messageOut), data.length,
                 "The length of the written networkable should only involve the networkable data."
         );
 
-        ChatMessage messageIn = (ChatMessage) serializer.readNetworkable(data, ChatMessage.class);
+        ChatMessage messageIn = (ChatMessage) serializer.readMessage(data, ChatMessage.class);
         assertEquals(messageOut, messageIn, "The networkable read in should match the networkable written out.");
     }
 }

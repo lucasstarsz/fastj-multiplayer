@@ -4,8 +4,8 @@ import tech.fastj.network.CommandSender;
 import tech.fastj.network.config.ClientConfig;
 import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.serial.Serializer;
-import tech.fastj.network.serial.read.NetworkableInputStream;
-import tech.fastj.network.serial.write.NetworkableOutputStream;
+import tech.fastj.network.serial.read.MessageInputStream;
+import tech.fastj.network.serial.write.MessageOutputStream;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -29,8 +29,8 @@ public class Client extends CommandSender implements Runnable {
 
     private final Socket tcpSocket;
     private final DatagramSocket udpSocket;
-    private NetworkableInputStream tcpIn;
-    private NetworkableOutputStream tcpOut;
+    private MessageInputStream tcpIn;
+    private MessageOutputStream tcpOut;
 
     private final ClientConfig clientConfig;
     private final UUID clientId;
@@ -73,10 +73,10 @@ public class Client extends CommandSender implements Runnable {
             isConnected = true;
         }
 
-        tcpOut = new NetworkableOutputStream(tcpSocket.getOutputStream(), serializer);
+        tcpOut = new MessageOutputStream(tcpSocket.getOutputStream(), serializer);
         tcpOut.flush();
 
-        tcpIn = new NetworkableInputStream(tcpSocket.getInputStream(), serializer);
+        tcpIn = new MessageInputStream(tcpSocket.getInputStream(), serializer);
 
         if (!isServerSide) {
             clientLogger.debug("{} checking server connection status...", clientId);
@@ -109,7 +109,7 @@ public class Client extends CommandSender implements Runnable {
         return serializer;
     }
 
-    public NetworkableOutputStream getTcpOut() {
+    public MessageOutputStream getTcpOut() {
         return tcpOut;
     }
 
@@ -196,7 +196,7 @@ public class Client extends CommandSender implements Runnable {
                 byte[] data = new byte[packet.getLength()];
                 System.arraycopy(packet.getData(), 0, data, 0, data.length);
 
-                NetworkableInputStream tempStream = new NetworkableInputStream(new ByteArrayInputStream(data), serializer);
+                MessageInputStream tempStream = new MessageInputStream(new ByteArrayInputStream(data), serializer);
                 UUID commandId = (UUID) tempStream.readObject(UUID.class);
 
                 if (isServerSide) {

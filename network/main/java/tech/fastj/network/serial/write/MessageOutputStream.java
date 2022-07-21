@@ -1,20 +1,20 @@
 package tech.fastj.network.serial.write;
 
+import tech.fastj.network.serial.Message;
+import tech.fastj.network.serial.Serializer;
+import tech.fastj.network.serial.util.MessageUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
-import tech.fastj.network.serial.Networkable;
-import tech.fastj.network.serial.Serializer;
-import tech.fastj.network.serial.util.NetworkableStreamUtils;
-
-public class NetworkableOutputStream extends DataOutputStream {
+public class MessageOutputStream extends DataOutputStream {
 
     private final Serializer serializer;
 
-    public NetworkableOutputStream(OutputStream outputStream, Serializer serializer) {
+    public MessageOutputStream(OutputStream outputStream, Serializer serializer) {
         super(outputStream);
         this.serializer = serializer;
     }
@@ -46,16 +46,16 @@ public class NetworkableOutputStream extends DataOutputStream {
             writeArray((int[]) object);
         } else if (type.equals(float[].class)) {
             writeArray((float[]) object);
-        } else if (type.isArray() && Networkable.class.isAssignableFrom(type.getComponentType())) {
-            writeArray((Networkable[]) object);
-        } else if (Networkable.class.isAssignableFrom(type)) {
-            writeNetworkable((Networkable) object);
+        } else if (type.isArray() && Message.class.isAssignableFrom(type.getComponentType())) {
+            writeArray((Message[]) object);
+        } else if (Message.class.isAssignableFrom(type)) {
+            writeMessage((Message) object);
         } else {
             throw new IOException("Unsupported object type: " + object.getClass().getSimpleName());
         }
     }
 
-    private <T extends Networkable> void writeNetworkable(T networkable) throws IOException {
+    private <T extends Message> void writeMessage(T networkable) throws IOException {
         writeBoolean(networkable == null);
         if (networkable != null) {
             networkable.getSerializer(serializer).writer().write(this, networkable);
@@ -64,7 +64,7 @@ public class NetworkableOutputStream extends DataOutputStream {
 
     private void writeEnum(Enum<?> enumValue) throws IOException {
         if (enumValue == null) {
-            writeInt(NetworkableStreamUtils.Null);
+            writeInt(MessageUtils.Null);
         } else {
             writeInt(enumValue.ordinal());
         }
@@ -72,7 +72,7 @@ public class NetworkableOutputStream extends DataOutputStream {
 
     private void writeString(String string) throws IOException {
         if (string == null) {
-            writeInt(NetworkableStreamUtils.Null);
+            writeInt(MessageUtils.Null);
         } else {
             writeInt(string.length());
             byte[] stringBytes = string.getBytes(StandardCharsets.UTF_8);
@@ -82,28 +82,28 @@ public class NetworkableOutputStream extends DataOutputStream {
 
     private void writeUUID(UUID uuid) throws IOException {
         if (uuid == null) {
-            writeLong(NetworkableStreamUtils.Null);
-            writeLong(NetworkableStreamUtils.Null);
+            writeLong(MessageUtils.Null);
+            writeLong(MessageUtils.Null);
         } else {
             writeLong(uuid.getMostSignificantBits());
             writeLong(uuid.getLeastSignificantBits());
         }
     }
 
-    public <T extends Networkable> void writeArray(T[] objectArray) throws IOException {
+    public <T extends Message> void writeArray(T[] objectArray) throws IOException {
         if (objectArray == null) {
-            writeInt(NetworkableStreamUtils.Null);
+            writeInt(MessageUtils.Null);
         } else {
             writeInt(objectArray.length);
             for (var item : objectArray) {
-                writeNetworkable(item);
+                writeMessage(item);
             }
         }
     }
 
     public void writeArray(byte[] byteArray) throws IOException {
         if (byteArray == null) {
-            writeInt(NetworkableStreamUtils.Null);
+            writeInt(MessageUtils.Null);
         } else {
             writeInt(byteArray.length);
             write(byteArray);
@@ -112,7 +112,7 @@ public class NetworkableOutputStream extends DataOutputStream {
 
     public void writeArray(int[] intArray) throws IOException {
         if (intArray == null) {
-            writeInt(NetworkableStreamUtils.Null);
+            writeInt(MessageUtils.Null);
         } else {
             writeInt(intArray.length);
             for (var item : intArray) {
@@ -123,7 +123,7 @@ public class NetworkableOutputStream extends DataOutputStream {
 
     public void writeArray(float[] floatArray) throws IOException {
         if (floatArray == null) {
-            writeInt(NetworkableStreamUtils.Null);
+            writeInt(MessageUtils.Null);
         } else {
             writeInt(floatArray.length);
             for (var item : floatArray) {

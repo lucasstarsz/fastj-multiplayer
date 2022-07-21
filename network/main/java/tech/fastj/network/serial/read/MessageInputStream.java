@@ -1,24 +1,24 @@
 package tech.fastj.network.serial.read;
 
+import tech.fastj.network.serial.Message;
+import tech.fastj.network.serial.MessageSerializer;
+import tech.fastj.network.serial.RecordSerializer;
+import tech.fastj.network.serial.Serializer;
+import tech.fastj.network.serial.util.MessageUtils;
+import tech.fastj.network.serial.util.RecordSerializerUtils;
+
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Array;
 import java.util.UUID;
 
-import tech.fastj.network.serial.Networkable;
-import tech.fastj.network.serial.NetworkableSerializer;
-import tech.fastj.network.serial.RecordSerializer;
-import tech.fastj.network.serial.Serializer;
-import tech.fastj.network.serial.util.NetworkableStreamUtils;
-import tech.fastj.network.serial.util.RecordSerializerUtils;
 
-
-public class NetworkableInputStream extends DataInputStream {
+public class MessageInputStream extends DataInputStream {
 
     private final Serializer serializer;
 
-    public NetworkableInputStream(InputStream inputStream, Serializer serializer) {
+    public MessageInputStream(InputStream inputStream, Serializer serializer) {
         super(inputStream);
         this.serializer = serializer;
     }
@@ -51,20 +51,20 @@ public class NetworkableInputStream extends DataInputStream {
             return readFloatArray();
         } else if (objectType.isAssignableFrom(int[].class)) {
             return readIntArray();
-        } else if (objectType.isArray() && Networkable.class.isAssignableFrom(objectType.getComponentType())) {
-            var networkableType = RecordSerializerUtils.get(serializer, (Class<? extends Networkable>) objectType.getComponentType());
+        } else if (objectType.isArray() && Message.class.isAssignableFrom(objectType.getComponentType())) {
+            var networkableType = RecordSerializerUtils.get(serializer, (Class<? extends Message>) objectType.getComponentType());
             return readArray(networkableType);
-        } else if (Networkable.class.isAssignableFrom(objectType)) {
-            var networkableType = RecordSerializerUtils.get(serializer, (Class<? extends Networkable>) objectType);
-            return readNetworkable(networkableType);
+        } else if (Message.class.isAssignableFrom(objectType)) {
+            var networkableType = RecordSerializerUtils.get(serializer, (Class<? extends Message>) objectType);
+            return readMessage(networkableType);
         } else {
             throw new IOException("Unsupported object type: " + objectType.getSimpleName());
         }
     }
 
-    private <T extends Networkable> T readNetworkable(RecordSerializer<T> networkableType) throws IOException {
-        boolean isNetworkableNull = readBoolean();
-        if (isNetworkableNull) {
+    private <T extends Message> T readMessage(RecordSerializer<T> networkableType) throws IOException {
+        boolean isMessageNull = readBoolean();
+        if (isMessageNull) {
             return null;
         } else {
             return networkableType.reader().read(this);
@@ -74,7 +74,7 @@ public class NetworkableInputStream extends DataInputStream {
     private Enum<?> readEnum(Class<? extends Enum<?>> enumType) throws IOException {
         int enumOrdinal = readInt();
 
-        if (enumOrdinal == NetworkableStreamUtils.Null) {
+        if (enumOrdinal == MessageUtils.Null) {
             return null;
         } else {
             return enumType.getEnumConstants()[enumOrdinal];
@@ -84,7 +84,7 @@ public class NetworkableInputStream extends DataInputStream {
     private String readString() throws IOException {
         int stringLength = readInt();
 
-        if (stringLength == NetworkableStreamUtils.Null) {
+        if (stringLength == MessageUtils.Null) {
             return null;
         } else {
             byte[] stringBytes = readNBytes(stringLength);
@@ -96,7 +96,7 @@ public class NetworkableInputStream extends DataInputStream {
         long least = readLong();
         long most = readLong();
 
-        if (least == NetworkableStreamUtils.Null && most == NetworkableStreamUtils.Null) {
+        if (least == MessageUtils.Null && most == MessageUtils.Null) {
             return null;
         } else {
             return new UUID(least, most);
@@ -106,7 +106,7 @@ public class NetworkableInputStream extends DataInputStream {
     private byte[] readByteArray() throws IOException {
         int arrayLength = readInt();
 
-        if (arrayLength == NetworkableStreamUtils.Null) {
+        if (arrayLength == MessageUtils.Null) {
             return null;
         } else {
             return readNBytes(arrayLength);
@@ -116,7 +116,7 @@ public class NetworkableInputStream extends DataInputStream {
     private float[] readFloatArray() throws IOException {
         int arrayLength = readInt();
 
-        if (arrayLength == NetworkableStreamUtils.Null) {
+        if (arrayLength == MessageUtils.Null) {
             return null;
         } else {
             float[] floatArray = new float[arrayLength];
@@ -131,7 +131,7 @@ public class NetworkableInputStream extends DataInputStream {
     private int[] readIntArray() throws IOException {
         int arrayLength = readInt();
 
-        if (arrayLength == NetworkableStreamUtils.Null) {
+        if (arrayLength == MessageUtils.Null) {
             return null;
         } else {
             int[] intArray = new int[arrayLength];
@@ -144,15 +144,15 @@ public class NetworkableInputStream extends DataInputStream {
     }
 
     @SuppressWarnings("unchecked")
-    private <T extends Networkable> T[] readArray(NetworkableSerializer<T> serializer) throws IOException {
+    private <T extends Message> T[] readArray(MessageSerializer<T> serializer) throws IOException {
         int arrayLength = readInt();
 
-        if (arrayLength == NetworkableStreamUtils.Null) {
+        if (arrayLength == MessageUtils.Null) {
             return null;
         } else {
             T[] array = (T[]) Array.newInstance(serializer.networkableClass(), arrayLength);
             for (int i = 0; i < arrayLength; i++) {
-                array[i] = (T) readNetworkable((RecordSerializer<?>) serializer);
+                array[i] = (T) readMessage((RecordSerializer<?>) serializer);
             }
 
             return array;

@@ -16,9 +16,9 @@ import tech.fastj.network.rpc.commands.Command3;
 import tech.fastj.network.rpc.commands.Command4;
 import tech.fastj.network.rpc.commands.Command5;
 import tech.fastj.network.rpc.commands.Command6;
-import tech.fastj.network.serial.Networkable;
+import tech.fastj.network.serial.Message;
 import tech.fastj.network.serial.Serializer;
-import tech.fastj.network.serial.read.NetworkableInputStream;
+import tech.fastj.network.serial.read.MessageInputStream;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -93,13 +93,13 @@ public abstract class CommandHandler {
     @SuppressWarnings("unchecked")
     private void tryAddSerializer(Class<?>... possibleClasses) {
         for (Class<?> possibleClass : possibleClasses) {
-            if (Networkable.class.isAssignableFrom(possibleClass)) {
-                serializer.registerSerializer(UUID.randomUUID(), (Class<? extends Networkable>) possibleClass);
+            if (Message.class.isAssignableFrom(possibleClass)) {
+                serializer.registerSerializer(UUID.randomUUID(), (Class<? extends Message>) possibleClass);
             }
         }
     }
 
-    protected void readCommand(UUID commandId, NetworkableInputStream inputStream, Client client) throws IOException {
+    protected void readCommand(UUID commandId, MessageInputStream inputStream, Client client) throws IOException {
         Classes classes = getClasses(commandId);
         if (classes == null) {
             throw new IOException("Invalid command: " + idsToCommandIds.get(commandId).formattedToString());
@@ -144,11 +144,11 @@ public abstract class CommandHandler {
     }
 
     @SuppressWarnings("unchecked")
-    private Object readObject(Class<?> objectClass, NetworkableInputStream inputStream) throws IOException {
+    private Object readObject(Class<?> objectClass, MessageInputStream inputStream) throws IOException {
         Object result;
 
-        if (Networkable.class.isAssignableFrom(objectClass)) {
-            result = serializer.readNetworkable(inputStream, (Class<? extends Networkable>) objectClass);
+        if (Message.class.isAssignableFrom(objectClass)) {
+            result = serializer.readMessage(inputStream, (Class<? extends Message>) objectClass);
         } else {
             result = inputStream.readObject(objectClass);
         }

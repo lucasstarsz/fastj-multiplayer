@@ -2,7 +2,7 @@ package tech.fastj.network;
 
 import tech.fastj.network.rpc.CommandHandler;
 import tech.fastj.network.rpc.commands.Command;
-import tech.fastj.network.serial.Networkable;
+import tech.fastj.network.serial.Message;
 
 import java.io.IOException;
 
@@ -14,13 +14,13 @@ public abstract class CommandSender extends CommandHandler {
         sendTCP(commandId, (byte[]) null);
     }
 
-    public void sendTCP(Command.Id commandId, Networkable networkable) throws IOException {
-        byte[] rawData = serializer.writeNetworkable(networkable);
+    public void sendTCP(Command.Id commandId, Message message) throws IOException {
+        byte[] rawData = serializer.writeMessage(message);
         sendTCP(commandId, rawData);
     }
 
-    public void sendTCP(Command.Id commandId, Networkable... networkables) throws IOException {
-        byte[] rawData = serializer.writeNetworkables(networkables);
+    public void sendTCP(Command.Id commandId, Message... messages) throws IOException {
+        byte[] rawData = serializer.writeMessages(messages);
         sendTCP(commandId, rawData);
     }
 
@@ -40,13 +40,13 @@ public abstract class CommandSender extends CommandHandler {
         sendUDP(commandId, (byte[]) null);
     }
 
-    public void sendUDP(Command.Id commandId, Networkable networkable) throws IOException {
-        byte[] rawData = serializer.writeNetworkable(networkable);
+    public void sendUDP(Command.Id commandId, Message message) throws IOException {
+        byte[] rawData = serializer.writeMessage(message);
         sendUDP(commandId, rawData);
     }
 
-    public void sendUDP(Command.Id commandId, Networkable... networkables) throws IOException {
-        byte[] rawData = serializer.writeNetworkables(networkables);
+    public void sendUDP(Command.Id commandId, Message... messages) throws IOException {
+        byte[] rawData = serializer.writeMessages(messages);
         sendUDP(commandId, rawData);
     }
 

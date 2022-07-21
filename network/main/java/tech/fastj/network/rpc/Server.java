@@ -1,7 +1,7 @@
 package tech.fastj.network.rpc;
 
 import tech.fastj.network.config.ServerConfig;
-import tech.fastj.network.serial.read.NetworkableInputStream;
+import tech.fastj.network.serial.read.MessageInputStream;
 
 import java.io.IOException;
 import java.net.DatagramSocket;
@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 
 public class Server extends CommandHandler {
 
-    private final List<Client> clients;
+    private final List<Client> allClients;
 
     private final ServerSocket tcpServer;
     private final DatagramSocket udpServer;
@@ -32,14 +32,22 @@ public class Server extends CommandHandler {
     private final Logger serverLogger = LoggerFactory.getLogger(Server.class);
 
     public Server(ServerConfig serverConfig) throws IOException {
-        this.clients = new ArrayList<>(serverConfig.maxClients());
+        this.allClients = new ArrayList<>(serverConfig.maxClients());
 
         tcpServer = new ServerSocket(serverConfig.port(), serverConfig.clientBacklog(), serverConfig.address());
         udpServer = new DatagramSocket(serverConfig.port(), serverConfig.address());
     }
 
     public List<Client> getClients() {
-        return Collections.unmodifiableList(clients);
+        return Collections.unmodifiableList(allClients);
+    }
+
+    public ServerSocket getTcpServer() {
+        return tcpServer;
+    }
+
+    public DatagramSocket getUdpServer() {
+        return udpServer;
     }
 
     public boolean isRunning() {
@@ -136,7 +144,7 @@ public class Server extends CommandHandler {
             serverLogger.debug("Client {} connected.", client.getClientId());
 
             client.run();
-            clients.add(client);
+            allClients.add(client);
         } catch (IOException exception) {
             if (client != null && client.isConnected()) {
                 client.getTcpOut().writeInt(Client.Leave);
@@ -156,7 +164,7 @@ public class Server extends CommandHandler {
         isRunning = true;
     }
 
-    public void receiveCommand(UUID commandId, Client client, NetworkableInputStream stream) throws IOException {
+    public void receiveCommand(UUID commandId, Client client, MessageInputStream stream) throws IOException {
         readCommand(commandId, stream, client);
     }
 }

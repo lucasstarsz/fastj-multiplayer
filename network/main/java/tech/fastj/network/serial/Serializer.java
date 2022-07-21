@@ -1,9 +1,9 @@
 package tech.fastj.network.serial;
 
-import tech.fastj.network.serial.read.NetworkableInputStream;
-import tech.fastj.network.serial.util.NetworkableUtils;
+import tech.fastj.network.serial.read.MessageInputStream;
+import tech.fastj.network.serial.util.MessageUtils;
 import tech.fastj.network.serial.util.RecordSerializerUtils;
-import tech.fastj.network.serial.write.NetworkableOutputStream;
+import tech.fastj.network.serial.write.MessageOutputStream;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -16,8 +16,8 @@ import java.util.Set;
 import java.util.UUID;
 
 public class Serializer {
-    private final Map<NetworkableSerializer<?>, UUID> serializersToTypes;
-    private final Map<Class<?>, NetworkableSerializer<?>> typeClassesToSerializers;
+    private final Map<MessageSerializer<?>, UUID> serializersToTypes;
+    private final Map<Class<?>, MessageSerializer<?>> typeClassesToSerializers;
 
     private static final Set<Class<?>> DefaultAllowedTypes = Set.of(
             boolean.class, Boolean.class,
@@ -39,7 +39,7 @@ public class Serializer {
         typeClassesToSerializers = new HashMap<>();
     }
 
-    public Serializer(Map<UUID, Class<? extends Networkable>> premappings) {
+    public Serializer(Map<UUID, Class<? extends Message>> premappings) {
         this();
 
         for (var networkableType : premappings.entrySet()) {
@@ -47,30 +47,30 @@ public class Serializer {
         }
     }
 
-    public <T extends Networkable> void registerSerializer(Class<T> networkableType) {
+    public <T extends Message> void registerSerializer(Class<T> networkableType) {
         registerSerializer(UUID.randomUUID(), RecordSerializerUtils.generate(this, networkableType));
     }
 
-    public <T extends Networkable> void registerSerializer(UUID id, Class<T> networkableType) {
+    public <T extends Message> void registerSerializer(UUID id, Class<T> networkableType) {
         registerSerializer(id, RecordSerializerUtils.generate(this, networkableType));
     }
 
-    public synchronized <T extends Networkable> void registerSerializer(UUID id, NetworkableSerializer<T> serializer) {
+    public synchronized <T extends Message> void registerSerializer(UUID id, MessageSerializer<T> serializer) {
         serializersToTypes.put(serializer, id);
         typeClassesToSerializers.put(serializer.networkableClass(), serializer);
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends Networkable> NetworkableSerializer<T> getSerializer(Class<T> networkableType) {
-        return (NetworkableSerializer<T>) typeClassesToSerializers.get(networkableType);
+    public <T extends Message> MessageSerializer<T> getSerializer(Class<T> networkableType) {
+        return (MessageSerializer<T>) typeClassesToSerializers.get(networkableType);
     }
 
-    public Networkable readNetworkable(NetworkableInputStream inputStream, Class<? extends Networkable> networkableClass)
+    public Message readMessage(MessageInputStream inputStream, Class<? extends Message> networkableClass)
             throws IOException {
         try {
-            boolean isNetworkableNull = inputStream.readBoolean();
+            boolean isMessageNull = inputStream.readBoolean();
 
-            if (isNetworkableNull) {
+            if (isMessageNull) {
                 return null;
             } else {
                 var type = typeClassesToSerializers.get(networkableClass);
@@ -81,15 +81,15 @@ public class Serializer {
         }
     }
 
-    public Networkable readNetworkable(InputStream inputStream, Class<? extends Networkable> networkableClass) throws IOException {
-        return readNetworkable(new NetworkableInputStream(inputStream, this), networkableClass);
+    public Message readMessage(InputStream inputStream, Class<? extends Message> networkableClass) throws IOException {
+        return readMessage(new MessageInputStream(inputStream, this), networkableClass);
     }
 
-    public Networkable readNetworkable(byte[] data, Class<? extends Networkable> networkableClass) throws IOException {
-        return readNetworkable(new ByteArrayInputStream(data), networkableClass);
+    public Message readMessage(byte[] data, Class<? extends Message> networkableClass) throws IOException {
+        return readMessage(new ByteArrayInputStream(data), networkableClass);
     }
 
-    public <T extends Networkable> void writeNetworkable(NetworkableOutputStream outputStream, T networkable) throws IOException {
+    public <T extends Message> void writeMessage(MessageOutputStream outputStream, T networkable) throws IOException {
         try {
             outputStream.writeBoolean(networkable == null);
 
@@ -106,36 +106,36 @@ public class Serializer {
         }
     }
 
-    public <T extends Networkable> void writeNetworkable(OutputStream outputStream, T networkable) throws IOException {
-        writeNetworkable(new NetworkableOutputStream(outputStream, this), networkable);
+    public <T extends Message> void writeMessage(OutputStream outputStream, T networkable) throws IOException {
+        writeMessage(new MessageOutputStream(outputStream, this), networkable);
     }
 
-    public <T extends Networkable> byte[] writeNetworkable(T networkable) throws IOException {
+    public <T extends Message> byte[] writeMessage(T networkable) throws IOException {
         ByteArrayOutputStream outputStream;
 
         if (networkable == null) {
-            outputStream = new ByteArrayOutputStream(NetworkableUtils.MinNetworkableBytes);
+            outputStream = new ByteArrayOutputStream(MessageUtils.MinMessageBytes);
         } else {
             int byteLength = networkable.getSerializer(this).byteLengthFunction().apply(networkable);
-            outputStream = new ByteArrayOutputStream(NetworkableUtils.MinNetworkableBytes + byteLength);
+            outputStream = new ByteArrayOutputStream(MessageUtils.MinMessageBytes + byteLength);
         }
 
-        writeNetworkable(outputStream, networkable);
+        writeMessage(outputStream, networkable);
         return outputStream.toByteArray();
     }
 
-    public byte[] writeNetworkables(Networkable... networkables) throws IOException {
+    public byte[] writeMessages(Message... messages) throws IOException {
         int length = 0;
 
-        for (Networkable networkable : networkables) {
-            length += NetworkableUtils.bytesLength(this, networkable);
+        for (Message message : messages) {
+            length += MessageUtils.bytesLength(this, message);
         }
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream(length);
-        var writeStream = new NetworkableOutputStream(outputStream, this);
+        var writeStream = new MessageOutputStream(outputStream, this);
 
-        for (Networkable networkable : networkables) {
-            writeNetworkable(writeStream, networkable);
+        for (Message message : messages) {
+            writeMessage(writeStream, message);
         }
 
         return outputStream.toByteArray();
@@ -144,9 +144,9 @@ public class Serializer {
     public <T> byte[] writeObject(T value) throws IOException {
         typeCheck(value.getClass());
 
-        int length = NetworkableUtils.bytesLength(this, value);
+        int length = MessageUtils.bytesLength(this, value);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream(length);
-        new NetworkableOutputStream(outputStream, this).writeObject(value, value.getClass());
+        new MessageOutputStream(outputStream, this).writeObject(value, value.getClass());
 
         return outputStream.toByteArray();
     }
@@ -157,11 +157,11 @@ public class Serializer {
         for (Object object : objects) {
             typeCheck(object.getClass());
 
-            length += NetworkableUtils.bytesLength(this, object);
+            length += MessageUtils.bytesLength(this, object);
         }
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream(length);
-        var writeStream = new NetworkableOutputStream(outputStream, this);
+        var writeStream = new MessageOutputStream(outputStream, this);
 
         for (Object object : objects) {
             writeStream.writeObject(object, object.getClass());
@@ -175,7 +175,7 @@ public class Serializer {
             return;
         } else if (Enum.class.isAssignableFrom(type)) {
             return;
-        } else if (Networkable.class.isAssignableFrom(type)) {
+        } else if (Message.class.isAssignableFrom(type)) {
             UUID networkableId = serializersToTypes.get(typeClassesToSerializers.get(type));
 
             if (networkableId == null) {

@@ -2,8 +2,8 @@ package tech.fastj.network.rpc;
 
 import tech.fastj.network.config.ClientConfig;
 import tech.fastj.network.rpc.commands.Command;
-import tech.fastj.network.serial.util.NetworkableUtils;
-import tech.fastj.network.serial.write.NetworkableOutputStream;
+import tech.fastj.network.serial.util.MessageUtils;
+import tech.fastj.network.serial.write.MessageOutputStream;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -23,7 +23,7 @@ public class SendUtils {
         assert rawData == null || rawData.length <= SendUtils.UdpPacketBufferLength;
     }
 
-    public static void sendTCP(NetworkableOutputStream tcpOut, Command.Id commandId, byte[] rawData) throws IOException {
+    public static void sendTCP(MessageOutputStream tcpOut, Command.Id commandId, byte[] rawData) throws IOException {
         byte[] packetData = buildNetworkData(commandId.uuid(), rawData);
 
         tcpOut.write(packetData);
@@ -47,12 +47,12 @@ public class SendUtils {
         ByteBuffer packetDataBuffer;
 
         if (rawData == null) {
-            packetDataBuffer = ByteBuffer.allocate(NetworkableUtils.UuidBytes);
+            packetDataBuffer = ByteBuffer.allocate(MessageUtils.UuidBytes);
             return packetDataBuffer.putLong(identifier.getMostSignificantBits())
                     .putLong(identifier.getLeastSignificantBits())
                     .array();
         } else {
-            packetDataBuffer = ByteBuffer.allocate(Math.min(UdpPacketBufferLength, NetworkableUtils.UuidBytes + rawData.length));
+            packetDataBuffer = ByteBuffer.allocate(Math.min(UdpPacketBufferLength, MessageUtils.UuidBytes + rawData.length));
             return packetDataBuffer.putLong(identifier.getMostSignificantBits())
                     .putLong(identifier.getLeastSignificantBits())
                     .put(rawData)

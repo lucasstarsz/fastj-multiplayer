@@ -59,7 +59,7 @@ class ConnectionTests {
     }
 
     @Test
-    void checkSendDataToServer_usingCommandsWithZeroNetworkables() throws InterruptedException {
+    void checkSendDataToServer_usingCommandsWithZeroMessages() throws InterruptedException {
         AtomicBoolean receivedTCPData = new AtomicBoolean();
         AtomicBoolean receivedUDPData = new AtomicBoolean();
 
@@ -98,7 +98,7 @@ class ConnectionTests {
     }
 
     @Test
-    void checkSendDataToServer_usingCommandsWithOneNetworkable() throws InterruptedException {
+    void checkSendDataToServer_usingCommandsWithOneMessage() throws InterruptedException {
         ChatMessage tcpData = new ChatMessage(UUID.randomUUID().toString(), System.currentTimeMillis(), UUID.randomUUID().toString());
         ChatMessage udpData = new ChatMessage(UUID.randomUUID().toString(), System.currentTimeMillis(), UUID.randomUUID().toString());
 
@@ -142,7 +142,7 @@ class ConnectionTests {
     }
 
     @Test
-    void checkSendDataToServer_usingCommandsWithMultipleNetworkables() throws InterruptedException {
+    void checkSendDataToServer_usingCommandsWithMultipleMessages() throws InterruptedException {
         ChatMessage tcpData1 = new ChatMessage(UUID.randomUUID().toString(), System.currentTimeMillis(), UUID.randomUUID().toString());
         ChatMessage tcpData2 = new ChatMessage(UUID.randomUUID().toString(), System.currentTimeMillis(), UUID.randomUUID().toString());
         ChatMessage tcpData3 = new ChatMessage(UUID.randomUUID().toString(), System.currentTimeMillis(), UUID.randomUUID().toString());

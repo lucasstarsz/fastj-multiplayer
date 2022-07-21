@@ -1,10 +1,10 @@
 package tech.fastj.network.serial.util;
 
-import tech.fastj.network.serial.Networkable;
+import tech.fastj.network.serial.Message;
 import tech.fastj.network.serial.RecordSerializer;
 import tech.fastj.network.serial.Serializer;
-import tech.fastj.network.serial.read.NetworkableReader;
-import tech.fastj.network.serial.write.NetworkableWriter;
+import tech.fastj.network.serial.read.MessageReader;
+import tech.fastj.network.serial.write.MessageWriter;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.RecordComponent;
@@ -18,14 +18,14 @@ public class RecordSerializerUtils {
     private static final Map<MessageType<?>, RecordSerializer<?>> generatedMessageTypes = new HashMap<>();
 
     @SuppressWarnings("unchecked")
-    public static <T extends Networkable> RecordSerializer<T> get(Serializer serializer, Class<T> networkableType) {
+    public static <T extends Message> RecordSerializer<T> get(Serializer serializer, Class<T> networkableType) {
         return (RecordSerializer<T>) generatedMessageTypes.computeIfAbsent(
                 new MessageType<>(serializer, networkableType),
                 messageType -> generate(serializer, (Class<T>) messageType.networkableType())
         );
     }
 
-    public static <T extends Networkable> RecordSerializer<T> generate(Serializer serializer, Class<T> networkableType) {
+    public static <T extends Message> RecordSerializer<T> generate(Serializer serializer, Class<T> networkableType) {
         RecordComponent[] components = networkableType.getRecordComponents();
         if (components == null) {
             throw new IllegalArgumentException("Cannot generate a MessageTypeSerializer for non-record class " + networkableType.getSimpleName());
@@ -48,12 +48,12 @@ public class RecordSerializerUtils {
         );
     }
 
-    private static <T extends Networkable> Function<T, Integer> generateByteSizeFunction(Serializer serializer, RecordComponent[] components) {
+    private static <T extends Message> Function<T, Integer> generateByteSizeFunction(Serializer serializer, RecordComponent[] components) {
         return networkable -> {
             int size = 0;
             for (var component : components) {
                 try {
-                    size += NetworkableUtils.bytesLength(serializer, component.getAccessor().invoke(networkable));
+                    size += MessageUtils.bytesLength(serializer, component.getAccessor().invoke(networkable));
                 } catch (ReflectiveOperationException exception) {
                     throw new IllegalStateException(exception);
                 }
@@ -62,7 +62,7 @@ public class RecordSerializerUtils {
         };
     }
 
-    private static <T extends Networkable> NetworkableReader<T> generateReader(Constructor<T> constructor) {
+    private static <T extends Message> MessageReader<T> generateReader(Constructor<T> constructor) {
         return inputStream -> {
             Object[] values = new Object[constructor.getParameterCount()];
 
@@ -78,7 +78,7 @@ public class RecordSerializerUtils {
         };
     }
 
-    private static <T extends Networkable> NetworkableWriter<T> generateWriter(RecordComponent[] components) {
+    private static <T extends Message> MessageWriter<T> generateWriter(RecordComponent[] components) {
         return (outputStream, networkable) -> {
             for (var component : components) {
                 try {
