@@ -10,5 +10,4 @@ module fastj.network {
     exports tech.fastj.network.serial.util;
     exports tech.fastj.network.serial.read;
     exports tech.fastj.network.serial.write;
-
 }

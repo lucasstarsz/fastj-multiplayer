@@ -17,9 +17,9 @@ import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Server extends CommandHandler {
+public class Server extends CommandHandler<ServerClient> {
 
-    private final List<Client> allClients;
+    private final List<ServerClient> allClients;
 
     private final ServerSocket tcpServer;
     private final DatagramSocket udpServer;
@@ -38,7 +38,7 @@ public class Server extends CommandHandler {
         udpServer = new DatagramSocket(serverConfig.port(), serverConfig.address());
     }
 
-    public List<Client> getClients() {
+    public List<ServerClient> getClients() {
         return Collections.unmodifiableList(allClients);
     }
 
@@ -119,7 +119,7 @@ public class Server extends CommandHandler {
     }
 
     private synchronized void acceptClient() throws IOException {
-        Client client = null;
+        ServerClient client = null;
 
         try {
             serverLogger.debug("Accepting new client...");
@@ -128,7 +128,7 @@ public class Server extends CommandHandler {
 
             serverLogger.debug("Received new client, creating connection...");
 
-            client = new Client(clientSocket, this, udpServer);
+            client = new ServerClient(clientSocket, this, udpServer);
             client.connect();
 
             serverLogger.debug(
@@ -164,7 +164,7 @@ public class Server extends CommandHandler {
         isRunning = true;
     }
 
-    public void receiveCommand(UUID commandId, Client client, MessageInputStream stream) throws IOException {
+    public void receiveCommand(UUID commandId, ServerClient client, MessageInputStream stream) throws IOException {
         readCommand(commandId, stream, client);
     }
 }
