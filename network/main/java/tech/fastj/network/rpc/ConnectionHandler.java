@@ -13,7 +13,7 @@ import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 
-public abstract class ClientBase<T extends ClientBase<?>> extends CommandHandler<T> implements Runnable, CommandSender {
+public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends CommandHandler<T> implements Runnable, CommandSender {
 
     protected final Socket tcpSocket;
     protected final DatagramSocket udpSocket;
@@ -24,7 +24,7 @@ public abstract class ClientBase<T extends ClientBase<?>> extends CommandHandler
     protected ExecutorService connectionListener;
     protected boolean isListening;
 
-    protected ClientBase(Socket socket, DatagramSocket udpServer) throws IOException {
+    protected ConnectionHandler(Socket socket, DatagramSocket udpServer) throws IOException {
         this.clientConfig = new ClientConfig(socket.getLocalAddress(), socket.getLocalPort());
         this.clientId = UUID.randomUUID();
 
@@ -33,7 +33,7 @@ public abstract class ClientBase<T extends ClientBase<?>> extends CommandHandler
         udpSocket = udpServer;
     }
 
-    protected ClientBase(ClientConfig clientConfig) throws IOException {
+    protected ConnectionHandler(ClientConfig clientConfig) throws IOException {
         this.clientConfig = clientConfig;
         this.clientId = UUID.randomUUID();
 

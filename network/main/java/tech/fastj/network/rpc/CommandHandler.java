@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-public abstract class CommandHandler<T extends ClientBase<?>> {
+public abstract class CommandHandler<T extends ConnectionHandler<?>> {
 
     private final Map<UUID, Command> commands;
     private final Map<UUID, Classes> commandClasses;

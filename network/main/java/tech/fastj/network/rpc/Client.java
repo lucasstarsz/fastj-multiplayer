@@ -15,7 +15,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Client extends ClientBase<Client> implements Runnable, CommandSender {
+public class Client extends ConnectionHandler<Client> implements Runnable, CommandSender {
 
     private static final Logger ClientLogger = LoggerFactory.getLogger(Client.class);
 
