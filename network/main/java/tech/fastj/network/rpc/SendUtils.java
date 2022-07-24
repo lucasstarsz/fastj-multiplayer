@@ -3,7 +3,7 @@ package tech.fastj.network.rpc;
 import tech.fastj.network.config.ClientConfig;
 import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.rpc.message.SentMessageType;
-import tech.fastj.network.rpc.message.SpecialRequestType;
+import tech.fastj.network.rpc.message.RequestType;
 import tech.fastj.network.serial.util.MessageUtils;
 import tech.fastj.network.serial.write.MessageOutputStream;
 
@@ -22,14 +22,14 @@ public class SendUtils {
     public static final int UdpCommandPacketDataLength = UdpPacketBufferLength - MessageUtils.EnumBytes - (MessageUtils.UuidBytes * 2);
 
     /** Maximum length of a UDP special request packet's data. */
-    public static final int UdpSpecialRequestPacketDataLength = UdpPacketBufferLength - (MessageUtils.EnumBytes * 2) - MessageUtils.UuidBytes;
+    public static final int UdpRequestPacketDataLength = UdpPacketBufferLength - (MessageUtils.EnumBytes * 2) - MessageUtils.UuidBytes;
 
     public static void checkUDPCommandPacketSize(byte[] rawData) {
         assert rawData == null || rawData.length <= SendUtils.UdpCommandPacketDataLength;
     }
 
-    public static void checkUDPSpecialRequestPacketSize(byte[] rawData) {
-        assert rawData == null || rawData.length <= SendUtils.UdpSpecialRequestPacketDataLength;
+    public static void checkUDPRequestPacketSize(byte[] rawData) {
+        assert rawData == null || rawData.length <= SendUtils.UdpRequestPacketDataLength;
     }
 
     public static void sendTCPCommand(MessageOutputStream tcpOut, Command.Id commandId, byte[] rawData) throws IOException {
@@ -101,49 +101,49 @@ public class SendUtils {
         }
     }
 
-    public static void sendTCPSpecialRequest(MessageOutputStream tcpOut, SpecialRequestType requestType, byte[] rawData)
+    public static void sendTCPRequest(MessageOutputStream tcpOut, RequestType requestType, byte[] rawData)
             throws IOException {
-        byte[] packetData = buildTCPSpecialRequestData(requestType, rawData);
+        byte[] packetData = buildTCPRequestData(requestType, rawData);
 
         tcpOut.write(packetData);
         tcpOut.flush();
     }
 
-    public static void sendUDPSpecialRequest(DatagramSocket udpSocket, ClientConfig clientConfig, SpecialRequestType requestType,
+    public static void sendUDPRequest(DatagramSocket udpSocket, ClientConfig clientConfig, RequestType requestType,
                                              UUID senderId, byte[] rawData) throws IOException {
-        SendUtils.checkUDPSpecialRequestPacketSize(rawData);
+        SendUtils.checkUDPRequestPacketSize(rawData);
 
-        byte[] packetData = buildUDPSpecialRequestData(senderId, requestType, rawData);
+        byte[] packetData = buildUDPRequestData(senderId, requestType, rawData);
 
         DatagramPacket packet = buildPacket(clientConfig, packetData);
         udpSocket.send(packet);
     }
 
-    public static byte[] buildTCPSpecialRequestData(SpecialRequestType requestType, byte[] rawData) {
+    public static byte[] buildTCPRequestData(RequestType requestType, byte[] rawData) {
         ByteBuffer packetDataBuffer;
 
         if (rawData == null) {
             packetDataBuffer = ByteBuffer.allocate(MessageUtils.EnumBytes * 2);
-            return packetDataBuffer.putInt(SentMessageType.SpecialRequest.ordinal())
+            return packetDataBuffer.putInt(SentMessageType.Request.ordinal())
                     .putInt(requestType.ordinal())
                     .array();
         } else {
             packetDataBuffer = ByteBuffer.allocate(Math.min(UdpPacketBufferLength, (MessageUtils.EnumBytes * 2) + rawData.length));
-            return packetDataBuffer.putInt(SentMessageType.SpecialRequest.ordinal())
+            return packetDataBuffer.putInt(SentMessageType.Request.ordinal())
                     .putInt(requestType.ordinal())
                     .put(rawData)
                     .array();
         }
     }
 
-    public static byte[] buildUDPSpecialRequestData(UUID senderId, SpecialRequestType requestType, byte[] rawData) {
+    public static byte[] buildUDPRequestData(UUID senderId, RequestType requestType, byte[] rawData) {
         ByteBuffer packetDataBuffer;
 
         if (rawData == null) {
             packetDataBuffer = ByteBuffer.allocate(MessageUtils.UuidBytes + (MessageUtils.EnumBytes * 2));
             return packetDataBuffer.putLong(senderId.getMostSignificantBits())
                     .putLong(senderId.getLeastSignificantBits())
-                    .putInt(SentMessageType.SpecialRequest.ordinal())
+                    .putInt(SentMessageType.Request.ordinal())
                     .putInt(requestType.ordinal())
                     .array();
         } else {
@@ -153,7 +153,7 @@ public class SendUtils {
 
             return packetDataBuffer.putLong(senderId.getMostSignificantBits())
                     .putLong(senderId.getLeastSignificantBits())
-                    .putInt(SentMessageType.SpecialRequest.ordinal())
+                    .putInt(SentMessageType.Request.ordinal())
                     .putInt(requestType.ordinal())
                     .put(rawData)
                     .array();

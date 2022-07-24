@@ -4,7 +4,7 @@ import tech.fastj.network.config.ClientConfig;
 import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.rpc.message.NetworkType;
 import tech.fastj.network.rpc.message.SentMessageType;
-import tech.fastj.network.rpc.message.SpecialRequestType;
+import tech.fastj.network.rpc.message.RequestType;
 import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
 import tech.fastj.network.serial.read.MessageInputStream;
 
@@ -51,7 +51,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
             throw new IOException("Cannot ask for available lobbies while listening for commands.");
         }
 
-        sendSpecialRequest(NetworkType.TCP, SpecialRequestType.GetAvailableLobbies);
+        sendRequest(NetworkType.TCP, RequestType.GetAvailableLobbies);
 
         return (LobbyIdentifier[]) tcpIn.readObject(LobbyIdentifier[].class);
     }
@@ -69,7 +69,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
             throw new IOException("Cannot create lobby while listening for commands.");
         }
 
-        sendSpecialRequest(NetworkType.TCP, SpecialRequestType.CreateLobby, serializer.writeObject(lobbyName, String.class));
+        sendRequest(NetworkType.TCP, RequestType.CreateLobby, serializer.writeObject(lobbyName, String.class));
         return (LobbyIdentifier) tcpIn.readObject(LobbyIdentifier.class);
     }
 
@@ -82,7 +82,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
             throw new IOException("Cannot join lobby while listening for commands.");
         }
 
-        sendSpecialRequest(NetworkType.TCP, SpecialRequestType.JoinLobby, serializer.writeObject(lobbyId, UUID.class));
+        sendRequest(NetworkType.TCP, RequestType.JoinLobby, serializer.writeObject(lobbyId, UUID.class));
         return (LobbyIdentifier) tcpIn.readObject(LobbyIdentifier.class);
     }
 
@@ -101,12 +101,12 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
         }
     }
 
-    public void sendSpecialRequest(NetworkType networkType, SpecialRequestType specialRequestType, byte[] rawData) throws IOException {
-        ClientLogger.trace("{} sending {} \"{}\" to {}:{}", clientId, networkType.name(), specialRequestType.name(), clientConfig.address(), clientConfig.port());
+    public void sendRequest(NetworkType networkType, RequestType requestType, byte[] rawData) throws IOException {
+        ClientLogger.trace("{} sending {} \"{}\" to {}:{}", clientId, networkType.name(), requestType.name(), clientConfig.address(), clientConfig.port());
 
         switch (networkType) {
-            case TCP -> SendUtils.sendTCPSpecialRequest(tcpOut, specialRequestType, rawData);
-            case UDP -> SendUtils.sendUDPSpecialRequest(udpSocket, clientConfig, specialRequestType, clientId, rawData);
+            case TCP -> SendUtils.sendTCPRequest(tcpOut, requestType, rawData);
+            case UDP -> SendUtils.sendUDPRequest(udpSocket, clientConfig, requestType, clientId, rawData);
         }
     }
 

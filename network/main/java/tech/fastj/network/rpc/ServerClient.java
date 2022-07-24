@@ -3,7 +3,7 @@ package tech.fastj.network.rpc;
 import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.rpc.message.NetworkType;
 import tech.fastj.network.rpc.message.SentMessageType;
-import tech.fastj.network.rpc.message.SpecialRequestType;
+import tech.fastj.network.rpc.message.RequestType;
 import tech.fastj.network.serial.read.MessageInputStream;
 import tech.fastj.network.serial.write.MessageOutputStream;
 
@@ -57,12 +57,12 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
     }
 
     @Override
-    public void sendSpecialRequest(NetworkType networkType, SpecialRequestType specialRequestType, byte[] rawData) throws IOException {
-        ServerClientLogger.trace("{} sending {} \"{}\" to {}:{}", clientId, networkType.name(), specialRequestType.name(), clientConfig.address(), clientConfig.port());
+    public void sendRequest(NetworkType networkType, RequestType requestType, byte[] rawData) throws IOException {
+        ServerClientLogger.trace("{} sending {} \"{}\" to {}:{}", clientId, networkType.name(), requestType.name(), clientConfig.address(), clientConfig.port());
 
         switch (networkType) {
-            case TCP -> SendUtils.sendTCPSpecialRequest(tcpOut, specialRequestType, rawData);
-            case UDP -> SendUtils.sendUDPSpecialRequest(udpSocket, clientConfig, specialRequestType, clientId, rawData);
+            case TCP -> SendUtils.sendTCPRequest(tcpOut, requestType, rawData);
+            case UDP -> SendUtils.sendUDPRequest(udpSocket, clientConfig, requestType, clientId, rawData);
         }
     }
 
@@ -86,12 +86,12 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
                 UUID commandId = (UUID) inputStream.readObject(UUID.class);
                 server.receiveCommand(commandId, senderId, inputStream);
             }
-            case SpecialRequest -> {
-                SpecialRequestType requestType = (SpecialRequestType) inputStream.readObject(SpecialRequestType.class);
+            case Request -> {
+                RequestType requestType = (RequestType) inputStream.readObject(RequestType.class);
 
                 getClientLogger().trace("{} received special request: {}", senderId, requestType);
 
-                server.receiveSpecialRequest(requestType, senderId, inputStream);
+                server.receiveRequest(requestType, senderId, inputStream);
             }
         }
     }

@@ -5,5 +5,5 @@ public enum SentMessageType {
     PingRequest,
     PingResponse,
     RPCCommand,
-    SpecialRequest
+    Request
 }

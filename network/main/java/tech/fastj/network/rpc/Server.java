@@ -1,7 +1,7 @@
 package tech.fastj.network.rpc;
 
 import tech.fastj.network.config.ServerConfig;
-import tech.fastj.network.rpc.message.SpecialRequestType;
+import tech.fastj.network.rpc.message.RequestType;
 import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
 import tech.fastj.network.serial.read.MessageInputStream;
 import tech.fastj.network.sessions.Lobby;
@@ -243,7 +243,7 @@ public class Server extends CommandHandler<ServerClient> {
         client.getTcpOut().flush();
     }
 
-    public void receiveSpecialRequest(SpecialRequestType requestType, UUID senderId, MessageInputStream inputStream)
+    public void receiveRequest(RequestType requestType, UUID senderId, MessageInputStream inputStream)
             throws IOException {
         ServerClient client = getClient(senderId);
 

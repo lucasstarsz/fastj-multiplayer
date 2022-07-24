@@ -2,7 +2,7 @@ package tech.fastj.network.rpc;
 
 import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.rpc.message.NetworkType;
-import tech.fastj.network.rpc.message.SpecialRequestType;
+import tech.fastj.network.rpc.message.RequestType;
 import tech.fastj.network.serial.Message;
 import tech.fastj.network.serial.Serializer;
 
@@ -38,30 +38,30 @@ public interface NetworkSender {
         this.sendCommand(networkType, commandId, rawData);
     }
 
-    void sendSpecialRequest(NetworkType networkType, SpecialRequestType requestType, byte[] rawData) throws IOException;
+    void sendRequest(NetworkType networkType, RequestType requestType, byte[] rawData) throws IOException;
 
-    default void sendSpecialRequest(NetworkType networkType, SpecialRequestType requestType) throws IOException {
-        this.sendSpecialRequest(networkType, requestType, (byte[]) null);
+    default void sendRequest(NetworkType networkType, RequestType requestType) throws IOException {
+        this.sendRequest(networkType, requestType, (byte[]) null);
     }
 
-    default void sendSpecialRequest(NetworkType networkType, SpecialRequestType requestType, Message message) throws IOException {
+    default void sendRequest(NetworkType networkType, RequestType requestType, Message message) throws IOException {
         byte[] rawData = getSerializer().writeMessage(message);
-        this.sendSpecialRequest(networkType, requestType, rawData);
+        this.sendRequest(networkType, requestType, rawData);
     }
 
-    default void sendSpecialRequest(NetworkType networkType, SpecialRequestType requestType, Message... messages) throws IOException {
+    default void sendRequest(NetworkType networkType, RequestType requestType, Message... messages) throws IOException {
         byte[] rawData = getSerializer().writeMessages(messages);
-        this.sendSpecialRequest(networkType, requestType, rawData);
+        this.sendRequest(networkType, requestType, rawData);
     }
 
-    default void sendSpecialRequest(NetworkType networkType, SpecialRequestType requestType, Object... objects) throws IOException {
+    default void sendRequest(NetworkType networkType, RequestType requestType, Object... objects) throws IOException {
         byte[] rawData = getSerializer().writeObjects(objects);
-        this.sendSpecialRequest(networkType, requestType, rawData);
+        this.sendRequest(networkType, requestType, rawData);
     }
 
-    default <T> void sendSpecialRequest(NetworkType networkType, SpecialRequestType requestType, T object) throws IOException {
+    default <T> void sendRequest(NetworkType networkType, RequestType requestType, T object) throws IOException {
         byte[] rawData = getSerializer().writeObject(object);
-        this.sendSpecialRequest(networkType, requestType, rawData);
+        this.sendRequest(networkType, requestType, rawData);
     }
 
     void sendDisconnect(NetworkType networkType, byte[] rawData) throws IOException;

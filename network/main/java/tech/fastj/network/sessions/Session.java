@@ -7,7 +7,7 @@ import tech.fastj.network.rpc.SendUtils;
 import tech.fastj.network.rpc.ServerClient;
 import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.rpc.message.NetworkType;
-import tech.fastj.network.rpc.message.SpecialRequestType;
+import tech.fastj.network.rpc.message.RequestType;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -73,17 +73,17 @@ public abstract class Session extends CommandHandler<ServerClient> implements Ne
 
 
     @Override
-    public void sendSpecialRequest(NetworkType networkType, SpecialRequestType specialRequestType, byte[] rawData) throws IOException {
-        sessionLogger.trace("Session {} sending {} \"{}\" to {} client(s)", sessionId, networkType.name(), specialRequestType.name(), clients.size());
+    public void sendRequest(NetworkType networkType, RequestType requestType, byte[] rawData) throws IOException {
+        sessionLogger.trace("Session {} sending {} \"{}\" to {} client(s)", sessionId, networkType.name(), requestType.name(), clients.size());
 
         switch (networkType) {
             case TCP -> {
-                byte[] data = SendUtils.buildTCPSpecialRequestData(specialRequestType, rawData);
+                byte[] data = SendUtils.buildTCPRequestData(requestType, rawData);
                 sendTCP(data);
             }
             case UDP -> {
                 DatagramSocket udpServer = lobby.getServer().getUdpServer();
-                byte[] data = SendUtils.buildUDPSpecialRequestData(sessionId, specialRequestType, rawData);
+                byte[] data = SendUtils.buildUDPRequestData(sessionId, requestType, rawData);
                 sendUDP(udpServer, data);
             }
         }

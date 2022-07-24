@@ -1,6 +1,6 @@
 package tech.fastj.network.rpc.message;
 
-public enum SpecialRequestType {
+public enum RequestType {
     GetAvailableLobbies,
     CreateLobby,
     JoinLobby
