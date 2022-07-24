@@ -7,4 +7,5 @@ module fastj.network.test {
     opens unittest to org.junit.platform.commons;
     opens unittest.serial to org.junit.platform.commons;
     opens unittest.serial.util to org.junit.platform.commons;
+    opens unittest.session to org.junit.platform.commons;
 }

@@ -5,6 +5,7 @@ import tech.fastj.network.config.ServerConfig;
 import tech.fastj.network.rpc.Client;
 import tech.fastj.network.rpc.Server;
 import tech.fastj.network.rpc.commands.Command;
+import tech.fastj.network.rpc.message.NetworkType;
 
 import java.io.IOException;
 import java.util.Random;
@@ -34,18 +35,20 @@ class ConnectionTests {
     @BeforeAll
     static void startServer() throws IOException {
         ServerConfig serverConfig = new ServerConfig(Port);
-        server = new Server(serverConfig);
+
+        server = new Server(serverConfig, null);
         server.start();
         server.allowClients();
+    }
+
+    @AfterEach
+    void cleanServer() {
+        server.disconnectAllClients();
     }
 
     @AfterAll
     static void stopServer() throws IOException {
         server.stop();
-    }
-
-    @AfterEach
-    void cleanServer() {
     }
 
     @Test
@@ -83,8 +86,8 @@ class ConnectionTests {
             Client client = new Client(clientConfig);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
-            client.sendTCP(receiveTCPChatMessage);
-            client.sendUDP(receiveUDPChatMessage);
+            client.sendCommand(NetworkType.TCP, receiveTCPChatMessage);
+            client.sendCommand(NetworkType.UDP, receiveUDPChatMessage);
         });
 
         boolean success = latch.await(5, TimeUnit.SECONDS);
@@ -127,8 +130,8 @@ class ConnectionTests {
             Client client = new Client(clientConfig);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
-            client.sendTCP(receiveTCPChatMessage, tcpData);
-            client.sendUDP(receiveUDPChatMessage, udpData);
+            client.sendCommand(NetworkType.TCP, receiveTCPChatMessage, tcpData);
+            client.sendCommand(NetworkType.UDP, receiveUDPChatMessage, udpData);
         });
 
         boolean success = latch.await(5, TimeUnit.SECONDS);
@@ -182,8 +185,8 @@ class ConnectionTests {
             Client client = new Client(clientConfig);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
-            client.sendTCP(receiveTCPMultipleChatMessage, tcpData1, tcpData2, tcpData3);
-            client.sendUDP(receiveUDPMultipleChatMessage, udpData1, udpData2, udpData3);
+            client.sendCommand(NetworkType.TCP, receiveTCPMultipleChatMessage, tcpData1, tcpData2, tcpData3);
+            client.sendCommand(NetworkType.UDP, receiveUDPMultipleChatMessage, udpData1, udpData2, udpData3);
         });
 
         boolean success = latch.await(5, TimeUnit.SECONDS);
@@ -227,8 +230,8 @@ class ConnectionTests {
             Client client = new Client(clientConfig);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
-            client.sendTCP(receiveTCPGameState, tcpData);
-            client.sendUDP(receiveUDPUuid, udpData);
+            client.sendCommand(NetworkType.TCP, receiveTCPGameState, tcpData);
+            client.sendCommand(NetworkType.UDP, receiveUDPUuid, udpData);
         });
 
         boolean success = latch.await(5, TimeUnit.SECONDS);
@@ -304,8 +307,8 @@ class ConnectionTests {
             Client client = new Client(clientConfig);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
-            client.sendTCP(receiveTCPMultipleValues, tcpData1, tcpData2, tcpData3, tcpData4, tcpData5, tcpData6);
-            client.sendUDP(receiveUDPMultipleValues, udpData1, udpData2, udpData3, udpData4, udpData5, udpData6);
+            client.sendCommand(NetworkType.TCP, receiveTCPMultipleValues, tcpData1, tcpData2, tcpData3, tcpData4, tcpData5, tcpData6);
+            client.sendCommand(NetworkType.UDP, receiveUDPMultipleValues, udpData1, udpData2, udpData3, udpData4, udpData5, udpData6);
         });
 
         boolean success = latch.await(5, TimeUnit.SECONDS);

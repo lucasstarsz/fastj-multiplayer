@@ -56,6 +56,10 @@ public class Serializer {
     }
 
     public synchronized <T extends Message> void registerSerializer(UUID id, MessageSerializer<T> serializer) {
+        if (typeClassesToSerializers.containsKey(serializer.networkableClass())) {
+            return;
+        }
+
         serializersToTypes.put(serializer, id);
         typeClassesToSerializers.put(serializer.networkableClass(), serializer);
     }
@@ -141,14 +145,19 @@ public class Serializer {
         return outputStream.toByteArray();
     }
 
-    public <T> byte[] writeObject(T value) throws IOException {
-        typeCheck(value.getClass());
+    public <T> byte[] writeObject(T value, Class<T> type) throws IOException {
+        typeCheck(type);
 
         int length = MessageUtils.bytesLength(this, value);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream(length);
-        new MessageOutputStream(outputStream, this).writeObject(value, value.getClass());
+        new MessageOutputStream(outputStream, this).writeObject(value, type);
 
         return outputStream.toByteArray();
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> byte[] writeObject(T value) throws IOException {
+        return writeObject(value, (Class<T>) value.getClass());
     }
 
     public final byte[] writeObjects(Object... objects) throws IOException {

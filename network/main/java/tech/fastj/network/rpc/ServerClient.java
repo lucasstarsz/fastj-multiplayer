@@ -1,29 +1,23 @@
 package tech.fastj.network.rpc;
 
-import tech.fastj.network.CommandSender;
 import tech.fastj.network.rpc.commands.Command;
+import tech.fastj.network.rpc.message.NetworkType;
+import tech.fastj.network.rpc.message.SentMessageType;
+import tech.fastj.network.rpc.message.SpecialRequestType;
 import tech.fastj.network.serial.read.MessageInputStream;
 import tech.fastj.network.serial.write.MessageOutputStream;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ServerClient extends ConnectionHandler<ServerClient> implements Runnable, CommandSender {
+public class ServerClient extends ConnectionHandler<ServerClient> implements Runnable, NetworkSender {
 
     private final Logger ServerClientLogger = LoggerFactory.getLogger(ServerClient.class);
-
-    private MessageInputStream tcpIn;
-    private MessageOutputStream tcpOut;
-
-    private boolean isConnected;
 
     private final Server server;
 
@@ -32,34 +26,8 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
         this.server = server;
     }
 
-    @Override
-    public void connect() throws IOException {
-        InetSocketAddress address = new InetSocketAddress(clientConfig.address(), clientConfig.port());
-        if (!tcpSocket.isConnected()) {
-            ServerClientLogger.debug("{} connecting TCP to {}:{}...", clientId, clientConfig.address(), clientConfig.port());
-
-            tcpSocket.connect(address);
-            isConnected = true;
-        }
-
-        tcpOut = new MessageOutputStream(tcpSocket.getOutputStream(), serializer);
-        tcpOut.flush();
-
-        tcpIn = new MessageInputStream(tcpSocket.getInputStream(), serializer);
-
-        ServerClientLogger.debug("{} connection status satisfactory. Joined server {}:{}.", clientId, clientConfig.address(), clientConfig.port());
-
-        while (tcpIn.available() > 0) {
-            tcpIn.skipNBytes(tcpIn.available());
-        }
-    }
-
     public MessageOutputStream getTcpOut() {
         return tcpOut;
-    }
-
-    public boolean isConnected() {
-        return isConnected;
     }
 
     @Override
@@ -68,84 +36,63 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
     }
 
     @Override
-    public synchronized void sendTCP(Command.Id commandId, byte[] rawData) throws IOException {
-        ServerClientLogger.trace("{} sending tcp \"{}\" to {}:{}", clientId, commandId.name(), clientConfig.address(), clientConfig.port());
-        SendUtils.sendTCP(tcpOut, commandId, rawData);
+    public void connect() throws IOException {
+        super.connect();
+
+        ServerClientLogger.debug("{} syncing client id.", clientId);
+
+        tcpOut.writeInt(Client.Join);
+        tcpOut.writeObject(clientId, UUID.class);
+        tcpOut.flush();
     }
 
     @Override
-    public void sendUDP(Command.Id commandId, byte[] rawData) throws IOException {
-        ServerClientLogger.trace("{} sending udp {} to {}:{}", clientId, commandId.name(), clientConfig.address(), clientConfig.port());
-        SendUtils.sendUDP(udpSocket, clientConfig, commandId, rawData);
+    public synchronized void sendCommand(NetworkType networkType, Command.Id commandId, byte[] rawData) throws IOException {
+        ServerClientLogger.trace("{} sending {} \"{}\" to {}:{}", clientId, networkType.name(), commandId.name(), clientConfig.address(), clientConfig.port());
+
+        switch (networkType) {
+            case TCP -> SendUtils.sendTCPCommand(tcpOut, commandId, rawData);
+            case UDP -> SendUtils.sendUDPCommand(udpSocket, clientConfig, commandId, rawData);
+        }
     }
 
     @Override
-    protected void listenTCP() {
-        ServerClientLogger.debug("{} begin listening on TCP.", clientId);
+    public void sendSpecialRequest(NetworkType networkType, SpecialRequestType specialRequestType, byte[] rawData) throws IOException {
+        ServerClientLogger.trace("{} sending {} \"{}\" to {}:{}", clientId, networkType.name(), specialRequestType.name(), clientConfig.address(), clientConfig.port());
 
-        while (isListening && !tcpSocket.isClosed()) {
-            try {
-                ServerClientLogger.trace("{} waiting for new TCP data...", clientId);
+        switch (networkType) {
+            case TCP -> SendUtils.sendTCPSpecialRequest(tcpOut, specialRequestType, rawData);
+            case UDP -> SendUtils.sendUDPSpecialRequest(udpSocket, clientConfig, specialRequestType, rawData);
+        }
+    }
 
-                UUID commandId = (UUID) tcpIn.readObject(UUID.class);
+    @Override
+    public void sendDisconnect(NetworkType networkType, byte[] rawData) throws IOException {
+        ServerClientLogger.trace("{} sending {} disconnect to {}:{}", clientId, networkType.name(), clientConfig.address(), clientConfig.port());
 
-                ServerClientLogger.trace("{} received new TCP data.", clientId);
+        switch (networkType) {
+            case TCP -> SendUtils.sendTCPDisconnect(tcpOut);
+            case UDP -> SendUtils.sendUDPDisconnect(udpSocket, clientConfig);
+        }
+    }
 
-                server.receiveCommand(commandId, this, tcpIn);
-            } catch (IOException exception) {
-                if (!udpSocket.isClosed() && isListening) {
-                    ServerClientLogger.error(clientId + " Error receiving UDP packet", exception);
-                    break;
-                }
+    @Override
+    protected void readMessageType(MessageInputStream inputStream, SentMessageType sentMessageType) throws IOException {
+        switch (sentMessageType) {
+            case Disconnect -> disconnect();
+            case PingRequest -> {
+            }
+            case RPCCommand -> {
+                UUID commandId = (UUID) inputStream.readObject(UUID.class);
+                server.receiveCommand(commandId, this, inputStream);
+            }
+            case SpecialRequest -> {
+                SpecialRequestType requestType = (SpecialRequestType) inputStream.readObject(SpecialRequestType.class);
+
+                getClientLogger().trace("{} received special request: {}", clientId, requestType);
+
+                server.receiveSpecialRequest(requestType, this, inputStream);
             }
         }
-
-        ServerClientLogger.debug("{} no longer listening on TCP.", clientId);
-    }
-
-    @Override
-    protected void listenUDP() {
-        ServerClientLogger.debug("{} begin listening on UDP.", clientId);
-
-        while (isListening && !udpSocket.isClosed()) {
-            try {
-                byte[] receivePacketBuffer = new byte[SendUtils.UdpPacketBufferLength];
-                DatagramPacket packet = new DatagramPacket(receivePacketBuffer, SendUtils.UdpPacketBufferLength);
-
-                ServerClientLogger.debug("{} waiting for new UDP packet...", clientId);
-                udpSocket.receive(packet);
-
-                ServerClientLogger.debug("{} received new UDP packet.", clientId);
-                byte[] data = new byte[packet.getLength()];
-                System.arraycopy(packet.getData(), 0, data, 0, data.length);
-
-                MessageInputStream tempStream = new MessageInputStream(new ByteArrayInputStream(data), serializer);
-                UUID commandId = (UUID) tempStream.readObject(UUID.class);
-
-                server.receiveCommand(commandId, this, tempStream);
-            } catch (IOException exception) {
-                if (!udpSocket.isClosed() && isListening) {
-                    ServerClientLogger.error(clientId + " Error receiving UDP packet", exception);
-                    break;
-                }
-            }
-        }
-
-        ServerClientLogger.debug("{} no longer listening on UDP.", clientId);
-    }
-
-    @Override
-    public void disconnect() {
-        try {
-            shutdown();
-        } catch (IOException shutdownException) {
-            ServerClientLogger.error(clientId + " Error shutting down TCP socket", shutdownException);
-        }
-    }
-
-    @Override
-    protected void shutdown() throws IOException {
-        ServerClientLogger.debug("{} shutting down", clientId);
-        tcpSocket.close();
     }
 }

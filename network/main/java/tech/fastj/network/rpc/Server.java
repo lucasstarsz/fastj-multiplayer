@@ -1,7 +1,10 @@
 package tech.fastj.network.rpc;
 
 import tech.fastj.network.config.ServerConfig;
+import tech.fastj.network.rpc.message.SpecialRequestType;
+import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
 import tech.fastj.network.serial.read.MessageInputStream;
+import tech.fastj.network.sessions.Lobby;
 
 import java.io.IOException;
 import java.net.DatagramSocket;
@@ -9,10 +12,13 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.BiFunction;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +26,8 @@ import org.slf4j.LoggerFactory;
 public class Server extends CommandHandler<ServerClient> {
 
     private final List<ServerClient> allClients;
+    private final Map<UUID, Lobby> lobbies;
+    private final BiFunction<ServerClient, String, Lobby> lobbyCreator;
 
     private final ServerSocket tcpServer;
     private final DatagramSocket udpServer;
@@ -31,8 +39,10 @@ public class Server extends CommandHandler<ServerClient> {
 
     private final Logger serverLogger = LoggerFactory.getLogger(Server.class);
 
-    public Server(ServerConfig serverConfig) throws IOException {
+    public Server(ServerConfig serverConfig, BiFunction<ServerClient, String, Lobby> lobbyCreator) throws IOException {
         this.allClients = new ArrayList<>(serverConfig.maxClients());
+        this.lobbies = new HashMap<>();
+        this.lobbyCreator = lobbyCreator;
 
         tcpServer = new ServerSocket(serverConfig.port(), serverConfig.clientBacklog(), serverConfig.address());
         udpServer = new DatagramSocket(serverConfig.port(), serverConfig.address());
@@ -40,6 +50,10 @@ public class Server extends CommandHandler<ServerClient> {
 
     public List<ServerClient> getClients() {
         return Collections.unmodifiableList(allClients);
+    }
+
+    public Map<UUID, Lobby> getLobbies() {
+        return lobbies;
     }
 
     public ServerSocket getTcpServer() {
@@ -58,10 +72,28 @@ public class Server extends CommandHandler<ServerClient> {
         return isAcceptingClients;
     }
 
+    public void disconnectAllClients() {
+        for (int i = allClients.size() - 1; i >= 0; i--) {
+            allClients.get(i).disconnect();
+        }
+
+        allClients.clear();
+    }
+
+    public void stopAllLobbies() {
+        for (Lobby lobby : lobbies.values()) {
+            lobby.stop();
+        }
+
+        lobbies.clear();
+    }
+
     public void stop() throws IOException {
         serverLogger.debug("stopping server");
 
         disallowClients();
+        stopAllLobbies();
+        disconnectAllClients();
 
         tcpServer.close();
         udpServer.close();
@@ -131,16 +163,6 @@ public class Server extends CommandHandler<ServerClient> {
             client = new ServerClient(clientSocket, this, udpServer);
             client.connect();
 
-            serverLogger.debug(
-                    "Successful connection on {} to {}:{}. Sending success...",
-                    client.getClientId(),
-                    client.getClientConfig().address(),
-                    client.getClientConfig().port()
-            );
-
-            client.getTcpOut().writeInt(Client.Join);
-            client.getTcpOut().flush();
-
             serverLogger.debug("Client {} connected.", client.getClientId());
 
             client.run();
@@ -153,8 +175,8 @@ public class Server extends CommandHandler<ServerClient> {
             }
 
             throw new IOException(
-                    "Unable to connect to client"
-                            + (client != null ? " " + client.getClientId() : ""),
+                    "Unable to connect to client "
+                            + (client != null ? client.getClientId() : "(null)"),
                     exception
             );
         }
@@ -166,5 +188,60 @@ public class Server extends CommandHandler<ServerClient> {
 
     public void receiveCommand(UUID commandId, ServerClient client, MessageInputStream stream) throws IOException {
         readCommand(commandId, stream, client);
+    }
+
+    public void returnAvailableLobbies(ServerClient client) throws IOException {
+        LobbyIdentifier[] lobbyIdentifiers = getLobbies()
+                .values()
+                .stream()
+                .map(Lobby::getLobbyIdentifier)
+                .toArray(LobbyIdentifier[]::new);
+
+        client.getSerializer().registerSerializer(LobbyIdentifier.class);
+
+        client.getTcpOut().writeArray(lobbyIdentifiers);
+        client.getTcpOut().flush();
+    }
+
+    public void createLobby(ServerClient client, String lobbyName) throws IOException {
+        serverLogger.info("Creating lobby for client {}, named {}", client.getClientId(), lobbyName);
+        Lobby lobby = lobbyCreator.apply(client, lobbyName);
+        lobbies.put(lobby.getLobbyIdentifier().id(), lobby);
+
+        client.getSerializer().registerSerializer(LobbyIdentifier.class);
+
+        client.getTcpOut().writeObject(lobby.getLobbyIdentifier(), LobbyIdentifier.class);
+        client.getTcpOut().flush();
+    }
+
+    public void joinLobby(ServerClient client, UUID lobbyId) throws IOException {
+        Lobby lobby = lobbies.get(lobbyId);
+
+        System.out.println("lobby: " + lobby);
+        if (lobby == null) {
+            return;
+        }
+
+        System.out.println("receive new client");
+        lobby.receiveNewClient(client);
+        System.out.println("set disconnect");
+        client.setOnDisconnect(lobby::clientDisconnect);
+
+        serverLogger.info("Client {} joining lobby {}", client.getClientId(), lobby.getLobbyIdentifier().name());
+
+        client.getSerializer().registerSerializer(LobbyIdentifier.class);
+
+        System.out.println("send lid");
+        client.getTcpOut().writeObject(lobby.getLobbyIdentifier(), LobbyIdentifier.class);
+        client.getTcpOut().flush();
+    }
+
+    public void receiveSpecialRequest(SpecialRequestType requestType, ServerClient serverClient, MessageInputStream inputStream)
+            throws IOException {
+        switch (requestType) {
+            case GetAvailableLobbies -> returnAvailableLobbies(serverClient);
+            case CreateLobby -> createLobby(serverClient, (String) inputStream.readObject(String.class));
+            case JoinLobby -> joinLobby(serverClient, (UUID) inputStream.readObject(UUID.class));
+        }
     }
 }
