@@ -8,6 +8,8 @@ import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.rpc.message.NetworkType;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -30,7 +32,17 @@ import static org.junit.jupiter.api.Assertions.fail;
 class ConnectionTests {
 
     private static Server server;
-    private static final int Port = ThreadLocalRandom.current().nextInt(10000, 15000);
+    private static final InetAddress ClientTargetAddress;
+
+    static {
+        try {
+            ClientTargetAddress = InetAddress.getByName("partyhouse.lucasz.tech");
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static final int Port = 19999;
 
     @BeforeAll
     static void startServer() throws IOException {
@@ -54,7 +66,7 @@ class ConnectionTests {
     @Test
     void checkConnectClientToServer() {
         assertDoesNotThrow(() -> {
-            ClientConfig clientConfig = new ClientConfig(Port);
+            ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
             Client client = new Client(clientConfig);
 
             client.connect();
@@ -82,7 +94,7 @@ class ConnectionTests {
                 latch.countDown();
             });
 
-            ClientConfig clientConfig = new ClientConfig(Port);
+            ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
             Client client = new Client(clientConfig);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
@@ -126,7 +138,7 @@ class ConnectionTests {
                 latch.countDown();
             });
 
-            ClientConfig clientConfig = new ClientConfig(Port);
+            ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
             Client client = new Client(clientConfig);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
@@ -181,7 +193,7 @@ class ConnectionTests {
                     }
             );
 
-            ClientConfig clientConfig = new ClientConfig(Port);
+            ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
             Client client = new Client(clientConfig);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
@@ -226,7 +238,7 @@ class ConnectionTests {
                 latch.countDown();
             });
 
-            ClientConfig clientConfig = new ClientConfig(Port);
+            ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
             Client client = new Client(clientConfig);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
@@ -303,7 +315,7 @@ class ConnectionTests {
                     }
             );
 
-            ClientConfig clientConfig = new ClientConfig(Port);
+            ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
             Client client = new Client(clientConfig);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);

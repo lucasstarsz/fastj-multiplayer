@@ -12,6 +12,10 @@ public record ServerConfig(InetAddress address, int port, int maxClients, int cl
         this(InetAddress.getLocalHost(), port, DefaultMaxClients, DefaultClientBacklog);
     }
 
+    public ServerConfig(InetAddress address, int port) {
+        this(address, port, DefaultMaxClients, DefaultClientBacklog);
+    }
+
     public ServerConfig(int port, int maxClients) throws UnknownHostException {
         this(InetAddress.getLocalHost(), port, maxClients, DefaultClientBacklog);
     }

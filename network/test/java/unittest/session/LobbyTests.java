@@ -11,9 +11,10 @@ import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
 import tech.fastj.network.sessions.Lobby;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 
@@ -36,7 +37,16 @@ class LobbyTests {
     private static final Logger LobbyLogger = LoggerFactory.getLogger(LobbyTests.class);
 
     private static Server server;
-    private static final int Port = ThreadLocalRandom.current().nextInt(10000, 15000);
+    private static final int Port = 19999;
+    private static final InetAddress ClientTargetAddress;
+
+    static {
+        try {
+            ClientTargetAddress = InetAddress.getByName("partyhouse.lucasz.tech");
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     private static final BiFunction<ServerClient, String, Lobby> LobbyCreator = (client, serverName) -> {
         SimpleLobby lobby = new SimpleLobby(server, serverName);
@@ -71,7 +81,7 @@ class LobbyTests {
         CountDownLatch latch = new CountDownLatch(1);
 
         assertDoesNotThrow(() -> {
-            ClientConfig clientConfig = new ClientConfig(Port);
+            ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
             Client client = new Client(clientConfig);
             client.connect();
 
@@ -101,7 +111,7 @@ class LobbyTests {
         CountDownLatch latch = new CountDownLatch(1);
 
         assertDoesNotThrow(() -> {
-            ClientConfig clientConfig = new ClientConfig(Port);
+            ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
             Client client1 = new Client(clientConfig);
             client1.connect();
 
@@ -138,7 +148,7 @@ class LobbyTests {
         Command.Id messageReceiverTest = Command.named("order");
 
         assertDoesNotThrow(() -> {
-            ClientConfig clientConfig = new ClientConfig(Port);
+            ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
             Client client1 = new Client(clientConfig);
             Client client2 = new Client(clientConfig);
 
