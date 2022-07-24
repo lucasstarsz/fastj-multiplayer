@@ -1,6 +1,7 @@
 package tech.fastj.network.rpc;
 
 import tech.fastj.network.rpc.commands.Command;
+import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
 import tech.fastj.network.rpc.message.RequestType;
 import tech.fastj.network.serial.Message;
@@ -12,30 +13,33 @@ public interface NetworkSender {
 
     Serializer getSerializer();
 
-    void sendCommand(NetworkType networkType, Command.Id commandId, byte[] rawData) throws IOException;
+    void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId, byte[] rawData) throws IOException;
 
-    default void sendCommand(NetworkType networkType, Command.Id commandId) throws IOException {
-        this.sendCommand(networkType, commandId, (byte[]) null);
+    default void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId) throws IOException {
+        this.sendCommand(networkType, commandTarget, commandId, (byte[]) null);
     }
 
-    default void sendCommand(NetworkType networkType, Command.Id commandId, Message message) throws IOException {
+    default void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId, Message message)
+            throws IOException {
         byte[] rawData = getSerializer().writeMessage(message);
-        this.sendCommand(networkType, commandId, rawData);
+        this.sendCommand(networkType, commandTarget, commandId, rawData);
     }
 
-    default void sendCommand(NetworkType networkType, Command.Id commandId, Message... messages) throws IOException {
+    default void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId, Message... messages)
+            throws IOException {
         byte[] rawData = getSerializer().writeMessages(messages);
-        this.sendCommand(networkType, commandId, rawData);
+        this.sendCommand(networkType, commandTarget, commandId, rawData);
     }
 
-    default void sendCommand(NetworkType networkType, Command.Id commandId, Object... objects) throws IOException {
+    default void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId, Object... objects)
+            throws IOException {
         byte[] rawData = getSerializer().writeObjects(objects);
-        this.sendCommand(networkType, commandId, rawData);
+        this.sendCommand(networkType, commandTarget, commandId, rawData);
     }
 
-    default <T> void sendCommand(NetworkType networkType, Command.Id commandId, T object) throws IOException {
+    default <T> void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId, T object) throws IOException {
         byte[] rawData = getSerializer().writeObject(object);
-        this.sendCommand(networkType, commandId, rawData);
+        this.sendCommand(networkType, commandTarget, commandId, rawData);
     }
 
     void sendRequest(NetworkType networkType, RequestType requestType, byte[] rawData) throws IOException;

@@ -2,9 +2,10 @@ package tech.fastj.network.rpc;
 
 import tech.fastj.network.config.ClientConfig;
 import tech.fastj.network.rpc.commands.Command;
+import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
-import tech.fastj.network.rpc.message.SentMessageType;
 import tech.fastj.network.rpc.message.RequestType;
+import tech.fastj.network.rpc.message.SentMessageType;
 import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
 import tech.fastj.network.serial.read.MessageInputStream;
 
@@ -92,12 +93,13 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
     }
 
     @Override
-    public synchronized void sendCommand(NetworkType networkType, Command.Id commandId, byte[] rawData) throws IOException {
+    public synchronized void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId, byte[] rawData)
+            throws IOException {
         ClientLogger.trace("{} sending {} \"{}\" to {}:{}", clientId, networkType.name(), commandId.name(), clientConfig.address(), clientConfig.port());
 
         switch (networkType) {
-            case TCP -> SendUtils.sendTCPCommand(tcpOut, commandId, rawData);
-            case UDP -> SendUtils.sendUDPCommand(udpSocket, clientConfig, commandId, clientId, rawData);
+            case TCP -> SendUtils.sendTCPCommand(tcpOut, commandTarget, commandId, rawData);
+            case UDP -> SendUtils.sendUDPCommand(udpSocket, clientConfig, commandTarget, commandId, clientId, rawData);
         }
     }
 
@@ -127,7 +129,13 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
             case PingResponse -> {
             }
             case RPCCommand -> {
+                CommandTarget commandTarget = (CommandTarget) inputStream.readObject(CommandTarget.class);
                 UUID commandId = (UUID) inputStream.readObject(UUID.class);
+
+                if (commandTarget != CommandTarget.Client) {
+                    throw new IOException("Received command " + commandId + " targeted at " + commandTarget.name() + " instead of client");
+                }
+
                 readCommand(commandId, inputStream, this);
             }
         }

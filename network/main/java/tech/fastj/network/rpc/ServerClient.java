@@ -1,9 +1,10 @@
 package tech.fastj.network.rpc;
 
 import tech.fastj.network.rpc.commands.Command;
+import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
-import tech.fastj.network.rpc.message.SentMessageType;
 import tech.fastj.network.rpc.message.RequestType;
+import tech.fastj.network.rpc.message.SentMessageType;
 import tech.fastj.network.serial.read.MessageInputStream;
 import tech.fastj.network.serial.write.MessageOutputStream;
 
@@ -47,12 +48,13 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
     }
 
     @Override
-    public synchronized void sendCommand(NetworkType networkType, Command.Id commandId, byte[] rawData) throws IOException {
+    public synchronized void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId, byte[] rawData)
+            throws IOException {
         ServerClientLogger.trace("{} sending {} \"{}\" to {}:{}", clientId, networkType.name(), commandId.name(), clientConfig.address(), clientConfig.port());
 
         switch (networkType) {
-            case TCP -> SendUtils.sendTCPCommand(tcpOut, commandId, rawData);
-            case UDP -> SendUtils.sendUDPCommand(udpSocket, clientConfig, commandId, clientId, rawData);
+            case TCP -> SendUtils.sendTCPCommand(tcpOut, commandTarget, commandId, rawData);
+            case UDP -> SendUtils.sendUDPCommand(udpSocket, clientConfig, commandTarget, commandId, clientId, rawData);
         }
     }
 
@@ -83,8 +85,9 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
             case PingRequest -> {
             }
             case RPCCommand -> {
+                CommandTarget commandTarget = (CommandTarget) inputStream.readObject(CommandTarget.class);
                 UUID commandId = (UUID) inputStream.readObject(UUID.class);
-                server.receiveCommand(commandId, senderId, inputStream);
+                server.receiveCommand(commandTarget, commandId, senderId, inputStream);
             }
             case Request -> {
                 RequestType requestType = (RequestType) inputStream.readObject(RequestType.class);

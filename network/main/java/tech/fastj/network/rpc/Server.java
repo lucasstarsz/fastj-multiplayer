@@ -1,10 +1,12 @@
 package tech.fastj.network.rpc;
 
 import tech.fastj.network.config.ServerConfig;
+import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.RequestType;
 import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
 import tech.fastj.network.serial.read.MessageInputStream;
 import tech.fastj.network.sessions.Lobby;
+import tech.fastj.network.sessions.Session;
 
 import java.io.IOException;
 import java.net.DatagramSocket;
@@ -53,7 +55,7 @@ public class Server extends CommandHandler<ServerClient> {
     }
 
     public Map<UUID, Lobby> getLobbies() {
-        return lobbies;
+        return Collections.unmodifiableMap(lobbies);
     }
 
     public ServerSocket getTcpServer() {
@@ -70,6 +72,16 @@ public class Server extends CommandHandler<ServerClient> {
 
     public boolean isAcceptingClients() {
         return isAcceptingClients;
+    }
+
+    public Lobby getLobby(ServerClient client) {
+        for (Lobby lobby : lobbies.values()) {
+            if (lobby.hasClient(client)) {
+                return lobby;
+            }
+        }
+
+        return null;
     }
 
     public void disconnectAllClients() {
@@ -196,9 +208,41 @@ public class Server extends CommandHandler<ServerClient> {
         isRunning = true;
     }
 
-    public void receiveCommand(UUID commandId, UUID senderId, MessageInputStream stream) throws IOException {
+    public void receiveCommand(CommandTarget commandTarget, UUID commandId, UUID senderId, MessageInputStream stream) throws IOException {
         ServerClient client = getClient(senderId);
-        readCommand(commandId, stream, client);
+
+        if (client == null) {
+            return;
+        }
+
+        switch (commandTarget) {
+            case Client -> client.readCommand(commandId, stream, client);
+            case Server -> readCommand(commandId, stream, client);
+            case Lobby -> {
+                Lobby lobby = getLobby(client);
+
+                if (lobby == null) {
+                    return;
+                }
+
+                lobby.readCommand(commandId, stream, client);
+            }
+            case Session -> {
+                Lobby lobby = getLobby(client);
+
+                if (lobby == null) {
+                    return;
+                }
+
+                Session session = lobby.getClientSession(client);
+
+                if (session == null) {
+                    return;
+                }
+
+                session.readCommand(commandId, stream, client);
+            }
+        }
     }
 
     public void returnAvailableLobbies(ServerClient client) throws IOException {

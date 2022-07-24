@@ -6,6 +6,7 @@ import tech.fastj.network.rpc.NetworkSender;
 import tech.fastj.network.rpc.SendUtils;
 import tech.fastj.network.rpc.ServerClient;
 import tech.fastj.network.rpc.commands.Command;
+import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
 import tech.fastj.network.rpc.message.RequestType;
 
@@ -55,17 +56,18 @@ public abstract class Session extends CommandHandler<ServerClient> implements Ne
     }
 
     @Override
-    public synchronized void sendCommand(NetworkType networkType, Command.Id commandId, byte[] rawData) throws IOException {
+    public synchronized void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId, byte[] rawData)
+            throws IOException {
         sessionLogger.trace("Session {} sending {} \"{}\" to {} client(s)", sessionId, networkType.name(), commandId.name(), clients.size());
 
         switch (networkType) {
             case TCP -> {
-                byte[] data = SendUtils.buildTCPCommandData(commandId.uuid(), rawData);
+                byte[] data = SendUtils.buildTCPCommandData(commandTarget, commandId.uuid(), rawData);
                 sendTCP(data);
             }
             case UDP -> {
                 DatagramSocket udpServer = lobby.getServer().getUdpServer();
-                byte[] data = SendUtils.buildUDPCommandData(sessionId, commandId.uuid(), rawData);
+                byte[] data = SendUtils.buildUDPCommandData(commandTarget, sessionId, commandId.uuid(), rawData);
                 sendUDP(udpServer, data);
             }
         }

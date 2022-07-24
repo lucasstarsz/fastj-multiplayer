@@ -6,6 +6,7 @@ import tech.fastj.network.rpc.Client;
 import tech.fastj.network.rpc.Server;
 import tech.fastj.network.rpc.ServerClient;
 import tech.fastj.network.rpc.commands.Command;
+import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
 import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
 import tech.fastj.network.sessions.Lobby;
@@ -164,11 +165,11 @@ class LobbyTests {
             client2.connect();
             LobbyLogger.debug("client 2: {}", client2.getClientId());
 
-            client1.sendCommand(NetworkType.UDP, messageReceiverTest);
-            client1.sendCommand(NetworkType.UDP, messageReceiverTest);
-            client1.sendCommand(NetworkType.UDP, messageReceiverTest);
-            client1.sendCommand(NetworkType.UDP, messageReceiverTest);
-            client1.sendCommand(NetworkType.UDP, messageReceiverTest);
+            client1.sendCommand(NetworkType.UDP, CommandTarget.Server, messageReceiverTest);
+            client1.sendCommand(NetworkType.UDP, CommandTarget.Server, messageReceiverTest);
+            client1.sendCommand(NetworkType.UDP, CommandTarget.Server, messageReceiverTest);
+            client1.sendCommand(NetworkType.UDP, CommandTarget.Server, messageReceiverTest);
+            client1.sendCommand(NetworkType.UDP, CommandTarget.Server, messageReceiverTest);
         });
 
         boolean success = latch.await(5, TimeUnit.SECONDS);
