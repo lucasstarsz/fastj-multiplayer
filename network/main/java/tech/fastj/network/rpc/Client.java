@@ -97,7 +97,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
 
         switch (networkType) {
             case TCP -> SendUtils.sendTCPCommand(tcpOut, commandId, rawData);
-            case UDP -> SendUtils.sendUDPCommand(udpSocket, clientConfig, commandId, rawData);
+            case UDP -> SendUtils.sendUDPCommand(udpSocket, clientConfig, commandId, clientId, rawData);
         }
     }
 
@@ -106,7 +106,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
 
         switch (networkType) {
             case TCP -> SendUtils.sendTCPSpecialRequest(tcpOut, specialRequestType, rawData);
-            case UDP -> SendUtils.sendUDPSpecialRequest(udpSocket, clientConfig, specialRequestType, rawData);
+            case UDP -> SendUtils.sendUDPSpecialRequest(udpSocket, clientConfig, specialRequestType, clientId, rawData);
         }
     }
 
@@ -121,7 +121,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
     }
 
     @Override
-    protected void readMessageType(MessageInputStream inputStream, SentMessageType sentMessageType) throws IOException {
+    protected void readMessageType(UUID senderId, MessageInputStream inputStream, SentMessageType sentMessageType) throws IOException {
         switch (sentMessageType) {
             case Disconnect -> disconnect();
             case PingResponse -> {

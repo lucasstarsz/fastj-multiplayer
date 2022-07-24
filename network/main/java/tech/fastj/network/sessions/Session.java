@@ -58,8 +58,17 @@ public abstract class Session extends CommandHandler<ServerClient> implements Ne
     public synchronized void sendCommand(NetworkType networkType, Command.Id commandId, byte[] rawData) throws IOException {
         sessionLogger.trace("Session {} sending {} \"{}\" to {} client(s)", sessionId, networkType.name(), commandId.name(), clients.size());
 
-        byte[] data = SendUtils.buildCommandData(commandId.uuid(), rawData);
-        sendToClients(networkType, data);
+        switch (networkType) {
+            case TCP -> {
+                byte[] data = SendUtils.buildTCPCommandData(commandId.uuid(), rawData);
+                sendTCP(data);
+            }
+            case UDP -> {
+                DatagramSocket udpServer = lobby.getServer().getUdpServer();
+                byte[] data = SendUtils.buildUDPCommandData(sessionId, commandId.uuid(), rawData);
+                sendUDP(udpServer, data);
+            }
+        }
     }
 
 
@@ -67,31 +76,34 @@ public abstract class Session extends CommandHandler<ServerClient> implements Ne
     public void sendSpecialRequest(NetworkType networkType, SpecialRequestType specialRequestType, byte[] rawData) throws IOException {
         sessionLogger.trace("Session {} sending {} \"{}\" to {} client(s)", sessionId, networkType.name(), specialRequestType.name(), clients.size());
 
-        byte[] data = SendUtils.buildSpecialRequestData(specialRequestType, rawData);
-        sendToClients(networkType, data);
-    }
-
-    private void sendToClients(NetworkType networkType, byte[] data) throws IOException {
         switch (networkType) {
             case TCP -> {
-                for (ServerClient client : clients) {
-                    client.getTcpOut().write(data);
-                    client.getTcpOut().flush();
-                }
+                byte[] data = SendUtils.buildTCPSpecialRequestData(specialRequestType, rawData);
+                sendTCP(data);
             }
             case UDP -> {
                 DatagramSocket udpServer = lobby.getServer().getUdpServer();
-
-                for (ServerClient client : clients) {
-                    DatagramPacket packet = SendUtils.buildPacket(client.getClientConfig(), data);
-                    udpServer.send(packet);
-                }
+                byte[] data = SendUtils.buildUDPSpecialRequestData(sessionId, specialRequestType, rawData);
+                sendUDP(udpServer, data);
             }
         }
     }
 
+    private void sendTCP(byte[] data) throws IOException {
+        for (ServerClient client : clients) {
+            client.getTcpOut().write(data);
+            client.getTcpOut().flush();
+        }
+    }
+
+    private void sendUDP(DatagramSocket udpServer, byte[] data) throws IOException {
+        for (ServerClient client : clients) {
+            DatagramPacket packet = SendUtils.buildPacket(client.getClientConfig(), data);
+            udpServer.send(packet);
+        }
+    }
+
     public void receiveNewClient(ServerClient client) {
-        System.out.println("session new client");
         clients.add(client);
         onReceiveNewClient.accept(this, client);
     }

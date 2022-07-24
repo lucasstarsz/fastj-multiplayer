@@ -132,6 +132,16 @@ public class Server extends CommandHandler<ServerClient> {
         serverLogger.debug("Server no longer accepting clients.");
     }
 
+    private ServerClient getClient(UUID senderId) {
+        for (ServerClient client : allClients) {
+            if (senderId.equals(client.clientId)) {
+                return client;
+            }
+        }
+
+        return null;
+    }
+
     private void acceptClients() {
         serverLogger.debug("Now accepting clients...");
 
@@ -186,7 +196,8 @@ public class Server extends CommandHandler<ServerClient> {
         isRunning = true;
     }
 
-    public void receiveCommand(UUID commandId, ServerClient client, MessageInputStream stream) throws IOException {
+    public void receiveCommand(UUID commandId, UUID senderId, MessageInputStream stream) throws IOException {
+        ServerClient client = getClient(senderId);
         readCommand(commandId, stream, client);
     }
 
@@ -217,31 +228,33 @@ public class Server extends CommandHandler<ServerClient> {
     public void joinLobby(ServerClient client, UUID lobbyId) throws IOException {
         Lobby lobby = lobbies.get(lobbyId);
 
-        System.out.println("lobby: " + lobby);
         if (lobby == null) {
             return;
         }
 
-        System.out.println("receive new client");
         lobby.receiveNewClient(client);
-        System.out.println("set disconnect");
         client.setOnDisconnect(lobby::clientDisconnect);
 
         serverLogger.info("Client {} joining lobby {}", client.getClientId(), lobby.getLobbyIdentifier().name());
 
         client.getSerializer().registerSerializer(LobbyIdentifier.class);
 
-        System.out.println("send lid");
         client.getTcpOut().writeObject(lobby.getLobbyIdentifier(), LobbyIdentifier.class);
         client.getTcpOut().flush();
     }
 
-    public void receiveSpecialRequest(SpecialRequestType requestType, ServerClient serverClient, MessageInputStream inputStream)
+    public void receiveSpecialRequest(SpecialRequestType requestType, UUID senderId, MessageInputStream inputStream)
             throws IOException {
+        ServerClient client = getClient(senderId);
+
+        if (client == null) {
+            return;
+        }
+
         switch (requestType) {
-            case GetAvailableLobbies -> returnAvailableLobbies(serverClient);
-            case CreateLobby -> createLobby(serverClient, (String) inputStream.readObject(String.class));
-            case JoinLobby -> joinLobby(serverClient, (UUID) inputStream.readObject(UUID.class));
+            case GetAvailableLobbies -> returnAvailableLobbies(client);
+            case CreateLobby -> createLobby(client, (String) inputStream.readObject(String.class));
+            case JoinLobby -> joinLobby(client, (UUID) inputStream.readObject(UUID.class));
         }
     }
 }

@@ -139,7 +139,7 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
 
                 getClientLogger().trace("{} received TCP: {}", clientId, sentMessageType);
 
-                readMessageType(tcpIn, sentMessageType);
+                readMessageType(clientId, tcpIn, sentMessageType);
             } catch (IOException exception) {
                 if (!tcpSocket.isClosed() && isListening) {
                     getClientLogger().error(clientId + " Error receiving TCP packet", exception);
@@ -167,11 +167,12 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
                 System.arraycopy(packet.getData(), 0, data, 0, data.length);
 
                 MessageInputStream tempStream = new MessageInputStream(new ByteArrayInputStream(data), serializer);
+                UUID senderId = (UUID) tempStream.readObject(UUID.class);
                 SentMessageType sentMessageType = (SentMessageType) tempStream.readObject(SentMessageType.class);
 
-                getClientLogger().trace("{} received UDP: {}", clientId, sentMessageType);
+                getClientLogger().trace("{} sent UDP: {}", senderId, sentMessageType);
 
-                readMessageType(tempStream, sentMessageType);
+                readMessageType(senderId, tempStream, sentMessageType);
             } catch (IOException exception) {
                 if (!udpSocket.isClosed() && isListening) {
                     getClientLogger().error(clientId + " Error receiving UDP packet", exception);
@@ -183,7 +184,7 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
         getClientLogger().debug("{} no longer listening on UDP.", clientId);
     }
 
-    protected abstract void readMessageType(MessageInputStream in, SentMessageType sentMessageType) throws IOException;
+    protected abstract void readMessageType(UUID senderId, MessageInputStream in, SentMessageType sentMessageType) throws IOException;
 
     public void disconnect() {
         disconnect(NetworkType.TCP);

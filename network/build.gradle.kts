@@ -23,8 +23,7 @@ repositories.mavenCentral()
 dependencies.implementation(libs.bundles.fastj)
 
 dependencies.testImplementation(dependencies.platform("org.junit:junit-bom:5.8.2"))
-dependencies.testImplementation("org.junit.jupiter:junit-jupiter:5.8.2")
-dependencies.testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+dependencies.testImplementation(libs.bundles.unittest)
 
 tasks.getByName<Test>("test") {
     useJUnitPlatform()

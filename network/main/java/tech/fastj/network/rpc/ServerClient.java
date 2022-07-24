@@ -52,7 +52,7 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
 
         switch (networkType) {
             case TCP -> SendUtils.sendTCPCommand(tcpOut, commandId, rawData);
-            case UDP -> SendUtils.sendUDPCommand(udpSocket, clientConfig, commandId, rawData);
+            case UDP -> SendUtils.sendUDPCommand(udpSocket, clientConfig, commandId, clientId, rawData);
         }
     }
 
@@ -62,7 +62,7 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
 
         switch (networkType) {
             case TCP -> SendUtils.sendTCPSpecialRequest(tcpOut, specialRequestType, rawData);
-            case UDP -> SendUtils.sendUDPSpecialRequest(udpSocket, clientConfig, specialRequestType, rawData);
+            case UDP -> SendUtils.sendUDPSpecialRequest(udpSocket, clientConfig, specialRequestType, clientId, rawData);
         }
     }
 
@@ -77,21 +77,21 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
     }
 
     @Override
-    protected void readMessageType(MessageInputStream inputStream, SentMessageType sentMessageType) throws IOException {
+    protected void readMessageType(UUID senderId, MessageInputStream inputStream, SentMessageType sentMessageType) throws IOException {
         switch (sentMessageType) {
             case Disconnect -> disconnect();
             case PingRequest -> {
             }
             case RPCCommand -> {
                 UUID commandId = (UUID) inputStream.readObject(UUID.class);
-                server.receiveCommand(commandId, this, inputStream);
+                server.receiveCommand(commandId, senderId, inputStream);
             }
             case SpecialRequest -> {
                 SpecialRequestType requestType = (SpecialRequestType) inputStream.readObject(SpecialRequestType.class);
 
-                getClientLogger().trace("{} received special request: {}", clientId, requestType);
+                getClientLogger().trace("{} received special request: {}", senderId, requestType);
 
-                server.receiveSpecialRequest(requestType, this, inputStream);
+                server.receiveSpecialRequest(requestType, senderId, inputStream);
             }
         }
     }

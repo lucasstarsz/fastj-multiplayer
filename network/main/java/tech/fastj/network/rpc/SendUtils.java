@@ -19,10 +19,10 @@ public class SendUtils {
     public static final int UdpPacketBufferLength = 512;
 
     /** Maximum length of a UDP command packet's data. */
-    public static final int UdpCommandPacketDataLength = UdpPacketBufferLength - MessageUtils.EnumBytes - MessageUtils.UuidBytes;
+    public static final int UdpCommandPacketDataLength = UdpPacketBufferLength - MessageUtils.EnumBytes - (MessageUtils.UuidBytes * 2);
 
     /** Maximum length of a UDP special request packet's data. */
-    public static final int UdpSpecialRequestPacketDataLength = UdpPacketBufferLength - (MessageUtils.EnumBytes * 2);
+    public static final int UdpSpecialRequestPacketDataLength = UdpPacketBufferLength - (MessageUtils.EnumBytes * 2) - MessageUtils.UuidBytes;
 
     public static void checkUDPCommandPacketSize(byte[] rawData) {
         assert rawData == null || rawData.length <= SendUtils.UdpCommandPacketDataLength;
@@ -33,17 +33,17 @@ public class SendUtils {
     }
 
     public static void sendTCPCommand(MessageOutputStream tcpOut, Command.Id commandId, byte[] rawData) throws IOException {
-        byte[] packetData = buildCommandData(commandId.uuid(), rawData);
+        byte[] packetData = buildTCPCommandData(commandId.uuid(), rawData);
 
         tcpOut.write(packetData);
         tcpOut.flush();
     }
 
-    public static void sendUDPCommand(DatagramSocket udpSocket, ClientConfig clientConfig, Command.Id commandId, byte[] rawData)
+    public static void sendUDPCommand(DatagramSocket udpSocket, ClientConfig clientConfig, Command.Id commandId, UUID senderId, byte[] rawData)
             throws IOException {
         SendUtils.checkUDPCommandPacketSize(rawData);
 
-        byte[] packetData = buildCommandData(commandId.uuid(), rawData);
+        byte[] packetData = buildUDPCommandData(senderId, commandId.uuid(), rawData);
 
         DatagramPacket packet = buildPacket(clientConfig, packetData);
         udpSocket.send(packet);
@@ -53,14 +53,14 @@ public class SendUtils {
         return new DatagramPacket(packetData, packetData.length, clientConfig.address(), clientConfig.port());
     }
 
-    public static byte[] buildCommandData(UUID identifier, byte[] rawData) {
+    public static byte[] buildTCPCommandData(UUID commandId, byte[] rawData) {
         ByteBuffer packetDataBuffer;
 
         if (rawData == null) {
             packetDataBuffer = ByteBuffer.allocate(MessageUtils.EnumBytes + MessageUtils.UuidBytes);
             return packetDataBuffer.putInt(SentMessageType.RPCCommand.ordinal())
-                    .putLong(identifier.getMostSignificantBits())
-                    .putLong(identifier.getLeastSignificantBits())
+                    .putLong(commandId.getMostSignificantBits())
+                    .putLong(commandId.getLeastSignificantBits())
                     .array();
         } else {
             packetDataBuffer = ByteBuffer.allocate(
@@ -68,8 +68,34 @@ public class SendUtils {
             );
 
             return packetDataBuffer.putInt(SentMessageType.RPCCommand.ordinal())
-                    .putLong(identifier.getMostSignificantBits())
-                    .putLong(identifier.getLeastSignificantBits())
+                    .putLong(commandId.getMostSignificantBits())
+                    .putLong(commandId.getLeastSignificantBits())
+                    .put(rawData)
+                    .array();
+        }
+    }
+
+    public static byte[] buildUDPCommandData(UUID senderId, UUID commandId, byte[] rawData) {
+        ByteBuffer packetDataBuffer;
+
+        if (rawData == null) {
+            packetDataBuffer = ByteBuffer.allocate(MessageUtils.EnumBytes + (MessageUtils.UuidBytes * 2));
+            return packetDataBuffer.putLong(senderId.getMostSignificantBits())
+                    .putLong(senderId.getLeastSignificantBits())
+                    .putInt(SentMessageType.RPCCommand.ordinal())
+                    .putLong(commandId.getMostSignificantBits())
+                    .putLong(commandId.getLeastSignificantBits())
+                    .array();
+        } else {
+            packetDataBuffer = ByteBuffer.allocate(
+                    Math.min(UdpPacketBufferLength, MessageUtils.EnumBytes + (MessageUtils.UuidBytes * 2) + rawData.length)
+            );
+
+            return packetDataBuffer.putLong(senderId.getMostSignificantBits())
+                    .putLong(senderId.getLeastSignificantBits())
+                    .putInt(SentMessageType.RPCCommand.ordinal())
+                    .putLong(commandId.getMostSignificantBits())
+                    .putLong(commandId.getLeastSignificantBits())
                     .put(rawData)
                     .array();
         }
@@ -77,23 +103,23 @@ public class SendUtils {
 
     public static void sendTCPSpecialRequest(MessageOutputStream tcpOut, SpecialRequestType requestType, byte[] rawData)
             throws IOException {
-        byte[] packetData = buildSpecialRequestData(requestType, rawData);
+        byte[] packetData = buildTCPSpecialRequestData(requestType, rawData);
 
         tcpOut.write(packetData);
         tcpOut.flush();
     }
 
     public static void sendUDPSpecialRequest(DatagramSocket udpSocket, ClientConfig clientConfig, SpecialRequestType requestType,
-                                             byte[] rawData) throws IOException {
+                                             UUID senderId, byte[] rawData) throws IOException {
         SendUtils.checkUDPSpecialRequestPacketSize(rawData);
 
-        byte[] packetData = buildSpecialRequestData(requestType, rawData);
+        byte[] packetData = buildUDPSpecialRequestData(senderId, requestType, rawData);
 
         DatagramPacket packet = buildPacket(clientConfig, packetData);
         udpSocket.send(packet);
     }
 
-    public static byte[] buildSpecialRequestData(SpecialRequestType requestType, byte[] rawData) {
+    public static byte[] buildTCPSpecialRequestData(SpecialRequestType requestType, byte[] rawData) {
         ByteBuffer packetDataBuffer;
 
         if (rawData == null) {
@@ -110,13 +136,37 @@ public class SendUtils {
         }
     }
 
+    public static byte[] buildUDPSpecialRequestData(UUID senderId, SpecialRequestType requestType, byte[] rawData) {
+        ByteBuffer packetDataBuffer;
+
+        if (rawData == null) {
+            packetDataBuffer = ByteBuffer.allocate(MessageUtils.UuidBytes + (MessageUtils.EnumBytes * 2));
+            return packetDataBuffer.putLong(senderId.getMostSignificantBits())
+                    .putLong(senderId.getLeastSignificantBits())
+                    .putInt(SentMessageType.SpecialRequest.ordinal())
+                    .putInt(requestType.ordinal())
+                    .array();
+        } else {
+            packetDataBuffer = ByteBuffer.allocate(
+                    Math.min(UdpPacketBufferLength, MessageUtils.UuidBytes + (MessageUtils.EnumBytes * 2) + rawData.length)
+            );
+
+            return packetDataBuffer.putLong(senderId.getMostSignificantBits())
+                    .putLong(senderId.getLeastSignificantBits())
+                    .putInt(SentMessageType.SpecialRequest.ordinal())
+                    .putInt(requestType.ordinal())
+                    .put(rawData)
+                    .array();
+        }
+    }
+
     public static void sendTCPDisconnect(MessageOutputStream tcpOut) throws IOException {
         tcpOut.writeObject(SentMessageType.Disconnect, SentMessageType.class);
         tcpOut.flush();
     }
 
     public static void sendUDPDisconnect(DatagramSocket udpSocket, ClientConfig clientConfig) throws IOException {
-        byte[] packetData = ByteBuffer.allocate(MessageUtils.EnumBytes)
+        byte[] packetData = ByteBuffer.allocate(MessageUtils.EnumBytes + MessageUtils.UuidBytes)
                 .putInt(SentMessageType.Disconnect.ordinal())
                 .array();
 
