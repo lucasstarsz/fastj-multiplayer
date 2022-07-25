@@ -37,7 +37,7 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
     protected boolean isListening;
 
     protected ConnectionHandler(Socket tcpSocket, DatagramSocket udpServer) throws IOException {
-        this.clientConfig = new ClientConfig(tcpSocket.getLocalAddress(), tcpSocket.getLocalPort());
+        this.clientConfig = new ClientConfig(tcpSocket.getInetAddress(), tcpSocket.getPort());
         this.clientId = UUID.randomUUID();
 
         this.tcpSocket = tcpSocket;
@@ -59,7 +59,7 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
 
     public void connect() throws IOException {
         if (!tcpSocket.isConnected()) {
-            getLogger().debug("{} connecting to {}:{}...", clientId, clientConfig.address(), clientConfig.port());
+            getLogger().debug("{} connecting TCP to {}:{}...", clientId, clientConfig.address(), clientConfig.port());
 
             InetSocketAddress address = new InetSocketAddress(clientConfig.address(), clientConfig.port());
             tcpSocket.connect(address);

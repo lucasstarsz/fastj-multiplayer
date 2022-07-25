@@ -17,6 +17,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import mock.ChatMessage;
 import mock.GameState;
@@ -24,16 +25,21 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 class ConnectionTests {
 
     private static Server server;
     private static final InetAddress ClientTargetAddress;
+    private static final Logger ConnectionTestsLogger = LoggerFactory.getLogger(ConnectionTests.class);
 
     static {
         try {
@@ -332,5 +338,37 @@ class ConnectionTests {
                             "TCP Received: " + receivedMultipleTCPData.get() + ", UDP received: " + receivedMultipleUDPData.get()
             );
         }
+    }
+
+    @Test
+    void checkPingSystem() throws InterruptedException {
+        int countdownStart = 5;
+        CountDownLatch latch = new CountDownLatch(countdownStart);
+        AtomicReference<Client> client = new AtomicReference<>();
+
+        assertDoesNotThrow(() -> {
+            ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
+            client.set(new Client(clientConfig));
+            client.get().connect();
+
+            client.get().onPingReceived((ping) -> {
+                ConnectionTestsLogger.debug("Received ping: {}ms", ping / 1_000_000L);
+                latch.countDown();
+            });
+
+            assertTrue(client.get().startPings(1L, TimeUnit.SECONDS));
+            assertTrue(client.get().isSendingPings());
+            client.get().run();
+        });
+
+        boolean pingsSuccess = latch.await(10L, TimeUnit.SECONDS);
+
+        ConnectionTestsLogger.debug("Total pings received: {}", countdownStart - latch.getCount());
+
+        assertTrue(client.get().stopPings());
+        assertFalse(client.get().isSendingPings());
+        client.get().disconnect();
+
+        assertTrue(pingsSuccess, "Should have received five pings");
     }
 }

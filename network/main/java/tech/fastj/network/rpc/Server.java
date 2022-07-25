@@ -336,4 +336,17 @@ public class Server extends CommandHandler<ServerClient> {
             }
         }
     }
+
+    public void sendPingResponse(UUID senderId, long timestamp, MessageInputStream inputStream) throws IOException {
+        ServerClient client = getClient(senderId);
+
+        if (client == null) {
+            serverLogger.warn("Couldn't find client {} to send ping response.", senderId);
+
+            inputStream.skipNBytes(inputStream.available());
+            return;
+        }
+
+        client.sendPingResponse(timestamp);
+    }
 }

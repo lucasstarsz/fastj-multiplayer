@@ -1,5 +1,6 @@
 package tech.fastj.network.rpc;
 
+import tech.fastj.network.config.ClientConfig;
 import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
@@ -10,8 +11,10 @@ import tech.fastj.network.serial.util.MessageUtils;
 import tech.fastj.network.serial.write.MessageOutputStream;
 
 import java.io.IOException;
+import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -23,6 +26,8 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
     private final Logger ServerClientLogger = LoggerFactory.getLogger(ServerClient.class);
 
     private final Server server;
+
+    private ClientConfig udpConfig;
 
     public ServerClient(Socket socket, Server server, DatagramSocket udpServer) throws IOException {
         super(socket, udpServer);
@@ -41,6 +46,9 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
     @Override
     public void connect() throws IOException {
         super.connect();
+        DatagramPacket startPacket = SendUtils.buildPacket(clientConfig, new byte[1]);
+        udpSocket.receive(startPacket);
+        udpConfig = new ClientConfig(startPacket.getAddress(), startPacket.getPort());
 
         ServerClientLogger.debug("{} syncing client id.", clientId);
 
@@ -56,7 +64,7 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
 
         switch (networkType) {
             case TCP -> SendUtils.sendTCPCommand(tcpOut, commandTarget, commandId, rawData);
-            case UDP -> SendUtils.sendUDPCommand(udpSocket, clientConfig, commandTarget, commandId, clientId, rawData);
+            case UDP -> SendUtils.sendUDPCommand(udpSocket, udpConfig, commandTarget, commandId, clientId, rawData);
         }
     }
 
@@ -66,7 +74,7 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
 
         switch (networkType) {
             case TCP -> SendUtils.sendTCPRequest(tcpOut, requestType, rawData);
-            case UDP -> SendUtils.sendUDPRequest(udpSocket, clientConfig, requestType, clientId, rawData);
+            case UDP -> SendUtils.sendUDPRequest(udpSocket, udpConfig, requestType, clientId, rawData);
         }
     }
 
@@ -76,7 +84,7 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
 
         switch (networkType) {
             case TCP -> SendUtils.sendTCPDisconnect(tcpOut);
-            case UDP -> SendUtils.sendUDPDisconnect(udpSocket, clientConfig);
+            case UDP -> SendUtils.sendUDPDisconnect(udpSocket, udpConfig);
         }
     }
 
@@ -85,6 +93,10 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
             throws IOException {
         switch (sentMessageType) {
             case Disconnect -> disconnect();
+            case PingRequest -> {
+                long timestamp = inputStream.readLong();
+                server.sendPingResponse(senderId, timestamp, inputStream);
+            }
             case RPCCommand -> {
                 CommandTarget commandTarget = (CommandTarget) inputStream.readObject(CommandTarget.class);
                 long dataLength;
@@ -122,5 +134,21 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
                     Arrays.toString(inputStream.readAllBytes())
             );
         }
+    }
+
+    public void sendPingResponse(long timestamp) throws IOException {
+        byte[] packetData = ByteBuffer.allocate(MessageUtils.UuidBytes + MessageUtils.EnumBytes + Long.BYTES)
+                .putLong(clientId.getMostSignificantBits())
+                .putLong(clientId.getLeastSignificantBits())
+                .putInt(SentMessageType.PingResponse.ordinal())
+                .putLong(timestamp)
+                .array();
+
+        ServerClientLogger.debug("{} sending ping response to {}:{}", clientId, clientConfig.address(), clientConfig.port());
+
+        DatagramPacket packet = SendUtils.buildPacket(udpConfig, packetData);
+        udpSocket.send(packet);
+
+        ServerClientLogger.debug("{} ping response sent.", clientId);
     }
 }

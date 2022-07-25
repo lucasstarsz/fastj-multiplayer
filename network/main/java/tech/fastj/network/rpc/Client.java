@@ -11,8 +11,14 @@ import tech.fastj.network.serial.read.MessageInputStream;
 import tech.fastj.network.serial.util.MessageUtils;
 
 import java.io.IOException;
+import java.net.DatagramPacket;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.function.LongConsumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,13 +30,25 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
     public static final int Leave = 1;
     public static final int Join = 0;
 
+    private ScheduledExecutorService pingSender;
+    private boolean isSendingPings;
+    private LongConsumer onPingReceived;
+
     public Client(ClientConfig clientConfig) throws IOException {
         super(clientConfig);
+        onPingReceived = (ping) -> {};
     }
 
     @Override
     public void connect() throws IOException {
         super.connect();
+
+        ClientLogger.debug("{} connecting UDP to {}:{}...", clientId, clientConfig.address(), clientConfig.port());
+
+        udpSocket.connect(clientConfig.address(), clientConfig.port());
+        udpSocket.send(SendUtils.buildPacket(clientConfig, new byte[1]));
+
+        ClientLogger.debug("UDP satisfactory.");
 
         ClientLogger.debug("{} checking server connection status...", clientId);
 
@@ -43,6 +61,60 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
         clientId = (UUID) tcpIn.readObject(UUID.class);
         ClientLogger.debug("Client id synced to server, now {}.", clientId);
         ClientLogger.debug("{} connection status to {}:{} satisfactory.", clientId, clientConfig.address(), clientConfig.port());
+    }
+
+    public void onPingReceived(LongConsumer onPingReceived) {
+        this.onPingReceived = onPingReceived;
+    }
+
+    public boolean startPings(long delay, TimeUnit delayUnit) {
+        if (isSendingPings) {
+            return false;
+        }
+
+        isSendingPings = true;
+
+        pingSender = Executors.newSingleThreadScheduledExecutor();
+        pingSender.scheduleAtFixedRate(this::sendPing, 0L, delay, delayUnit);
+
+        return true;
+    }
+
+    private void sendPing() {
+        byte[] packetData = ByteBuffer.allocate(MessageUtils.UuidBytes + MessageUtils.EnumBytes + Long.BYTES)
+                .putLong(clientId.getMostSignificantBits())
+                .putLong(clientId.getLeastSignificantBits())
+                .putInt(SentMessageType.PingRequest.ordinal())
+                .putLong(System.nanoTime())
+                .array();
+
+        DatagramPacket packet = SendUtils.buildPacket(clientConfig, packetData);
+
+        ClientLogger.debug("sending ping to {}:{}", clientConfig.address(), clientConfig.port());
+
+        try {
+            udpSocket.send(packet);
+        } catch (IOException exception) {
+            ClientLogger.error("Unable to send UDP ping packet. Stopping pings", exception);
+            stopPings();
+        }
+    }
+
+    public boolean stopPings() {
+        if (!isSendingPings) {
+            return false;
+        }
+
+        isSendingPings = false;
+
+        pingSender.shutdownNow();
+        pingSender = null;
+
+        return true;
+    }
+
+    public boolean isSendingPings() {
+        return isSendingPings;
     }
 
     public LobbyIdentifier[] getAvailableLobbies() throws IOException {
@@ -129,6 +201,12 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
             throws IOException {
         switch (sentMessageType) {
             case Disconnect -> disconnect();
+            case PingResponse -> {
+                long currentTimestamp = System.nanoTime();
+                long otherTimestamp = inputStream.readLong();
+                long pingNanos = currentTimestamp - otherTimestamp;
+                onPingReceived.accept(pingNanos);
+            }
             case RPCCommand -> {
                 CommandTarget commandTarget = (CommandTarget) inputStream.readObject(CommandTarget.class);
                 long dataLength;
