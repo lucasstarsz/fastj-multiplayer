@@ -60,9 +60,7 @@ class LobbyTests {
 
     @AfterEach
     void cleanServer() {
-        System.out.println("stop lobbies");
         server.stopAllLobbies();
-        System.out.println("disconnect");
         server.disconnectAllClients();
     }
 

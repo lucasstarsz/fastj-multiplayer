@@ -106,7 +106,11 @@ class ConnectionTests {
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
             client.sendCommand(NetworkType.TCP, CommandTarget.Server, receiveTCPChatMessage);
-            client.sendCommand(NetworkType.UDP, CommandTarget.Server, receiveUDPChatMessage);
+
+            while (!receivedUDPData.get()) {
+                client.sendCommand(NetworkType.UDP, CommandTarget.Server, receiveUDPChatMessage);
+                TimeUnit.MILLISECONDS.sleep(100L);
+            }
         });
 
         boolean success = latch.await(5, TimeUnit.SECONDS);
@@ -150,7 +154,11 @@ class ConnectionTests {
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
             client.sendCommand(NetworkType.TCP, CommandTarget.Server, receiveTCPChatMessage, tcpData);
-            client.sendCommand(NetworkType.UDP, CommandTarget.Server, receiveUDPChatMessage, udpData);
+
+            while (!receivedUDPData.get()) {
+                client.sendCommand(NetworkType.UDP, CommandTarget.Server, receiveUDPChatMessage, udpData);
+                TimeUnit.MILLISECONDS.sleep(100L);
+            }
         });
 
         boolean success = latch.await(5, TimeUnit.SECONDS);
@@ -205,7 +213,11 @@ class ConnectionTests {
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
             client.sendCommand(NetworkType.TCP, CommandTarget.Server, receiveTCPMultipleChatMessage, tcpData1, tcpData2, tcpData3);
-            client.sendCommand(NetworkType.UDP, CommandTarget.Server, receiveUDPMultipleChatMessage, udpData1, udpData2, udpData3);
+
+            while (!receivedMultipleUDPData.get()) {
+                client.sendCommand(NetworkType.UDP, CommandTarget.Server, receiveUDPMultipleChatMessage, udpData1, udpData2, udpData3);
+                TimeUnit.MILLISECONDS.sleep(100L);
+            }
         });
 
         boolean success = latch.await(5, TimeUnit.SECONDS);
@@ -250,7 +262,11 @@ class ConnectionTests {
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
             client.sendCommand(NetworkType.TCP, CommandTarget.Server, receiveTCPGameState, tcpData);
-            client.sendCommand(NetworkType.UDP, CommandTarget.Server, receiveUDPUuid, udpData);
+
+            while (!receivedUDPData.get()) {
+                client.sendCommand(NetworkType.UDP, CommandTarget.Server, receiveUDPUuid, udpData);
+                TimeUnit.MILLISECONDS.sleep(100L);
+            }
         });
 
         boolean success = latch.await(5, TimeUnit.SECONDS);
@@ -327,7 +343,11 @@ class ConnectionTests {
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
             client.sendCommand(NetworkType.TCP, CommandTarget.Server, receiveTCPMultipleValues, tcpData1, tcpData2, tcpData3, tcpData4, tcpData5, tcpData6);
-            client.sendCommand(NetworkType.UDP, CommandTarget.Server, receiveUDPMultipleValues, udpData1, udpData2, udpData3, udpData4, udpData5, udpData6);
+
+            while (!receivedMultipleUDPData.get()) {
+                client.sendCommand(NetworkType.UDP, CommandTarget.Server, receiveUDPMultipleValues, udpData1, udpData2, udpData3, udpData4, udpData5, udpData6);
+                TimeUnit.MILLISECONDS.sleep(100L);
+            }
         });
 
         boolean success = latch.await(5, TimeUnit.SECONDS);
@@ -394,11 +414,10 @@ class ConnectionTests {
             client2.connect();
             ConnectionTestsLogger.debug("client 2: {}", client2.getClientId());
 
-            client1.sendCommand(NetworkType.UDP, CommandTarget.Server, messageReceiverTest);
-            client1.sendCommand(NetworkType.UDP, CommandTarget.Server, messageReceiverTest);
-            client1.sendCommand(NetworkType.UDP, CommandTarget.Server, messageReceiverTest);
-            client1.sendCommand(NetworkType.UDP, CommandTarget.Server, messageReceiverTest);
-            client1.sendCommand(NetworkType.UDP, CommandTarget.Server, messageReceiverTest);
+            while (latch.getCount() > 0) {
+                client1.sendCommand(NetworkType.UDP, CommandTarget.Server, messageReceiverTest);
+                TimeUnit.MILLISECONDS.sleep(100L);
+            }
         });
 
         boolean success = latch.await(5, TimeUnit.SECONDS);
