@@ -20,10 +20,10 @@ public class SendUtils {
     public static final int UdpPacketBufferLength = 512;
 
     /** Maximum length of a UDP command packet's data. */
-    public static final int UdpCommandPacketDataLength = UdpPacketBufferLength - (MessageUtils.EnumBytes * 2) - (MessageUtils.UuidBytes * 2);
+    public static final int UdpCommandPacketDataLength = UdpPacketBufferLength - (MessageUtils.EnumBytes * 2) - (MessageUtils.UuidBytes * 2) - Long.BYTES;
 
     /** Maximum length of a UDP special request packet's data. */
-    public static final int UdpRequestPacketDataLength = UdpPacketBufferLength - (MessageUtils.EnumBytes * 2) - MessageUtils.UuidBytes;
+    public static final int UdpRequestPacketDataLength = UdpPacketBufferLength - (MessageUtils.EnumBytes * 2) - MessageUtils.UuidBytes - Long.BYTES;
 
     public static void checkUDPCommandPacketSize(byte[] rawData) {
         assert rawData == null || rawData.length <= SendUtils.UdpCommandPacketDataLength;
@@ -41,8 +41,8 @@ public class SendUtils {
         tcpOut.flush();
     }
 
-    public static void sendUDPCommand(DatagramSocket udpSocket, ClientConfig clientConfig, CommandTarget commandTarget, Command.Id commandId, UUID senderId, byte[] rawData)
-            throws IOException {
+    public static void sendUDPCommand(DatagramSocket udpSocket, ClientConfig clientConfig, CommandTarget commandTarget,
+                                      Command.Id commandId, UUID senderId, byte[] rawData) throws IOException {
         SendUtils.checkUDPCommandPacketSize(rawData);
 
         byte[] packetData = buildUDPCommandData(commandTarget, senderId, commandId.uuid(), rawData);
@@ -128,14 +128,16 @@ public class SendUtils {
         ByteBuffer packetDataBuffer;
 
         if (rawData == null) {
-            packetDataBuffer = ByteBuffer.allocate(MessageUtils.EnumBytes * 2);
+            packetDataBuffer = ByteBuffer.allocate(Long.BYTES + MessageUtils.EnumBytes * 2);
             return packetDataBuffer.putInt(SentMessageType.Request.ordinal())
                     .putInt(requestType.ordinal())
+                    .putLong(0L)
                     .array();
         } else {
-            packetDataBuffer = ByteBuffer.allocate((MessageUtils.EnumBytes * 2) + rawData.length);
+            packetDataBuffer = ByteBuffer.allocate(Long.BYTES + (MessageUtils.EnumBytes * 2) + rawData.length);
             return packetDataBuffer.putInt(SentMessageType.Request.ordinal())
                     .putInt(requestType.ordinal())
+                    .putLong(rawData.length)
                     .put(rawData)
                     .array();
         }

@@ -11,6 +11,7 @@ import tech.fastj.network.serial.read.MessageInputStream;
 import tech.fastj.network.serial.util.MessageUtils;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -128,8 +129,6 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
             throws IOException {
         switch (sentMessageType) {
             case Disconnect -> disconnect();
-            case PingResponse -> {
-            }
             case RPCCommand -> {
                 CommandTarget commandTarget = (CommandTarget) inputStream.readObject(CommandTarget.class);
                 long dataLength;
@@ -149,6 +148,12 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
 
                 readCommand(dataLength, commandId, inputStream, this);
             }
+            default -> ClientLogger.warn(
+                    "{} Received unused message type {}, discarding {}",
+                    senderId,
+                    sentMessageType.name(),
+                    Arrays.toString(inputStream.readAllBytes())
+            );
         }
     }
 

@@ -13,6 +13,7 @@ import java.net.DatagramSocket;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -228,7 +229,9 @@ public class Server extends CommandHandler<ServerClient> {
                 Lobby lobby = getLobby(client);
 
                 if (lobby == null) {
+                    serverLogger.warn("Couldn't find {}'s lobby to send command {}", senderId, commandId);
                     stream.skipNBytes(dataLength);
+
                     return;
                 }
 
@@ -238,14 +241,18 @@ public class Server extends CommandHandler<ServerClient> {
                 Lobby lobby = getLobby(client);
 
                 if (lobby == null) {
+                    serverLogger.warn("Couldn't find {}'s lobby to send command {}", senderId, commandId);
                     stream.skipNBytes(dataLength);
+
                     return;
                 }
 
                 Session session = lobby.getClientSession(client);
 
                 if (session == null) {
+                    serverLogger.warn("Couldn't find {}'s session to send command {}", senderId, commandId);
                     stream.skipNBytes(dataLength);
+
                     return;
                 }
 
@@ -282,6 +289,7 @@ public class Server extends CommandHandler<ServerClient> {
         Lobby lobby = lobbies.get(lobbyId);
 
         if (lobby == null) {
+            serverLogger.warn("Couldn't find {}'s chosen lobby to join.", client.clientId);
             return;
         }
 
@@ -296,18 +304,36 @@ public class Server extends CommandHandler<ServerClient> {
         client.getTcpOut().flush();
     }
 
-    public void receiveRequest(RequestType requestType, UUID senderId, MessageInputStream inputStream)
+    public void receiveRequest(RequestType requestType, long dataLength, UUID senderId, MessageInputStream inputStream)
             throws IOException {
         ServerClient client = getClient(senderId);
 
         if (client == null) {
+            serverLogger.warn("Couldn't find client {} to receive request.", senderId);
+
+            inputStream.skipNBytes(dataLength);
             return;
         }
 
         switch (requestType) {
             case GetAvailableLobbies -> returnAvailableLobbies(client);
-            case CreateLobby -> createLobby(client, (String) inputStream.readObject(String.class));
-            case JoinLobby -> joinLobby(client, (UUID) inputStream.readObject(UUID.class));
+            case CreateLobby -> {
+                String lobbyName = (String) inputStream.readObject(String.class);
+                createLobby(client, lobbyName);
+            }
+            case JoinLobby -> {
+                if (inputStream.available() < dataLength) {
+                    serverLogger.warn(
+                            "Unable to read {}'s lobby \"{}\" to join",
+                            senderId,
+                            Arrays.toString(inputStream.readAllBytes())
+                    );
+
+                    return;
+                }
+
+                joinLobby(client, (UUID) inputStream.readObject(UUID.class));
+            }
         }
     }
 }

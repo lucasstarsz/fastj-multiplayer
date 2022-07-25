@@ -12,6 +12,7 @@ import tech.fastj.network.serial.write.MessageOutputStream;
 import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -84,8 +85,6 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
             throws IOException {
         switch (sentMessageType) {
             case Disconnect -> disconnect();
-            case PingRequest -> {
-            }
             case RPCCommand -> {
                 CommandTarget commandTarget = (CommandTarget) inputStream.readObject(CommandTarget.class);
                 long dataLength;
@@ -104,11 +103,24 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
             }
             case Request -> {
                 RequestType requestType = (RequestType) inputStream.readObject(RequestType.class);
+                long dataLength;
+
+                if (networkType == NetworkType.TCP) {
+                    dataLength = inputStream.readLong();
+                } else {
+                    dataLength = inputStream.available() - MessageUtils.UuidBytes;
+                }
 
                 getLogger().trace("{} received special request: {}", senderId, requestType);
 
-                server.receiveRequest(requestType, senderId, inputStream);
+                server.receiveRequest(requestType, dataLength, senderId, inputStream);
             }
+            default -> ServerClientLogger.warn(
+                    "{} Received unused message type {}, discarding {}",
+                    senderId,
+                    sentMessageType.name(),
+                    Arrays.toString(inputStream.readAllBytes())
+            );
         }
     }
 }

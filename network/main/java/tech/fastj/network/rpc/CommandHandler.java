@@ -21,6 +21,7 @@ import tech.fastj.network.serial.Serializer;
 import tech.fastj.network.serial.read.MessageInputStream;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -105,6 +106,7 @@ public abstract class CommandHandler<T extends ConnectionHandler<?>> {
 
     protected void readCommand(long dataLength, UUID commandId, MessageInputStream inputStream, T client) throws IOException {
         Classes classes = getClasses(commandId);
+
         if (classes == null) {
             getLogger().warn(
                     "Received unregistered command {} (Command name may have been \"{}\")",
@@ -113,16 +115,26 @@ public abstract class CommandHandler<T extends ConnectionHandler<?>> {
             );
 
             if (dataLength > inputStream.available()) {
-                getLogger().warn("Received incomplete command {}", idsToCommandIds.get(commandId).formattedToString());
-                inputStream.skipNBytes(inputStream.available());
+                getLogger().warn(
+                        "Received incomplete command {}\nBad data: {}",
+                        idsToCommandIds.get(commandId).formattedToString(),
+                        Arrays.toString(inputStream.readAllBytes())
+                );
             } else {
-                inputStream.skipNBytes(dataLength);
+                getLogger().warn(
+                        "Received incomplete command {}\nBad data: {}",
+                        idsToCommandIds.get(commandId).formattedToString(),
+                        Arrays.toString(inputStream.readNBytes((int) dataLength))
+                );
             }
         }
 
         if (dataLength > inputStream.available()) {
-            getLogger().warn("Received incomplete command {}", idsToCommandIds.get(commandId).formattedToString());
-            inputStream.skipNBytes(inputStream.available());
+            getLogger().warn(
+                    "Received incomplete command {}\nBad data: {}",
+                    idsToCommandIds.get(commandId).formattedToString(),
+                    Arrays.toString(inputStream.readAllBytes())
+            );
         }
 
         if (classes instanceof Classes0) {
