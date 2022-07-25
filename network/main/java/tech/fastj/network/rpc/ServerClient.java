@@ -46,15 +46,19 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
     @Override
     public void connect() throws IOException {
         super.connect();
-        DatagramPacket startPacket = SendUtils.buildPacket(clientConfig, new byte[1]);
-        udpSocket.receive(startPacket);
-        udpConfig = new ClientConfig(startPacket.getAddress(), startPacket.getPort());
-
         ServerClientLogger.debug("{} syncing client id.", clientId);
 
         tcpOut.writeInt(Client.Join);
         tcpOut.writeObject(clientId, UUID.class);
         tcpOut.flush();
+
+        int udpPort = tcpIn.readInt();
+
+        ServerClientLogger.debug("Received port: {}", udpPort);
+
+        udpConfig = new ClientConfig(tcpSocket.getInetAddress(), udpPort);
+
+        ServerClientLogger.debug("{} connected on UDP to {}:{}.", clientId, clientConfig.address(), clientConfig.port());
     }
 
     @Override

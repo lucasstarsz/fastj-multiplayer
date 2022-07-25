@@ -71,7 +71,7 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
         tcpIn = new MessageInputStream(tcpSocket.getInputStream(), serializer);
         connectionStatus = ConnectionStatus.InServer;
 
-        getLogger().debug("{} connected to {}:{}.", clientId, clientConfig.address(), clientConfig.port());
+        getLogger().debug("{} connected on TCP to {}:{}.", clientId, clientConfig.address(), clientConfig.port());
     }
 
     public ConnectionStatus getConnectionStatus() {
@@ -116,12 +116,30 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
             if (!connectionListener.isShutdown()) {
                 connectionListener.shutdownNow();
             }
+
             connectionListener = null;
         }
 
         connectionListener = Executors.newFixedThreadPool(2);
         connectionListener.submit(this::listenTCP);
         connectionListener.submit(this::listenUDP);
+    }
+
+    public void stopListening() {
+        if (!isListening) {
+            getLogger().warn("Client {} is not listening to anything.", clientId);
+            return;
+        }
+
+        isListening = false;
+
+        if (connectionListener != null) {
+            if (!connectionListener.isShutdown()) {
+                connectionListener.shutdownNow();
+            }
+
+            connectionListener = null;
+        }
     }
 
     protected void listenTCP() {
@@ -205,6 +223,7 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
 
     protected void shutdown() throws IOException {
         getLogger().debug("{} shutting down", clientId);
+        stopListening();
         tcpSocket.close();
     }
 }

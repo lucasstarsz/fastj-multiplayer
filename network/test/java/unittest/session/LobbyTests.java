@@ -5,9 +5,6 @@ import tech.fastj.network.config.ServerConfig;
 import tech.fastj.network.rpc.Client;
 import tech.fastj.network.rpc.Server;
 import tech.fastj.network.rpc.ServerClient;
-import tech.fastj.network.rpc.commands.Command;
-import tech.fastj.network.rpc.message.CommandTarget;
-import tech.fastj.network.rpc.message.NetworkType;
 import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
 import tech.fastj.network.sessions.Lobby;
 
@@ -24,8 +21,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -34,8 +29,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 class LobbyTests {
-
-    private static final Logger LobbyLogger = LoggerFactory.getLogger(LobbyTests.class);
 
     private static Server server;
     private static final int Port = 19999;
@@ -67,7 +60,9 @@ class LobbyTests {
 
     @AfterEach
     void cleanServer() {
+        System.out.println("stop lobbies");
         server.stopAllLobbies();
+        System.out.println("disconnect");
         server.disconnectAllClients();
     }
 
@@ -134,42 +129,6 @@ class LobbyTests {
             assertTrue(server.getLobbies().get(newLobby.id()).hasClient(client2.getClientId()));
 
             latch.countDown();
-        });
-
-        boolean success = latch.await(5, TimeUnit.SECONDS);
-
-        if (!success) {
-            fail("Server failed to create lobby");
-        }
-    }
-
-    @Test
-    void checkUDPMessageIsReceivedFromCorrectClient() throws InterruptedException {
-        CountDownLatch latch = new CountDownLatch(5);
-        Command.Id messageReceiverTest = Command.named("order");
-
-        assertDoesNotThrow(() -> {
-            ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client client1 = new Client(clientConfig);
-            Client client2 = new Client(clientConfig);
-
-            server.addCommand(messageReceiverTest, client -> {
-                LobbyLogger.debug("client {} received message test", client.getClientId());
-                assertEquals(client1.getClientId(), client.getClientId());
-                latch.countDown();
-            });
-
-            client1.connect();
-            LobbyLogger.debug("client 1: {}", client1.getClientId());
-
-            client2.connect();
-            LobbyLogger.debug("client 2: {}", client2.getClientId());
-
-            client1.sendCommand(NetworkType.UDP, CommandTarget.Server, messageReceiverTest);
-            client1.sendCommand(NetworkType.UDP, CommandTarget.Server, messageReceiverTest);
-            client1.sendCommand(NetworkType.UDP, CommandTarget.Server, messageReceiverTest);
-            client1.sendCommand(NetworkType.UDP, CommandTarget.Server, messageReceiverTest);
-            client1.sendCommand(NetworkType.UDP, CommandTarget.Server, messageReceiverTest);
         });
 
         boolean success = latch.await(5, TimeUnit.SECONDS);

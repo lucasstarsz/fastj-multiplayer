@@ -91,6 +91,8 @@ public class Server extends CommandHandler<ServerClient> {
     }
 
     public void disconnectAllClients() {
+        serverLogger.debug("disconnecting {} clients", allClients.size());
+
         for (int i = allClients.size() - 1; i >= 0; i--) {
             allClients.get(i).disconnect();
         }

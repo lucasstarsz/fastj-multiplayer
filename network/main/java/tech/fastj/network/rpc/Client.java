@@ -46,7 +46,6 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
         ClientLogger.debug("{} connecting UDP to {}:{}...", clientId, clientConfig.address(), clientConfig.port());
 
         udpSocket.connect(clientConfig.address(), clientConfig.port());
-        udpSocket.send(SendUtils.buildPacket(clientConfig, new byte[1]));
 
         ClientLogger.debug("UDP satisfactory.");
 
@@ -59,8 +58,13 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
         }
 
         clientId = (UUID) tcpIn.readObject(UUID.class);
+
         ClientLogger.debug("Client id synced to server, now {}.", clientId);
         ClientLogger.debug("{} connection status to {}:{} satisfactory.", clientId, clientConfig.address(), clientConfig.port());
+        ClientLogger.debug("Sending UDP port {}", udpSocket.getLocalPort());
+
+        tcpOut.writeInt(udpSocket.getLocalPort());
+        tcpOut.flush();
     }
 
     public void onPingReceived(LongConsumer onPingReceived) {
