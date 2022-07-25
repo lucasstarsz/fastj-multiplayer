@@ -18,8 +18,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
-import org.slf4j.Logger;
-
 public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends CommandHandler<T> implements Runnable, NetworkSender {
 
     protected final Socket tcpSocket;
@@ -61,7 +59,7 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
 
     public void connect() throws IOException {
         if (!tcpSocket.isConnected()) {
-            getClientLogger().debug("{} connecting to {}:{}...", clientId, clientConfig.address(), clientConfig.port());
+            getLogger().debug("{} connecting to {}:{}...", clientId, clientConfig.address(), clientConfig.port());
 
             InetSocketAddress address = new InetSocketAddress(clientConfig.address(), clientConfig.port());
             tcpSocket.connect(address);
@@ -73,7 +71,7 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
         tcpIn = new MessageInputStream(tcpSocket.getInputStream(), serializer);
         connectionStatus = ConnectionStatus.InServer;
 
-        getClientLogger().debug("{} connected to {}:{}.", clientId, clientConfig.address(), clientConfig.port());
+        getLogger().debug("{} connected to {}:{}.", clientId, clientConfig.address(), clientConfig.port());
     }
 
     public ConnectionStatus getConnectionStatus() {
@@ -83,8 +81,6 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
     public boolean isConnected() {
         return connectionStatus.ordinal() >= ConnectionStatus.InServer.ordinal();
     }
-
-    public abstract Logger getClientLogger();
 
     public ClientConfig getClientConfig() {
         return clientConfig;
@@ -110,7 +106,7 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
     @Override
     public void run() {
         if (isListening) {
-            getClientLogger().warn("Client {} is already listening to {}:{}.", clientId, clientConfig.address(), clientConfig.port());
+            getLogger().warn("Client {} is already listening to {}:{}.", clientId, clientConfig.address(), clientConfig.port());
             return;
         }
 
@@ -129,37 +125,37 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
     }
 
     protected void listenTCP() {
-        getClientLogger().debug("{} begin listening on TCP.", clientId);
+        getLogger().debug("{} begin listening on TCP.", clientId);
 
         while (isListening && !tcpSocket.isClosed()) {
             try {
-                getClientLogger().trace("{} waiting for new TCP data...", clientId);
+                getLogger().trace("{} waiting for new TCP data...", clientId);
 
                 SentMessageType sentMessageType = (SentMessageType) tcpIn.readObject(SentMessageType.class);
 
-                getClientLogger().trace("{} received TCP: {}", clientId, sentMessageType);
+                getLogger().trace("{} received TCP: {}", clientId, sentMessageType);
 
-                readMessageType(clientId, tcpIn, sentMessageType);
+                readMessageType(NetworkType.TCP, clientId, tcpIn, sentMessageType);
             } catch (IOException exception) {
                 if (!tcpSocket.isClosed() && isListening) {
-                    getClientLogger().error(clientId + " Error receiving TCP packet", exception);
+                    getLogger().error(clientId + " Error receiving TCP packet", exception);
                     break;
                 }
             }
         }
 
-        getClientLogger().debug("{} no longer listening on TCP.", clientId);
+        getLogger().debug("{} no longer listening on TCP.", clientId);
     }
 
     protected void listenUDP() {
-        getClientLogger().debug("{} begin listening on UDP.", clientId);
+        getLogger().debug("{} begin listening on UDP.", clientId);
 
         while (isListening && !udpSocket.isClosed()) {
             try {
                 byte[] receivePacketBuffer = new byte[SendUtils.UdpPacketBufferLength];
                 DatagramPacket packet = new DatagramPacket(receivePacketBuffer, SendUtils.UdpPacketBufferLength);
 
-                getClientLogger().debug("{} waiting for new UDP packet...", clientId);
+                getLogger().debug("{} waiting for new UDP packet...", clientId);
 
                 udpSocket.receive(packet);
 
@@ -170,21 +166,22 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
                 UUID senderId = (UUID) tempStream.readObject(UUID.class);
                 SentMessageType sentMessageType = (SentMessageType) tempStream.readObject(SentMessageType.class);
 
-                getClientLogger().trace("{} sent UDP: {}", senderId, sentMessageType);
+                getLogger().trace("{} received UDP: {}", senderId, sentMessageType);
 
-                readMessageType(senderId, tempStream, sentMessageType);
+                readMessageType(NetworkType.UDP, senderId, tempStream, sentMessageType);
             } catch (IOException exception) {
                 if (!udpSocket.isClosed() && isListening) {
-                    getClientLogger().error(clientId + " Error receiving UDP packet", exception);
+                    getLogger().error(clientId + " Error receiving UDP packet", exception);
                     break;
                 }
             }
         }
 
-        getClientLogger().debug("{} no longer listening on UDP.", clientId);
+        getLogger().debug("{} no longer listening on UDP.", clientId);
     }
 
-    protected abstract void readMessageType(UUID senderId, MessageInputStream in, SentMessageType sentMessageType) throws IOException;
+    protected abstract void readMessageType(NetworkType tcp, UUID senderId, MessageInputStream in, SentMessageType sentMessageType)
+            throws IOException;
 
     public void disconnect() {
         disconnect(NetworkType.TCP);
@@ -200,14 +197,14 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
             connectionStatus = ConnectionStatus.Disconnected;
             shutdown();
         } catch (IOException shutdownException) {
-            getClientLogger().error(clientId + " Error shutting down socket(s)", shutdownException);
+            getLogger().error(clientId + " Error shutting down socket(s)", shutdownException);
         } finally {
             onDisconnect.accept((T) this);
         }
     }
 
     protected void shutdown() throws IOException {
-        getClientLogger().debug("{} shutting down", clientId);
+        getLogger().debug("{} shutting down", clientId);
         tcpSocket.close();
     }
 }

@@ -74,6 +74,11 @@ public class Server extends CommandHandler<ServerClient> {
         return isAcceptingClients;
     }
 
+    @Override
+    public Logger getLogger() {
+        return serverLogger;
+    }
+
     public Lobby getLobby(ServerClient client) {
         for (Lobby lobby : lobbies.values()) {
             if (lobby.hasClient(client)) {
@@ -208,7 +213,8 @@ public class Server extends CommandHandler<ServerClient> {
         isRunning = true;
     }
 
-    public void receiveCommand(CommandTarget commandTarget, UUID commandId, UUID senderId, MessageInputStream stream) throws IOException {
+    public void receiveCommand(CommandTarget commandTarget, long dataLength, UUID commandId, UUID senderId, MessageInputStream stream)
+            throws IOException {
         ServerClient client = getClient(senderId);
 
         if (client == null) {
@@ -216,31 +222,34 @@ public class Server extends CommandHandler<ServerClient> {
         }
 
         switch (commandTarget) {
-            case Client -> client.readCommand(commandId, stream, client);
-            case Server -> readCommand(commandId, stream, client);
+            case Client -> client.readCommand(dataLength, commandId, stream, client);
+            case Server -> readCommand(dataLength, commandId, stream, client);
             case Lobby -> {
                 Lobby lobby = getLobby(client);
 
                 if (lobby == null) {
+                    stream.skipNBytes(dataLength);
                     return;
                 }
 
-                lobby.readCommand(commandId, stream, client);
+                lobby.readCommand(dataLength, commandId, stream, client);
             }
             case Session -> {
                 Lobby lobby = getLobby(client);
 
                 if (lobby == null) {
+                    stream.skipNBytes(dataLength);
                     return;
                 }
 
                 Session session = lobby.getClientSession(client);
 
                 if (session == null) {
+                    stream.skipNBytes(dataLength);
                     return;
                 }
 
-                session.readCommand(commandId, stream, client);
+                session.readCommand(dataLength, commandId, stream, client);
             }
         }
     }

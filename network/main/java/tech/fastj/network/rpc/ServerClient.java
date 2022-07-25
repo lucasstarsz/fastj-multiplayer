@@ -6,6 +6,7 @@ import tech.fastj.network.rpc.message.NetworkType;
 import tech.fastj.network.rpc.message.RequestType;
 import tech.fastj.network.rpc.message.SentMessageType;
 import tech.fastj.network.serial.read.MessageInputStream;
+import tech.fastj.network.serial.util.MessageUtils;
 import tech.fastj.network.serial.write.MessageOutputStream;
 
 import java.io.IOException;
@@ -32,7 +33,7 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
     }
 
     @Override
-    public Logger getClientLogger() {
+    public Logger getLogger() {
         return ServerClientLogger;
     }
 
@@ -79,20 +80,32 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
     }
 
     @Override
-    protected void readMessageType(UUID senderId, MessageInputStream inputStream, SentMessageType sentMessageType) throws IOException {
+    protected void readMessageType(NetworkType networkType, UUID senderId, MessageInputStream inputStream, SentMessageType sentMessageType)
+            throws IOException {
         switch (sentMessageType) {
             case Disconnect -> disconnect();
             case PingRequest -> {
             }
             case RPCCommand -> {
                 CommandTarget commandTarget = (CommandTarget) inputStream.readObject(CommandTarget.class);
+                long dataLength;
+
+                if (networkType == NetworkType.TCP) {
+                    dataLength = inputStream.readLong();
+                } else {
+                    dataLength = inputStream.available() - MessageUtils.UuidBytes;
+                }
+
                 UUID commandId = (UUID) inputStream.readObject(UUID.class);
-                server.receiveCommand(commandTarget, commandId, senderId, inputStream);
+
+                getLogger().trace("{} received RPC command \"{}\" targeting {} with length {}", senderId, commandId, commandTarget, dataLength);
+
+                server.receiveCommand(commandTarget, dataLength, commandId, senderId, inputStream);
             }
             case Request -> {
                 RequestType requestType = (RequestType) inputStream.readObject(RequestType.class);
 
-                getClientLogger().trace("{} received special request: {}", senderId, requestType);
+                getLogger().trace("{} received special request: {}", senderId, requestType);
 
                 server.receiveRequest(requestType, senderId, inputStream);
             }

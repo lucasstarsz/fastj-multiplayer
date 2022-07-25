@@ -8,6 +8,7 @@ import tech.fastj.network.rpc.message.RequestType;
 import tech.fastj.network.rpc.message.SentMessageType;
 import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
 import tech.fastj.network.serial.read.MessageInputStream;
+import tech.fastj.network.serial.util.MessageUtils;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -88,7 +89,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
     }
 
     @Override
-    public Logger getClientLogger() {
+    public Logger getLogger() {
         return ClientLogger;
     }
 
@@ -123,20 +124,30 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
     }
 
     @Override
-    protected void readMessageType(UUID senderId, MessageInputStream inputStream, SentMessageType sentMessageType) throws IOException {
+    protected void readMessageType(NetworkType networkType, UUID senderId, MessageInputStream inputStream, SentMessageType sentMessageType)
+            throws IOException {
         switch (sentMessageType) {
             case Disconnect -> disconnect();
             case PingResponse -> {
             }
             case RPCCommand -> {
                 CommandTarget commandTarget = (CommandTarget) inputStream.readObject(CommandTarget.class);
+                long dataLength;
+
+                if (networkType == NetworkType.TCP) {
+                    dataLength = inputStream.readLong();
+                } else {
+                    dataLength = inputStream.available() - MessageUtils.UuidBytes;
+                }
+
                 UUID commandId = (UUID) inputStream.readObject(UUID.class);
 
                 if (commandTarget != CommandTarget.Client) {
-                    throw new IOException("Received command " + commandId + " targeted at " + commandTarget.name() + " instead of client");
+                    ClientLogger.warn("Received command \"{}\" targeted at {} instead of client", commandId, commandTarget.name());
+                    inputStream.skipNBytes(dataLength);
                 }
 
-                readCommand(commandId, inputStream, this);
+                readCommand(dataLength, commandId, inputStream, this);
             }
         }
     }

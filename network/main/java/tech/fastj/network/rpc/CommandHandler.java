@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+
 public abstract class CommandHandler<T extends ConnectionHandler<?>> {
 
     private final Map<UUID, Command> commands;
@@ -99,10 +101,28 @@ public abstract class CommandHandler<T extends ConnectionHandler<?>> {
         }
     }
 
-    protected void readCommand(UUID commandId, MessageInputStream inputStream, T client) throws IOException {
+    public abstract Logger getLogger();
+
+    protected void readCommand(long dataLength, UUID commandId, MessageInputStream inputStream, T client) throws IOException {
         Classes classes = getClasses(commandId);
         if (classes == null) {
-            throw new IOException("Invalid command: " + idsToCommandIds.get(commandId).formattedToString());
+            getLogger().warn(
+                    "Received unregistered command {} (Command name may have been \"{}\")",
+                    commandId,
+                    idsToCommandIds.get(commandId).name()
+            );
+
+            if (dataLength > inputStream.available()) {
+                getLogger().warn("Received incomplete command {}", idsToCommandIds.get(commandId).formattedToString());
+                inputStream.skipNBytes(inputStream.available());
+            } else {
+                inputStream.skipNBytes(dataLength);
+            }
+        }
+
+        if (dataLength > inputStream.available()) {
+            getLogger().warn("Received incomplete command {}", idsToCommandIds.get(commandId).formattedToString());
+            inputStream.skipNBytes(inputStream.available());
         }
 
         if (classes instanceof Classes0) {
