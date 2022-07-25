@@ -152,7 +152,7 @@ public class Server extends CommandHandler<ServerClient> {
         serverLogger.debug("Server no longer accepting clients.");
     }
 
-    private ServerClient getClient(UUID senderId) {
+    public ServerClient getClient(UUID senderId) {
         for (ServerClient client : allClients) {
             if (senderId.equals(client.clientId)) {
                 return client;
@@ -279,12 +279,15 @@ public class Server extends CommandHandler<ServerClient> {
     public void createLobby(ServerClient client, String lobbyName) throws IOException {
         serverLogger.info("Creating lobby for client {}, named {}", client.getClientId(), lobbyName);
         Lobby lobby = lobbyCreator.apply(client, lobbyName);
+        lobby.receiveNewClient(client);
+
         lobbies.put(lobby.getLobbyIdentifier().id(), lobby);
 
         client.getSerializer().registerSerializer(LobbyIdentifier.class);
 
         client.getTcpOut().writeObject(lobby.getLobbyIdentifier(), LobbyIdentifier.class);
         client.getTcpOut().flush();
+
     }
 
     public void joinLobby(ServerClient client, UUID lobbyId) throws IOException {

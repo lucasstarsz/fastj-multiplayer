@@ -22,7 +22,6 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
     protected final Map<UUID, Session> sessions;
     protected Session currentSession;
     protected UUID homeSessionId;
-    protected UUID newClientSessionId;
 
     private BiConsumer<Session, Session> onSwitchSession;
     private BiConsumer<Lobby, ServerClient> onReceiveNewClient;
@@ -73,10 +72,6 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
         return sessions.get(homeSessionId);
     }
 
-    public Session getNewClientSession() {
-        return sessions.get(newClientSessionId);
-    }
-
     public Server getServer() {
         return server;
     }
@@ -104,17 +99,25 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
     }
 
     public void receiveNewClient(ServerClient client) {
-        clients.add(client);
+        getLogger().debug("Lobby {} received new client {}", lobbyIdentifier.name(), client.getClientId());
 
+        clients.add(client);
         onReceiveNewClient.accept(this, client);
 
-        Session newClientSession = sessions.get(newClientSessionId);
+        Session newClientSession = sessions.get(homeSessionId);
+
         if (newClientSession != null) {
             newClientSession.receiveNewClient(client);
         }
     }
 
     public void stop() {
+        for (Session session : sessions.values()) {
+            session.stop();
+        }
+
+        sessions.clear();
+
         for (int i = clients.size() - 1; i >= 0; i--) {
             clients.get(i).disconnect();
         }
@@ -140,7 +143,6 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
         if (sessions.size() == 1) {
             setCurrentSession(session);
             setHomeSessionId(session.getSessionId());
-            setNewClientSessionId(session.getSessionId());
         }
     }
 
@@ -150,10 +152,6 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
 
     protected void setHomeSessionId(UUID homeSessionId) {
         this.homeSessionId = homeSessionId;
-    }
-
-    protected void setNewClientSessionId(UUID newClientSessionId) {
-        this.newClientSessionId = newClientSessionId;
     }
 
     protected void switchCurrentSession(UUID nextSession) {

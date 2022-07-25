@@ -32,10 +32,10 @@ import org.slf4j.Logger;
 
 public abstract class CommandHandler<T extends ConnectionHandler<?>> {
 
-    private final Map<UUID, Command> commands;
-    private final Map<UUID, Classes> commandClasses;
-    private final Map<UUID, Command.Id> idsToCommandIds;
-    private final Set<Command.Id> commandIds;
+    protected final Map<UUID, Command> commands;
+    protected final Map<UUID, Classes> commandClasses;
+    protected final Map<UUID, Command.Id> idsToCommandIds;
+    protected final Set<Command.Id> commandIds;
 
     protected final Serializer serializer;
 
@@ -190,7 +190,7 @@ public abstract class CommandHandler<T extends ConnectionHandler<?>> {
     }
 
     @SuppressWarnings("unchecked")
-    private Object readObject(Class<?> objectClass, MessageInputStream inputStream) throws IOException {
+    protected Object readObject(Class<?> objectClass, MessageInputStream inputStream) throws IOException {
         Object result;
 
         if (Message.class.isAssignableFrom(objectClass)) {
@@ -258,7 +258,7 @@ public abstract class CommandHandler<T extends ConnectionHandler<?>> {
         idsToCommandIds.put(id.uuid(), id);
     }
 
-    private void idRegisterCheck(Command.Id id) {
+    protected void idRegisterCheck(Command.Id id) {
         if (commandIds.contains(id)) {
             throw new IllegalArgumentException("Command (" + id.formattedToString() + ") has already been registered.");
         }
