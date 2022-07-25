@@ -11,6 +11,8 @@ import tech.fastj.network.rpc.message.NetworkType;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -361,35 +363,44 @@ class ConnectionTests {
     }
 
     @Test
-    void checkPingSystem() throws InterruptedException {
-        int countdownStart = 5;
+    void checkPingsAndKeepAlives() throws InterruptedException {
+        int countdownStart = 50;
         CountDownLatch latch = new CountDownLatch(countdownStart);
         AtomicReference<Client> client = new AtomicReference<>();
 
+        List<Long> pings = new ArrayList<>();
+
         assertDoesNotThrow(() -> {
-            ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
+            ClientConfig clientConfig = new ClientConfig(Port);
             client.set(new Client(clientConfig));
             client.get().connect();
 
             client.get().onPingReceived((ping) -> {
-                ConnectionTestsLogger.debug("Received ping: {}ms", ping / 1_000_000L);
+                long pingMs = TimeUnit.MILLISECONDS.convert(ping, TimeUnit.NANOSECONDS);
+                ConnectionTestsLogger.debug("Received ping: {}ms", pingMs);
+                pings.add(pingMs);
                 latch.countDown();
             });
 
             assertTrue(client.get().startPings(100L, TimeUnit.MILLISECONDS));
             assertTrue(client.get().isSendingPings());
+            assertTrue(client.get().startKeepAlives(3L, TimeUnit.SECONDS));
+            assertTrue(client.get().isSendingKeepAlives());
             client.get().run();
         });
 
-        boolean pingsSuccess = latch.await(10L, TimeUnit.SECONDS);
+        boolean pingsSuccess = latch.await(30L, TimeUnit.SECONDS);
 
         ConnectionTestsLogger.debug("Total pings received: {}", countdownStart - latch.getCount());
+        ConnectionTestsLogger.debug("Average ping: {}ms", pings.stream().mapToLong(Long::longValue).average().orElseThrow());
 
         assertTrue(client.get().stopPings());
+        assertTrue(client.get().stopKeepAlives());
         assertFalse(client.get().isSendingPings());
+        assertFalse(client.get().isSendingKeepAlives());
         client.get().disconnect();
 
-        assertTrue(pingsSuccess, "Should have received five pings");
+        assertTrue(pingsSuccess, "Should have received 500 pings");
     }
 
     @Test

@@ -168,16 +168,55 @@ public class SendUtils {
     }
 
     public static void sendTCPDisconnect(MessageOutputStream tcpOut) throws IOException {
-        tcpOut.writeObject(SentMessageType.Disconnect, SentMessageType.class);
+        byte[] packetData = buildTCPDisconnect();
+        tcpOut.write(packetData);
         tcpOut.flush();
     }
 
-    public static void sendUDPDisconnect(DatagramSocket udpSocket, ClientConfig clientConfig) throws IOException {
-        byte[] packetData = ByteBuffer.allocate(MessageUtils.EnumBytes + MessageUtils.UuidBytes)
-                .putInt(SentMessageType.Disconnect.ordinal())
-                .array();
-
+    public static void sendUDPDisconnect(UUID senderId, DatagramSocket udpSocket, ClientConfig clientConfig) throws IOException {
+        byte[] packetData = buildUDPDisconnect(senderId);
         DatagramPacket packet = buildPacket(clientConfig, packetData);
         udpSocket.send(packet);
+    }
+
+    public static byte[] buildTCPDisconnect() {
+        ByteBuffer packetDataBuffer = ByteBuffer.allocate(MessageUtils.EnumBytes);
+        return packetDataBuffer.putInt(SentMessageType.Disconnect.ordinal())
+                .array();
+    }
+
+    public static byte[] buildUDPDisconnect(UUID senderId) {
+        ByteBuffer packetDataBuffer = ByteBuffer.allocate(MessageUtils.UuidBytes + (MessageUtils.EnumBytes));
+        return packetDataBuffer.putLong(senderId.getMostSignificantBits())
+                .putLong(senderId.getLeastSignificantBits())
+                .putInt(SentMessageType.Disconnect.ordinal())
+                .array();
+    }
+
+    public static void sendTCPKeepAlive(MessageOutputStream tcpOut) throws IOException {
+        byte[] packetData = buildTCPKeepAlive();
+        tcpOut.write(packetData);
+        tcpOut.flush();
+    }
+
+    public static void sendUDPKeepAlive(UUID senderId, DatagramSocket udpSocket, ClientConfig udpConfig)
+            throws IOException {
+        byte[] packetData = buildUDPKeepAlive(senderId);
+        DatagramPacket packet = buildPacket(udpConfig, packetData);
+        udpSocket.send(packet);
+    }
+
+    public static byte[] buildTCPKeepAlive() {
+        ByteBuffer packetDataBuffer = ByteBuffer.allocate(MessageUtils.EnumBytes);
+        return packetDataBuffer.putInt(SentMessageType.KeepAlive.ordinal())
+                .array();
+    }
+
+    public static byte[] buildUDPKeepAlive(UUID senderId) {
+        ByteBuffer packetDataBuffer = ByteBuffer.allocate(MessageUtils.UuidBytes + (MessageUtils.EnumBytes));
+        return packetDataBuffer.putLong(senderId.getMostSignificantBits())
+                .putLong(senderId.getLeastSignificantBits())
+                .putInt(SentMessageType.KeepAlive.ordinal())
+                .array();
     }
 }

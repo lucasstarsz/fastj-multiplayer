@@ -73,4 +73,6 @@ public interface NetworkSender {
     default void sendDisconnect(NetworkType networkType) throws IOException {
         this.sendDisconnect(networkType, null);
     }
+
+    void sendKeepAlive(NetworkType networkType) throws IOException;
 }

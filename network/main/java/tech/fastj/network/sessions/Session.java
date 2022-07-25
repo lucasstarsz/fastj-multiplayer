@@ -1,5 +1,7 @@
 package tech.fastj.network.sessions;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tech.fastj.network.rpc.Client;
 import tech.fastj.network.rpc.NetworkSender;
 import tech.fastj.network.rpc.SendUtils;
@@ -24,9 +26,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public abstract class Session extends SessionHandler<ServerClient> implements NetworkSender {
     private static final Logger SessionLogger = LoggerFactory.getLogger(Client.class);
 
@@ -37,14 +36,15 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
     private BiConsumer<Session, ServerClient> onClientDisconnect;
     private ExecutorService sequenceRunner;
 
-
     protected Session(Lobby lobby, String name, List<ServerClient> clients) {
         this.lobby = lobby;
         this.clients = clients;
         sessionIdentifier = new SessionIdentifier(UUID.randomUUID(), name);
 
-        onReceiveNewClient = (session, client) -> {};
-        onClientDisconnect = (session, client) -> {};
+        onReceiveNewClient = (session, client) -> {
+        };
+        onClientDisconnect = (session, client) -> {
+        };
     }
 
     public UUID getSessionId() {
@@ -99,7 +99,6 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
         }
     }
 
-
     @Override
     public void sendRequest(NetworkType networkType, RequestType requestType, byte[] rawData) throws IOException {
         SessionLogger.trace(
@@ -134,6 +133,20 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
 
         for (ServerClient client : clients) {
             client.disconnect();
+        }
+    }
+
+    @Override
+    public void sendKeepAlive(NetworkType networkType) throws IOException {
+        SessionLogger.trace(
+                "Session {} sending {}  \"keep-alive\" to {} client(s)",
+                sessionIdentifier.sessionId(),
+                networkType.name(),
+                clients.size()
+        );
+
+        for (ServerClient client : clients) {
+            client.sendKeepAlive(networkType);
         }
     }
 

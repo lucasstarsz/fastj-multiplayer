@@ -1,5 +1,7 @@
 package tech.fastj.network.rpc;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tech.fastj.network.config.ClientConfig;
 import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.rpc.message.CommandTarget;
@@ -20,9 +22,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.LongConsumer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class Client extends ConnectionHandler<Client> implements Runnable, NetworkSender {
 
     private static final Logger ClientLogger = LoggerFactory.getLogger(Client.class);
@@ -32,11 +31,16 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
 
     private ScheduledExecutorService pingSender;
     private boolean isSendingPings;
+
+    private ScheduledExecutorService keepAliveSender;
+    private boolean isSendingKeepAlives;
+
     private LongConsumer onPingReceived;
 
     public Client(ClientConfig clientConfig) throws IOException {
         super(clientConfig);
-        onPingReceived = (ping) -> {};
+        onPingReceived = (ping) -> {
+        };
     }
 
     @Override
@@ -121,6 +125,46 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
         return isSendingPings;
     }
 
+    public boolean startKeepAlives(long delay, TimeUnit delayUnit) {
+        if (isSendingKeepAlives) {
+            return false;
+        }
+
+        isSendingKeepAlives = true;
+
+        keepAliveSender = Executors.newSingleThreadScheduledExecutor();
+        keepAliveSender.scheduleAtFixedRate(this::sendKeepAlives, 0L, delay, delayUnit);
+
+        return true;
+    }
+
+    private void sendKeepAlives() {
+        try {
+            sendKeepAlive(NetworkType.TCP);
+            sendKeepAlive(NetworkType.UDP);
+        } catch (IOException exception) {
+            ClientLogger.error("Unable to send keep-alive(s). Stopping sending keep-alives.", exception);
+            stopKeepAlives();
+        }
+    }
+
+    public boolean stopKeepAlives() {
+        if (!isSendingKeepAlives) {
+            return false;
+        }
+
+        isSendingKeepAlives = false;
+
+        keepAliveSender.shutdownNow();
+        keepAliveSender = null;
+
+        return true;
+    }
+
+    public boolean isSendingKeepAlives() {
+        return isSendingKeepAlives;
+    }
+
     public LobbyIdentifier[] getAvailableLobbies() throws IOException {
         if (!isConnected()) {
             throw new IOException("Cannot ask for available lobbies while client is not connected.");
@@ -196,7 +240,17 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
 
         switch (networkType) {
             case TCP -> SendUtils.sendTCPDisconnect(tcpOut);
-            case UDP -> SendUtils.sendUDPDisconnect(udpSocket, clientConfig);
+            case UDP -> SendUtils.sendUDPDisconnect(clientId, udpSocket, clientConfig);
+        }
+    }
+
+    @Override
+    public void sendKeepAlive(NetworkType networkType) throws IOException {
+        ClientLogger.trace("{} sending {} keep-alive to {}:{}", clientId, networkType.name(), clientConfig.address(), clientConfig.port());
+
+        switch (networkType) {
+            case TCP -> SendUtils.sendTCPKeepAlive(tcpOut);
+            case UDP -> SendUtils.sendUDPKeepAlive(clientId, udpSocket, clientConfig);
         }
     }
 
@@ -204,6 +258,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
     protected void readMessageType(NetworkType networkType, UUID senderId, MessageInputStream inputStream, SentMessageType sentMessageType)
             throws IOException {
         switch (sentMessageType) {
+            case KeepAlive -> ClientLogger.debug("{} Received {} keep-alive packet.", senderId, networkType);
             case Disconnect -> disconnect();
             case PingResponse -> {
                 long currentTimestamp = System.nanoTime();

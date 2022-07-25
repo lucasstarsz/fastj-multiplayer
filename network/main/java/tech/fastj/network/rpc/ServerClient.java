@@ -1,5 +1,7 @@
 package tech.fastj.network.rpc;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tech.fastj.network.config.ClientConfig;
 import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.rpc.message.CommandTarget;
@@ -17,9 +19,6 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.UUID;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ServerClient extends ConnectionHandler<ServerClient> implements Runnable, NetworkSender {
 
@@ -88,7 +87,17 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
 
         switch (networkType) {
             case TCP -> SendUtils.sendTCPDisconnect(tcpOut);
-            case UDP -> SendUtils.sendUDPDisconnect(udpSocket, udpConfig);
+            case UDP -> SendUtils.sendUDPDisconnect(clientId, udpSocket, udpConfig);
+        }
+    }
+
+    @Override
+    public void sendKeepAlive(NetworkType networkType) throws IOException {
+        ServerClientLogger.trace("{} sending {} keep-alive to {}:{}", clientId, networkType.name(), clientConfig.address(), clientConfig.port());
+
+        switch (networkType) {
+            case TCP -> SendUtils.sendTCPKeepAlive(tcpOut);
+            case UDP -> SendUtils.sendUDPKeepAlive(clientId, udpSocket, udpConfig);
         }
     }
 
@@ -96,6 +105,10 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
     protected void readMessageType(NetworkType networkType, UUID senderId, MessageInputStream inputStream, SentMessageType sentMessageType)
             throws IOException {
         switch (sentMessageType) {
+            case KeepAlive -> {
+                ServerClientLogger.debug("{} Received {} keep-alive packet. Now returning the favor.", senderId, networkType);
+                sendKeepAlive(networkType);
+            }
             case Disconnect -> disconnect();
             case PingRequest -> {
                 long timestamp = inputStream.readLong();
