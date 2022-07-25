@@ -376,7 +376,7 @@ class ConnectionTests {
                 latch.countDown();
             });
 
-            assertTrue(client.get().startPings(1L, TimeUnit.SECONDS));
+            assertTrue(client.get().startPings(100L, TimeUnit.MILLISECONDS));
             assertTrue(client.get().isSendingPings());
             client.get().run();
         });
