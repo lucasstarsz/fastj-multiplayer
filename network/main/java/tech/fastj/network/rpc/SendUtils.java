@@ -5,6 +5,7 @@ import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.RequestType;
 import tech.fastj.network.rpc.message.SentMessageType;
+import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
 import tech.fastj.network.serial.util.MessageUtils;
 import tech.fastj.network.serial.write.MessageOutputStream;
 
@@ -12,6 +13,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.UUID;
 
 public class SendUtils {
@@ -217,6 +219,32 @@ public class SendUtils {
         return packetDataBuffer.putLong(senderId.getMostSignificantBits())
                 .putLong(senderId.getLeastSignificantBits())
                 .putInt(SentMessageType.KeepAlive.ordinal())
+                .array();
+    }
+
+    public static void sendTCPLobbyUpdate(MessageOutputStream tcpOut, byte[] rawData) throws IOException {
+        byte[] packetData = bulidTCPLobbyUpdate(rawData);
+        tcpOut.write(packetData);
+        tcpOut.flush();
+    }
+
+    public static byte[] bulidTCPLobbyUpdate(byte[] rawData) {
+        ByteBuffer packetDataBuffer = ByteBuffer.allocate(MessageUtils.EnumBytes + rawData.length);
+        return packetDataBuffer.putInt(SentMessageType.LobbyUpdate.ordinal())
+                .put(rawData)
+                .array();
+    }
+
+    public static void sendTCPSessionUpdate(MessageOutputStream tcpOut, byte[] rawData) throws IOException {
+        byte[] packetData = bulidTCPSessionUpdate(rawData);
+        tcpOut.write(packetData);
+        tcpOut.flush();
+    }
+
+    public static byte[] bulidTCPSessionUpdate(byte[] rawData) {
+        ByteBuffer packetDataBuffer = ByteBuffer.allocate(MessageUtils.EnumBytes + rawData.length);
+        return packetDataBuffer.putInt(SentMessageType.SessionUpdate.ordinal())
+                .put(rawData)
                 .array();
     }
 }

@@ -11,6 +11,7 @@ import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
 import tech.fastj.network.rpc.message.RequestType;
 import tech.fastj.network.rpc.message.prebuilt.SessionIdentifier;
+import tech.fastj.network.serial.Serializer;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -73,6 +74,11 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
         }
 
         return sequenceRunner.submit(sessionSequence::start);
+    }
+
+    @Override
+    public Serializer getSerializer() {
+        return serializer;
     }
 
     @Override
@@ -164,8 +170,9 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
         }
     }
 
-    public void receiveNewClient(ServerClient client) {
+    public void receiveNewClient(ServerClient client) throws IOException {
         clients.add(client);
+        client.sendSessionUpdate(sessionIdentifier);
         onReceiveNewClient.accept(this, client);
     }
 

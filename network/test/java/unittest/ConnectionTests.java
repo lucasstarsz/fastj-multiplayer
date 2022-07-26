@@ -68,7 +68,7 @@ class ConnectionTests {
     }
 
     @AfterAll
-    static void stopServer() throws IOException {
+    static void stopServer() {
         server.stop();
     }
 
@@ -386,7 +386,6 @@ class ConnectionTests {
             assertTrue(client.get().isSendingPings());
             assertTrue(client.get().startKeepAlives(3L, TimeUnit.SECONDS));
             assertTrue(client.get().isSendingKeepAlives());
-            client.get().run();
         });
 
         boolean pingsSuccess = latch.await(30L, TimeUnit.SECONDS);

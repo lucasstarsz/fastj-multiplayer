@@ -5,6 +5,7 @@ import tech.fastj.network.rpc.Server;
 import tech.fastj.network.rpc.ServerClient;
 import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -15,7 +16,7 @@ import java.util.function.BiConsumer;
 
 public abstract class Lobby extends CommandHandler<ServerClient> {
 
-    protected final LobbyIdentifier lobbyIdentifier;
+    protected LobbyIdentifier lobbyIdentifier;
 
     protected final Server server;
     protected final List<ServerClient> clients;
@@ -31,11 +32,14 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
         this.server = server;
         clients = new ArrayList<>(expectedLobbySize);
         sessions = new HashMap<>();
-        lobbyIdentifier = new LobbyIdentifier(UUID.randomUUID(), name);
+        lobbyIdentifier = new LobbyIdentifier(UUID.randomUUID(), name, 0, expectedLobbySize);
 
-        onSwitchSession = (oldSession, newSession) -> {};
-        onReceiveNewClient = (lobby, client) -> {};
-        onClientDisconnect = (lobby, client) -> {};
+        onSwitchSession = (oldSession, newSession) -> {
+        };
+        onReceiveNewClient = (lobby, client) -> {
+        };
+        onClientDisconnect = (lobby, client) -> {
+        };
     }
 
     public LobbyIdentifier getLobbyIdentifier() {
@@ -98,11 +102,15 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
         return null;
     }
 
-    public void receiveNewClient(ServerClient client) {
+    public void receiveNewClient(ServerClient client) throws IOException {
         getLogger().debug("Lobby {} received new client {}", lobbyIdentifier.name(), client.getClientId());
 
         clients.add(client);
+
         onReceiveNewClient.accept(this, client);
+        lobbyIdentifier = new LobbyIdentifier(lobbyIdentifier.id(), lobbyIdentifier.name(), clients.size(), lobbyIdentifier.maxPlayers());
+
+        client.sendLobbyUpdate(lobbyIdentifier);
 
         Session newClientSession = sessions.get(homeSessionId);
 

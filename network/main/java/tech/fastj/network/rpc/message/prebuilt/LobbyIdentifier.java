@@ -4,4 +4,4 @@ import tech.fastj.network.serial.Message;
 
 import java.util.UUID;
 
-public record LobbyIdentifier(UUID id, String name) implements Message {}
+public record LobbyIdentifier(UUID id, String name, int currentPlayerCount, int maxPlayers) implements Message {}

@@ -60,7 +60,7 @@ class LobbyTests {
     }
 
     @AfterAll
-    static void stopServer() throws IOException {
+    static void stopServer() {
         server.stop();
     }
 
@@ -114,7 +114,8 @@ class LobbyTests {
             LobbyIdentifier[] allLobbies1 = client1.getAvailableLobbies();
             LobbyIdentifier[] allLobbies2 = client1.getAvailableLobbies();
 
-            assertEquals(newLobby, joinedLobby);
+            assertEquals(newLobby.id(), joinedLobby.id());
+            assertEquals(newLobby.name(), joinedLobby.name());
             assertArrayEquals(allLobbies1, allLobbies2);
 
             assertEquals(2, server.getLobbies().get(newLobby.id()).getClients().size());

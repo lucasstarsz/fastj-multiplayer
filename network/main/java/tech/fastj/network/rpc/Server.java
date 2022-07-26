@@ -1,8 +1,11 @@
 package tech.fastj.network.rpc;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tech.fastj.network.config.ServerConfig;
 import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.RequestType;
+import tech.fastj.network.rpc.message.SentMessageType;
 import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
 import tech.fastj.network.serial.read.MessageInputStream;
 import tech.fastj.network.sessions.Lobby;
@@ -22,9 +25,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiFunction;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class Server extends CommandHandler<ServerClient> {
 
@@ -108,15 +108,19 @@ public class Server extends CommandHandler<ServerClient> {
         lobbies.clear();
     }
 
-    public void stop() throws IOException {
+    public void stop() {
         serverLogger.debug("stopping server");
 
         disallowClients();
         stopAllLobbies();
         disconnectAllClients();
 
-        tcpServer.close();
-        udpServer.close();
+        try {
+            tcpServer.close();
+            udpServer.close();
+        } catch (IOException exception) {
+            serverLogger.error("Issue while closing server sockets", exception);
+        }
 
         isRunning = false;
     }
@@ -272,22 +276,20 @@ public class Server extends CommandHandler<ServerClient> {
 
         client.getSerializer().registerSerializer(LobbyIdentifier.class);
 
+        client.getTcpOut().writeObject(SentMessageType.AvailableLobbiesUpdate, SentMessageType.class);
         client.getTcpOut().writeArray(lobbyIdentifiers);
         client.getTcpOut().flush();
     }
 
     public void createLobby(ServerClient client, String lobbyName) throws IOException {
         serverLogger.info("Creating lobby for client {}, named {}", client.getClientId(), lobbyName);
-        Lobby lobby = lobbyCreator.apply(client, lobbyName);
-        lobby.receiveNewClient(client);
 
+        Lobby lobby = lobbyCreator.apply(client, lobbyName);
         lobbies.put(lobby.getLobbyIdentifier().id(), lobby);
 
         client.getSerializer().registerSerializer(LobbyIdentifier.class);
-
-        client.getTcpOut().writeObject(lobby.getLobbyIdentifier(), LobbyIdentifier.class);
-        client.getTcpOut().flush();
-
+        lobby.receiveNewClient(client);
+        client.setOnDisconnect(lobby::clientDisconnect);
     }
 
     public void joinLobby(ServerClient client, UUID lobbyId) throws IOException {
@@ -298,15 +300,11 @@ public class Server extends CommandHandler<ServerClient> {
             return;
         }
 
-        lobby.receiveNewClient(client);
-        client.setOnDisconnect(lobby::clientDisconnect);
-
         serverLogger.info("Client {} joining lobby {}", client.getClientId(), lobby.getLobbyIdentifier().name());
 
         client.getSerializer().registerSerializer(LobbyIdentifier.class);
-
-        client.getTcpOut().writeObject(lobby.getLobbyIdentifier(), LobbyIdentifier.class);
-        client.getTcpOut().flush();
+        lobby.receiveNewClient(client);
+        client.setOnDisconnect(lobby::clientDisconnect);
     }
 
     public void receiveRequest(RequestType requestType, long dataLength, UUID senderId, MessageInputStream inputStream)

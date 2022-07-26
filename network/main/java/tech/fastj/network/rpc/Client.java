@@ -9,6 +9,7 @@ import tech.fastj.network.rpc.message.NetworkType;
 import tech.fastj.network.rpc.message.RequestType;
 import tech.fastj.network.rpc.message.SentMessageType;
 import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
+import tech.fastj.network.rpc.message.prebuilt.SessionIdentifier;
 import tech.fastj.network.serial.read.MessageInputStream;
 import tech.fastj.network.serial.util.MessageUtils;
 
@@ -17,9 +18,11 @@ import java.net.DatagramPacket;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.LongConsumer;
 
 public class Client extends ConnectionHandler<Client> implements Runnable, NetworkSender {
@@ -37,10 +40,27 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
 
     private LongConsumer onPingReceived;
 
+    private LobbyIdentifier currentLobby;
+    private SessionIdentifier currentSession;
+    private LobbyIdentifier[] tempAvailableLobbies;
+
+    private BiConsumer<LobbyIdentifier, LobbyIdentifier> onLobbyUpdate;
+    private BiConsumer<SessionIdentifier, SessionIdentifier> onSessionUpdate;
+
+    private volatile boolean recentLobbyUpdate;
+
+    private final ExecutorService updateFreshener;
+
     public Client(ClientConfig clientConfig) throws IOException {
         super(clientConfig);
         onPingReceived = (ping) -> {
         };
+        onLobbyUpdate = (oldLobby, newLobby) -> {
+        };
+        onSessionUpdate = (oldSession, newSession) -> {
+        };
+
+        updateFreshener = Executors.newWorkStealingPool();
     }
 
     @Override
@@ -69,6 +89,16 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
 
         tcpOut.writeInt(udpSocket.getLocalPort());
         tcpOut.flush();
+
+        run();
+    }
+
+    public void onLobbyUpdate(BiConsumer<LobbyIdentifier, LobbyIdentifier> onLobbyUpdate) {
+        this.onLobbyUpdate = onLobbyUpdate;
+    }
+
+    public void onSessionUpdate(BiConsumer<SessionIdentifier, SessionIdentifier> onSessionUpdate) {
+        this.onSessionUpdate = onSessionUpdate;
     }
 
     public void onPingReceived(LongConsumer onPingReceived) {
@@ -165,48 +195,56 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
         return isSendingKeepAlives;
     }
 
-    public LobbyIdentifier[] getAvailableLobbies() throws IOException {
+    public LobbyIdentifier[] getAvailableLobbies() throws IOException, InterruptedException {
         if (!isConnected()) {
             throw new IOException("Cannot ask for available lobbies while client is not connected.");
         }
 
-        if (isListening) {
-            throw new IOException("Cannot ask for available lobbies while listening for commands.");
-        }
-
         sendRequest(NetworkType.TCP, RequestType.GetAvailableLobbies);
 
-        return (LobbyIdentifier[]) tcpIn.readObject(LobbyIdentifier[].class);
+        while (tempAvailableLobbies == null && isListening) {
+            TimeUnit.MILLISECONDS.sleep(1L);
+        }
+        LobbyIdentifier[] results = tempAvailableLobbies;
+        tempAvailableLobbies = null;
+
+        return results;
     }
 
-    public LobbyIdentifier createLobby() throws IOException {
-        return createLobby(null);
+    public LobbyIdentifier getCurrentLobby() {
+        return currentLobby;
     }
 
-    public LobbyIdentifier createLobby(String lobbyName) throws IOException {
+    public SessionIdentifier getCurrentSession() {
+        return currentSession;
+    }
+
+    public LobbyIdentifier createLobby(String lobbyName) throws IOException, InterruptedException {
         if (connectionStatus.ordinal() < ConnectionStatus.InServer.ordinal()) {
             throw new IOException("Cannot create lobby while client is not connected.");
         }
 
-        if (isListening) {
-            throw new IOException("Cannot create lobby while listening for commands.");
+        sendRequest(NetworkType.TCP, RequestType.CreateLobby, serializer.writeObject(lobbyName, String.class));
+
+        while (!recentLobbyUpdate && isListening) {
+            TimeUnit.MILLISECONDS.sleep(1L);
         }
 
-        sendRequest(NetworkType.TCP, RequestType.CreateLobby, serializer.writeObject(lobbyName, String.class));
-        return (LobbyIdentifier) tcpIn.readObject(LobbyIdentifier.class);
+        return currentLobby;
     }
 
-    public LobbyIdentifier joinLobby(UUID lobbyId) throws IOException {
+    public LobbyIdentifier joinLobby(UUID lobbyId) throws IOException, InterruptedException {
         if (connectionStatus.ordinal() < ConnectionStatus.InServer.ordinal()) {
             throw new IOException("Cannot join lobby while client is not connected.");
         }
 
-        if (isListening) {
-            throw new IOException("Cannot join lobby while listening for commands.");
+        sendRequest(NetworkType.TCP, RequestType.JoinLobby, serializer.writeObject(lobbyId, UUID.class));
+
+        while (!recentLobbyUpdate && isListening) {
+            TimeUnit.MILLISECONDS.sleep(1L);
         }
 
-        sendRequest(NetworkType.TCP, RequestType.JoinLobby, serializer.writeObject(lobbyId, UUID.class));
-        return (LobbyIdentifier) tcpIn.readObject(LobbyIdentifier.class);
+        return currentLobby;
     }
 
     @Override
@@ -266,6 +304,29 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
                 long pingNanos = currentTimestamp - otherTimestamp;
                 onPingReceived.accept(pingNanos);
             }
+            case LobbyUpdate -> {
+                LobbyIdentifier newLobby = (LobbyIdentifier) inputStream.readObject(LobbyIdentifier.class);
+                LobbyIdentifier oldLobby = currentLobby;
+
+                currentLobby = newLobby;
+                recentLobbyUpdate = true;
+
+                updateFreshener.submit(() -> {
+                    TimeUnit.MILLISECONDS.sleep(20L);
+                    recentLobbyUpdate = false;
+                    return 0;
+                });
+
+                onLobbyUpdate.accept(oldLobby, newLobby);
+            }
+            case SessionUpdate -> {
+                SessionIdentifier newSession = (SessionIdentifier) inputStream.readObject(SessionIdentifier.class);
+                SessionIdentifier oldSession = currentSession;
+                currentSession = newSession;
+
+                onSessionUpdate.accept(oldSession, newSession);
+            }
+            case AvailableLobbiesUpdate -> tempAvailableLobbies = (LobbyIdentifier[]) inputStream.readObject(LobbyIdentifier[].class);
             case RPCCommand -> {
                 CommandTarget commandTarget = (CommandTarget) inputStream.readObject(CommandTarget.class);
                 long dataLength;
@@ -297,6 +358,9 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
     @Override
     protected void shutdown() throws IOException {
         super.shutdown();
+        stopKeepAlives();
+        stopPings();
+        updateFreshener.shutdownNow();
         udpSocket.close();
     }
 }

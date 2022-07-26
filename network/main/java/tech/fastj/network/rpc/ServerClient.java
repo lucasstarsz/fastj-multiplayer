@@ -8,6 +8,8 @@ import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
 import tech.fastj.network.rpc.message.RequestType;
 import tech.fastj.network.rpc.message.SentMessageType;
+import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
+import tech.fastj.network.rpc.message.prebuilt.SessionIdentifier;
 import tech.fastj.network.serial.read.MessageInputStream;
 import tech.fastj.network.serial.util.MessageUtils;
 import tech.fastj.network.serial.write.MessageOutputStream;
@@ -99,6 +101,16 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
             case TCP -> SendUtils.sendTCPKeepAlive(tcpOut);
             case UDP -> SendUtils.sendUDPKeepAlive(clientId, udpSocket, udpConfig);
         }
+    }
+
+    public void sendLobbyUpdate(LobbyIdentifier lobbyUpdate) throws IOException {
+        ServerClientLogger.trace("{} sending TCP lobby update to {}:{}", clientId, clientConfig.address(), clientConfig.port());
+        SendUtils.sendTCPLobbyUpdate(tcpOut, serializer.writeMessage(lobbyUpdate));
+    }
+
+    public void sendSessionUpdate(SessionIdentifier sessionUpdate) throws IOException {
+        ServerClientLogger.trace("{} sending TCP session update to {}:{}", clientId, clientConfig.address(), clientConfig.port());
+        SendUtils.sendTCPSessionUpdate(tcpOut, serializer.writeMessage(sessionUpdate));
     }
 
     @Override

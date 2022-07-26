@@ -5,6 +5,9 @@ public enum SentMessageType {
     Disconnect,
     PingRequest,
     PingResponse,
+    LobbyUpdate,
+    SessionUpdate,
+    AvailableLobbiesUpdate,
     RPCCommand,
     Request
 }
