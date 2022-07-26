@@ -45,3 +45,15 @@ gradle.properties
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
+
+# CA and other authorization files
+*.pkcs12
+*.jks
+*.cer
+
+# Game Asset Files/Folders
+*.psdf
+*.obj
+*.mtl
+*.ttf
+*.wav

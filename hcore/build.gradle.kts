@@ -21,6 +21,7 @@ repositories.maven { setUrl("https://jitpack.io/") }
 repositories.mavenCentral()
 
 dependencies.implementation(libs.bundles.fastj)
+dependencies.implementation(projects.network)
 
 dependencies.testImplementation(dependencies.platform("org.junit:junit-bom:5.8.2"))
 dependencies.testImplementation("org.junit.jupiter:junit-jupiter:5.8.2")
