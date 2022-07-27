@@ -3,7 +3,9 @@ package tech.fastj.partyhouse.util;
 import tech.fastj.engine.FastJEngine;
 import tech.fastj.logging.Log;
 
-import java.awt.*;
+import java.awt.Font;
+import java.awt.FontFormatException;
+import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.io.InputStream;
 

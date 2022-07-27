@@ -1,6 +1,17 @@
 package tech.fastj.partyhouse.scenes.settings;
 
 import tech.fastj.engine.FastJEngine;
+import tech.fastj.logging.Log;
+import tech.fastj.math.Pointf;
+import tech.fastj.math.Transform2D;
+import tech.fastj.graphics.display.FastJCanvas;
+import tech.fastj.graphics.game.Text2D;
+
+import tech.fastj.systems.control.Scene;
+import tech.fastj.systems.control.SceneManager;
+
+import java.awt.Color;
+
 import tech.fastj.partyhouse.ui.ArrowButton;
 import tech.fastj.partyhouse.ui.BetterButton;
 import tech.fastj.partyhouse.user.User;
@@ -8,15 +19,6 @@ import tech.fastj.partyhouse.util.Colors;
 import tech.fastj.partyhouse.util.Fonts;
 import tech.fastj.partyhouse.util.SceneNames;
 import tech.fastj.partyhouse.util.Shapes;
-import tech.fastj.graphics.display.FastJCanvas;
-import tech.fastj.graphics.game.Text2D;
-import tech.fastj.logging.Log;
-import tech.fastj.math.Pointf;
-import tech.fastj.math.Transform2D;
-import tech.fastj.systems.control.Scene;
-import tech.fastj.systems.control.SceneManager;
-
-import java.awt.*;
 
 public class Settings extends Scene {
 
@@ -38,9 +40,9 @@ public class Settings extends Scene {
         Pointf center = canvas.getCanvasCenter();
 
         titleText = Text2D.create("Settings")
-                .withFont(Fonts.TitleTextFont)
-                .withTransform(Pointf.subtract(center, 100f, 200f), Transform2D.DefaultRotation, Transform2D.DefaultScale)
-                .build();
+            .withFont(Fonts.TitleTextFont)
+            .withTransform(Pointf.subtract(center, 100f, 200f), Transform2D.DefaultRotation, Transform2D.DefaultScale)
+            .build();
         drawableManager.addGameObject(titleText);
 
 //        difficultyText = Text2D.create("Game Difficulty")

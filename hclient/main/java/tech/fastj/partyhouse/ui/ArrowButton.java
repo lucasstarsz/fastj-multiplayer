@@ -1,21 +1,27 @@
 package tech.fastj.partyhouse.ui;
 
 import tech.fastj.engine.FastJEngine;
+import tech.fastj.math.Pointf;
 import tech.fastj.graphics.game.Polygon2D;
 import tech.fastj.graphics.game.RenderStyle;
 import tech.fastj.graphics.ui.EventCondition;
 import tech.fastj.graphics.ui.UIElement;
 import tech.fastj.graphics.util.DrawUtil;
+
 import tech.fastj.input.mouse.Mouse;
 import tech.fastj.input.mouse.MouseAction;
 import tech.fastj.input.mouse.MouseActionListener;
 import tech.fastj.input.mouse.MouseButtons;
 import tech.fastj.input.mouse.events.MouseButtonEvent;
-import tech.fastj.math.Pointf;
 import tech.fastj.systems.control.Scene;
 import tech.fastj.systems.control.SimpleManager;
 
-import java.awt.*;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
+import java.awt.Paint;
 import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
@@ -61,26 +67,28 @@ public class ArrowButton extends UIElement<MouseButtonEvent> implements MouseAct
         float arrowHorizontalLength = (float) Math.sqrt(arrowLength * arrowLength - (arrowLength / 2f) * (arrowLength / 2f));
 
         Pointf[] arrowLeftCoords = {
-                new Pointf(arrowPadding.x, arrowCenter.y),
-                new Pointf(arrowPadding.x + arrowHorizontalLength, arrowPadding.y),
-                new Pointf(arrowPadding.x + arrowHorizontalLength, initialSize.y - arrowPadding.y)
+            new Pointf(arrowPadding.x, arrowCenter.y),
+            new Pointf(arrowPadding.x + arrowHorizontalLength, arrowPadding.y),
+            new Pointf(arrowPadding.x + arrowHorizontalLength, initialSize.y - arrowPadding.y)
         };
+
         arrowLeft = Polygon2D.create(arrowLeftCoords)
-                .withRenderStyle(RenderStyle.FillAndOutline)
-                .withFill(Color.white)
-                .withOutline(new BasicStroke(1, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND), Color.black)
-                .build();
+            .withRenderStyle(RenderStyle.FillAndOutline)
+            .withFill(Color.white)
+            .withOutline(new BasicStroke(1, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND), Color.black)
+            .build();
 
         Pointf[] arrowRightCoords = {
-                new Pointf(initialSize.x - arrowPadding.x, arrowCenter.y),
-                new Pointf(initialSize.x - (arrowPadding.x + arrowHorizontalLength), arrowPadding.y),
-                new Pointf(initialSize.x - (arrowPadding.x + arrowHorizontalLength), initialSize.y - arrowPadding.y)
+            new Pointf(initialSize.x - arrowPadding.x, arrowCenter.y),
+            new Pointf(initialSize.x - (arrowPadding.x + arrowHorizontalLength), arrowPadding.y),
+            new Pointf(initialSize.x - (arrowPadding.x + arrowHorizontalLength), initialSize.y - arrowPadding.y)
         };
+
         arrowRight = Polygon2D.create(arrowRightCoords)
-                .withRenderStyle(RenderStyle.FillAndOutline)
-                .withFill(Color.white)
-                .withOutline(new BasicStroke(1, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND), Color.black)
-                .build();
+            .withRenderStyle(RenderStyle.FillAndOutline)
+            .withFill(Color.white)
+            .withOutline(new BasicStroke(1, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND), Color.black)
+            .build();
 
         this.paint = DefaultFill;
         this.font = DefaultFont;
@@ -234,10 +242,10 @@ public class ArrowButton extends UIElement<MouseButtonEvent> implements MouseAct
         Rectangle2D.Float renderPathBounds = (Rectangle2D.Float) collisionPath.getBounds2D();
 
         textBounds = new Rectangle2D.Float(
-                (renderPathBounds.width - textWidth) / 2f,
-                textHeight / 1.25f,
-                textWidth,
-                textHeight
+            (renderPathBounds.width - textWidth) / 2f,
+            textHeight / 1.25f,
+            textWidth,
+            textHeight
         );
 
         Rectangle2D.Float newPathBounds = (Rectangle2D.Float) super.collisionPath.getBounds2D();

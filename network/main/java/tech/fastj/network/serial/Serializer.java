@@ -20,18 +20,18 @@ public class Serializer {
     private final Map<Class<?>, MessageSerializer<?>> typeClassesToSerializers;
 
     private static final Set<Class<?>> DefaultAllowedTypes = Set.of(
-            boolean.class, Boolean.class,
-            byte.class, Byte.class,
-            short.class, Short.class,
-            int.class, Integer.class,
-            long.class, Long.class,
-            float.class, Float.class,
-            double.class, Double.class,
-            byte[].class,
-            int[].class,
-            float[].class,
-            String.class,
-            UUID.class
+        boolean.class, Boolean.class,
+        byte.class, Byte.class,
+        short.class, Short.class,
+        int.class, Integer.class,
+        long.class, Long.class,
+        float.class, Float.class,
+        double.class, Double.class,
+        byte[].class,
+        int[].class,
+        float[].class,
+        String.class,
+        UUID.class
     );
 
     public Serializer() {
@@ -70,7 +70,7 @@ public class Serializer {
     }
 
     public Message readMessage(MessageInputStream inputStream, Class<? extends Message> networkableClass)
-            throws IOException {
+        throws IOException {
         try {
             boolean isMessageNull = inputStream.readBoolean();
 

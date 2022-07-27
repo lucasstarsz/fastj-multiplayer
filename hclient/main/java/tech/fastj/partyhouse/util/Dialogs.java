@@ -6,15 +6,15 @@ import tech.fastj.graphics.dialog.DialogOptions;
 import tech.fastj.graphics.dialog.DialogUtil;
 import tech.fastj.graphics.display.SimpleDisplay;
 
-import javax.swing.*;
+import javax.swing.SwingUtilities;
 
 public class Dialogs {
     public static void confirmExit() {
         SwingUtilities.invokeLater(() -> {
             DialogConfig confirmExitConfig = DialogConfig.create().withTitle("Exit?")
-                    .withPrompt("Are you sure you want to exit?")
-                    .withParentComponent(FastJEngine.<SimpleDisplay>getDisplay().getWindow())
-                    .build();
+                .withPrompt("Are you sure you want to exit?")
+                .withParentComponent(FastJEngine.<SimpleDisplay>getDisplay().getWindow())
+                .build();
 
             if (DialogUtil.showConfirmationDialog(confirmExitConfig, DialogOptions.YesNoCancel)) {
                 FastJEngine.closeGame();

@@ -216,7 +216,7 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
     }
 
     protected abstract void readMessageType(NetworkType tcp, UUID senderId, MessageInputStream in, SentMessageType sentMessageType)
-            throws IOException;
+        throws IOException;
 
     public void disconnect() {
         disconnect(NetworkType.TCP);

@@ -123,11 +123,11 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
 
     private void sendPing() {
         byte[] packetData = ByteBuffer.allocate(MessageUtils.UuidBytes + MessageUtils.EnumBytes + Long.BYTES)
-                .putLong(clientId.getMostSignificantBits())
-                .putLong(clientId.getLeastSignificantBits())
-                .putInt(SentMessageType.PingRequest.ordinal())
-                .putLong(System.nanoTime())
-                .array();
+            .putLong(clientId.getMostSignificantBits())
+            .putLong(clientId.getLeastSignificantBits())
+            .putInt(SentMessageType.PingRequest.ordinal())
+            .putLong(System.nanoTime())
+            .array();
 
         DatagramPacket packet = SendUtils.buildPacket(clientConfig, packetData);
 
@@ -256,7 +256,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
 
     @Override
     public synchronized void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId, byte[] rawData)
-            throws IOException {
+        throws IOException {
         ClientLogger.trace("{} sending {} \"{}\" to {}:{}", clientId, networkType.name(), commandId.name(), clientConfig.address(), clientConfig.port());
 
         switch (networkType) {
@@ -296,7 +296,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
 
     @Override
     protected void readMessageType(NetworkType networkType, UUID senderId, MessageInputStream inputStream, SentMessageType sentMessageType)
-            throws IOException {
+        throws IOException {
         switch (sentMessageType) {
             case KeepAlive -> ClientLogger.debug("{} Received {} keep-alive packet.", senderId, networkType);
             case Disconnect -> disconnect();
@@ -350,10 +350,10 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
                 readCommand(dataLength, commandId, inputStream, this);
             }
             default -> ClientLogger.warn(
-                    "{} Received unused message type {}, discarding {}",
-                    senderId,
-                    sentMessageType.name(),
-                    Arrays.toString(inputStream.readAllBytes())
+                "{} Received unused message type {}, discarding {}",
+                senderId,
+                sentMessageType.name(),
+                Arrays.toString(inputStream.readAllBytes())
             );
         }
     }

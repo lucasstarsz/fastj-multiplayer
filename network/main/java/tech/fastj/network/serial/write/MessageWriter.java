@@ -1,8 +1,8 @@
 package tech.fastj.network.serial.write;
 
-import java.io.IOException;
-
 import tech.fastj.network.serial.Message;
+
+import java.io.IOException;
 
 @FunctionalInterface
 public interface MessageWriter<T extends Message> {

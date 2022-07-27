@@ -28,16 +28,16 @@ public class FilePaths {
 
     public static InputStream streamResource(String resourcePath) {
         return Objects.requireNonNull(
-                FilePaths.class.getResourceAsStream(resourcePath),
-                "Couldn't find resource " + resourcePath
+            FilePaths.class.getResourceAsStream(resourcePath),
+            "Couldn't find resource " + resourcePath
         );
     }
 
     public static Path pathFromClassLoad(Class<?> classToLoadFrom, String resourcePath, String expectedScheme) {
         try {
             URI resource = Objects.requireNonNull(
-                    classToLoadFrom.getResource(resourcePath),
-                    "Couldn't find resource " + resourcePath
+                classToLoadFrom.getResource(resourcePath),
+                "Couldn't find resource " + resourcePath
             ).toURI();
 
             checkFileSystem(resource, expectedScheme);

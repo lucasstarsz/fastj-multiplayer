@@ -119,8 +119,8 @@ class ConnectionTests {
 
         if (!success) {
             fail(
-                    "Server did not receive both TCP and UDP properly.\n" +
-                            "TCP Received: " + receivedTCPData.get() + ", UDP received: " + receivedUDPData.get()
+                "Server did not receive both TCP and UDP properly.\n" +
+                    "TCP Received: " + receivedTCPData.get() + ", UDP received: " + receivedUDPData.get()
             );
         }
     }
@@ -167,8 +167,8 @@ class ConnectionTests {
 
         if (!success) {
             fail(
-                    "Server did not receive both TCP and UDP properly.\n" +
-                            "TCP Received: " + receivedTCPData.get() + ", UDP received: " + receivedUDPData.get()
+                "Server did not receive both TCP and UDP properly.\n" +
+                    "TCP Received: " + receivedTCPData.get() + ", UDP received: " + receivedUDPData.get()
             );
         }
     }
@@ -191,23 +191,23 @@ class ConnectionTests {
             Command.Id receiveUDPMultipleChatMessage = Command.named("Receive UDP Multiple Chat Messages");
 
             server.addCommand(receiveTCPMultipleChatMessage, ChatMessage.class, ChatMessage.class, ChatMessage.class,
-                    (client, chatMessage1, chatMessage2, chatMessage3) -> {
-                        assertEquals(tcpData1, chatMessage1, "The TCP data should match for message 1.");
-                        assertEquals(tcpData2, chatMessage2, "The TCP data should match for message 2.");
-                        assertEquals(tcpData3, chatMessage3, "The TCP data should match for message 3.");
-                        receivedMultipleTCPData.set(true);
-                        latch.countDown();
-                    }
+                (client, chatMessage1, chatMessage2, chatMessage3) -> {
+                    assertEquals(tcpData1, chatMessage1, "The TCP data should match for message 1.");
+                    assertEquals(tcpData2, chatMessage2, "The TCP data should match for message 2.");
+                    assertEquals(tcpData3, chatMessage3, "The TCP data should match for message 3.");
+                    receivedMultipleTCPData.set(true);
+                    latch.countDown();
+                }
             );
 
             server.addCommand(receiveUDPMultipleChatMessage, ChatMessage.class, ChatMessage.class, ChatMessage.class,
-                    (client, chatMessage1, chatMessage2, chatMessage3) -> {
-                        assertEquals(udpData1, chatMessage1, "The UDP data should match for message 1.");
-                        assertEquals(udpData2, chatMessage2, "The UDP data should match for message 2.");
-                        assertEquals(udpData3, chatMessage3, "The UDP data should match for message 3.");
-                        receivedMultipleUDPData.set(true);
-                        latch.countDown();
-                    }
+                (client, chatMessage1, chatMessage2, chatMessage3) -> {
+                    assertEquals(udpData1, chatMessage1, "The UDP data should match for message 1.");
+                    assertEquals(udpData2, chatMessage2, "The UDP data should match for message 2.");
+                    assertEquals(udpData3, chatMessage3, "The UDP data should match for message 3.");
+                    receivedMultipleUDPData.set(true);
+                    latch.countDown();
+                }
             );
 
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
@@ -226,8 +226,8 @@ class ConnectionTests {
 
         if (!success) {
             fail(
-                    "Server did not receive both TCP and UDP properly.\n" +
-                            "TCP Received: " + receivedMultipleTCPData.get() + ", UDP received: " + receivedMultipleUDPData.get()
+                "Server did not receive both TCP and UDP properly.\n" +
+                    "TCP Received: " + receivedMultipleTCPData.get() + ", UDP received: " + receivedMultipleUDPData.get()
             );
         }
     }
@@ -275,8 +275,8 @@ class ConnectionTests {
 
         if (!success) {
             fail(
-                    "Server did not receive both TCP and UDP properly.\n" +
-                            "TCP Received: " + receivedTCPData.get() + ", UDP received: " + receivedUDPData.get()
+                "Server did not receive both TCP and UDP properly.\n" +
+                    "TCP Received: " + receivedTCPData.get() + ", UDP received: " + receivedUDPData.get()
             );
         }
     }
@@ -313,31 +313,31 @@ class ConnectionTests {
             Command.Id receiveUDPMultipleValues = Command.named("Receive UDP Multiple Values");
 
             server.addCommand(receiveTCPMultipleValues,
-                    boolean.class, byte.class, short.class, byte[].class, int[].class, String.class,
-                    (client, bl, bt, sh, bytes, ints, string) -> {
-                        assertEquals(tcpData1, bl, "The TCP data should match for value 1.");
-                        assertEquals(tcpData2, bt, "The TCP data should match for value 2.");
-                        assertEquals(tcpData3, sh, "The TCP data should match for value 3.");
-                        assertArrayEquals(tcpData4, bytes, "The TCP data should match for value 4.");
-                        assertArrayEquals(tcpData5, ints, "The TCP data should match for value 5.");
-                        assertEquals(tcpData6, string, "The TCP data should match for value 6.");
-                        receivedMultipleTCPData.set(true);
-                        latch.countDown();
-                    }
+                boolean.class, byte.class, short.class, byte[].class, int[].class, String.class,
+                (client, bl, bt, sh, bytes, ints, string) -> {
+                    assertEquals(tcpData1, bl, "The TCP data should match for value 1.");
+                    assertEquals(tcpData2, bt, "The TCP data should match for value 2.");
+                    assertEquals(tcpData3, sh, "The TCP data should match for value 3.");
+                    assertArrayEquals(tcpData4, bytes, "The TCP data should match for value 4.");
+                    assertArrayEquals(tcpData5, ints, "The TCP data should match for value 5.");
+                    assertEquals(tcpData6, string, "The TCP data should match for value 6.");
+                    receivedMultipleTCPData.set(true);
+                    latch.countDown();
+                }
             );
 
             server.addCommand(receiveUDPMultipleValues,
-                    int.class, float.class, double.class, long.class, float[].class, ChatMessage.class,
-                    (client, i, f, d, l, floats, chatMessage) -> {
-                        assertEquals(udpData1, i, "The UDP data should match for value 1.");
-                        assertEquals(udpData2, f, "The UDP data should match for value 2.");
-                        assertEquals(udpData3, d, "The UDP data should match for value 3.");
-                        assertEquals(udpData4, l, "The UDP data should match for value 4.");
-                        assertArrayEquals(udpData5, floats, "The UDP data should match for value 5.");
-                        assertEquals(udpData6, chatMessage, "The UDP data should match for value 6.");
-                        receivedMultipleUDPData.set(true);
-                        latch.countDown();
-                    }
+                int.class, float.class, double.class, long.class, float[].class, ChatMessage.class,
+                (client, i, f, d, l, floats, chatMessage) -> {
+                    assertEquals(udpData1, i, "The UDP data should match for value 1.");
+                    assertEquals(udpData2, f, "The UDP data should match for value 2.");
+                    assertEquals(udpData3, d, "The UDP data should match for value 3.");
+                    assertEquals(udpData4, l, "The UDP data should match for value 4.");
+                    assertArrayEquals(udpData5, floats, "The UDP data should match for value 5.");
+                    assertEquals(udpData6, chatMessage, "The UDP data should match for value 6.");
+                    receivedMultipleUDPData.set(true);
+                    latch.countDown();
+                }
             );
 
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
@@ -356,8 +356,8 @@ class ConnectionTests {
 
         if (!success) {
             fail(
-                    "Server did not receive both TCP and UDP properly.\n" +
-                            "TCP Received: " + receivedMultipleTCPData.get() + ", UDP received: " + receivedMultipleUDPData.get()
+                "Server did not receive both TCP and UDP properly.\n" +
+                    "TCP Received: " + receivedMultipleTCPData.get() + ", UDP received: " + receivedMultipleUDPData.get()
             );
         }
     }

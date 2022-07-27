@@ -1,13 +1,14 @@
 package unittest.serial.util;
 
+import tech.fastj.network.serial.Message;
+import tech.fastj.network.serial.Serializer;
+import tech.fastj.network.serial.util.MessageUtils;
+
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 import mock.ChatMessage;
 import org.junit.jupiter.api.Test;
-import tech.fastj.network.serial.Message;
-import tech.fastj.network.serial.Serializer;
-import tech.fastj.network.serial.util.MessageUtils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

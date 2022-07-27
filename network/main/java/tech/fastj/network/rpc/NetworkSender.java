@@ -20,19 +20,19 @@ public interface NetworkSender {
     }
 
     default void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId, Message message)
-            throws IOException {
+        throws IOException {
         byte[] rawData = getSerializer().writeMessage(message);
         this.sendCommand(networkType, commandTarget, commandId, rawData);
     }
 
     default void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId, Message... messages)
-            throws IOException {
+        throws IOException {
         byte[] rawData = getSerializer().writeMessages(messages);
         this.sendCommand(networkType, commandTarget, commandId, rawData);
     }
 
     default void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId, Object... objects)
-            throws IOException {
+        throws IOException {
         byte[] rawData = getSerializer().writeObjects(objects);
         this.sendCommand(networkType, commandTarget, commandId, rawData);
     }

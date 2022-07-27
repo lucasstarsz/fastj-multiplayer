@@ -1,9 +1,9 @@
 package tech.fastj.network.serial;
 
-import java.util.function.Function;
-
 import tech.fastj.network.serial.read.MessageReader;
 import tech.fastj.network.serial.write.MessageWriter;
+
+import java.util.function.Function;
 
 public interface MessageSerializer<T extends Message> {
 

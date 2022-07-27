@@ -1,8 +1,8 @@
 package tech.fastj.network.serial.read;
 
-import java.io.IOException;
-
 import tech.fastj.network.serial.Message;
+
+import java.io.IOException;
 
 @FunctionalInterface
 public interface MessageReader<T extends Message> {

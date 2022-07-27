@@ -43,10 +43,10 @@ public class MainMenu extends Scene {
         Pointf center = canvas.getCanvasCenter();
 
         titleText = Text2D.create(Main.GameName)
-                .withFill(Colors.Snowy)
-                .withFont(Fonts.TitleTextFont)
-                .withTransform(Pointf.subtract(center, 225f, 200f), Transform2D.DefaultRotation, Transform2D.DefaultScale)
-                .build();
+            .withFill(Colors.Snowy)
+            .withFont(Fonts.TitleTextFont)
+            .withTransform(Pointf.subtract(center, 225f, 200f), Transform2D.DefaultRotation, Transform2D.DefaultScale)
+            .build();
         drawableManager.addGameObject(titleText);
 
         playButton = Buttons.menu(this, canvas, -(Shapes.ButtonSize.x * 1.25f), -50f, "Play Game", SceneNames.LobbySearch, false);

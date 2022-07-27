@@ -1,11 +1,11 @@
 package tech.fastj.partyhouse.ui;
 
 import tech.fastj.engine.FastJEngine;
-import tech.fastj.graphics.game.GameObject;
 import tech.fastj.math.Maths;
 import tech.fastj.math.Pointf;
 import tech.fastj.math.Transform2D;
-import tech.fastj.partyhouse.util.ExtraMaths;
+import tech.fastj.graphics.game.GameObject;
+
 import tech.fastj.systems.behaviors.Behavior;
 import tech.fastj.systems.behaviors.BehaviorHandler;
 import tech.fastj.systems.control.LogicManager;
@@ -13,12 +13,17 @@ import tech.fastj.systems.control.Scene;
 import tech.fastj.systems.control.SceneManager;
 import tech.fastj.systems.control.SimpleManager;
 
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.Objects;
+
+import tech.fastj.partyhouse.util.ExtraMaths;
 
 public class Notice extends GameObject implements Behavior {
 
@@ -175,10 +180,10 @@ public class Notice extends GameObject implements Behavior {
         int textHeight = fm.getHeight();
 
         final Rectangle2D.Float bounds = new Rectangle2D.Float(
-                Transform2D.DefaultTranslation.x,
-                Transform2D.DefaultTranslation.y,
-                textWidth,
-                textHeight
+            Transform2D.DefaultTranslation.x,
+            Transform2D.DefaultTranslation.y,
+            textWidth,
+            textHeight
         );
 
         setCollisionPath(createMetricsPath(bounds));
@@ -218,8 +223,8 @@ public class Notice extends GameObject implements Behavior {
         }
         Notice notice = (Notice) o;
         return Objects.equals(text, notice.text)
-                && Objects.equals(fillColor, notice.fillColor)
-                && Objects.equals(font, notice.font);
+            && Objects.equals(fillColor, notice.fillColor)
+            && Objects.equals(font, notice.font);
     }
 
     @Override

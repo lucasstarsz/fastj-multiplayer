@@ -1,7 +1,5 @@
 package tech.fastj.network.sessions;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import tech.fastj.network.rpc.Client;
 import tech.fastj.network.rpc.NetworkSender;
 import tech.fastj.network.rpc.SendUtils;
@@ -26,6 +24,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class Session extends SessionHandler<ServerClient> implements NetworkSender {
     private static final Logger SessionLogger = LoggerFactory.getLogger(Client.class);
@@ -83,13 +84,13 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
 
     @Override
     public synchronized void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId, byte[] rawData)
-            throws IOException {
+        throws IOException {
         SessionLogger.trace(
-                "Session {} sending {} \"{}\" to {} client(s)",
-                sessionIdentifier.sessionId(),
-                networkType.name(),
-                commandId.name(),
-                clients.size()
+            "Session {} sending {} \"{}\" to {} client(s)",
+            sessionIdentifier.sessionId(),
+            networkType.name(),
+            commandId.name(),
+            clients.size()
         );
 
         switch (networkType) {
@@ -108,11 +109,11 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
     @Override
     public void sendRequest(NetworkType networkType, RequestType requestType, byte[] rawData) throws IOException {
         SessionLogger.trace(
-                "Session {} sending {} \"{}\" to {} client(s)",
-                sessionIdentifier.sessionId(),
-                networkType.name(),
-                requestType.name(),
-                clients.size()
+            "Session {} sending {} \"{}\" to {} client(s)",
+            sessionIdentifier.sessionId(),
+            networkType.name(),
+            requestType.name(),
+            clients.size()
         );
 
         switch (networkType) {
@@ -131,10 +132,10 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
     @Override
     public void sendDisconnect(NetworkType networkType, byte[] rawData) {
         SessionLogger.trace(
-                "Session {} sending {}  \"disconnect\" to {} client(s)",
-                sessionIdentifier.sessionId(),
-                networkType.name(),
-                clients.size()
+            "Session {} sending {}  \"disconnect\" to {} client(s)",
+            sessionIdentifier.sessionId(),
+            networkType.name(),
+            clients.size()
         );
 
         for (ServerClient client : clients) {
@@ -145,10 +146,10 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
     @Override
     public void sendKeepAlive(NetworkType networkType) throws IOException {
         SessionLogger.trace(
-                "Session {} sending {}  \"keep-alive\" to {} client(s)",
-                sessionIdentifier.sessionId(),
-                networkType.name(),
-                clients.size()
+            "Session {} sending {}  \"keep-alive\" to {} client(s)",
+            sessionIdentifier.sessionId(),
+            networkType.name(),
+            clients.size()
         );
 
         for (ServerClient client : clients) {
@@ -204,7 +205,7 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
         public abstract T start();
 
         public boolean waitForCompletion(BooleanSupplier task, long timeout, long timeBetweenChecks, TimeUnit timeoutUnit)
-                throws InterruptedException {
+            throws InterruptedException {
 
             long currentTime = System.nanoTime();
             long timeoutNanos = TimeUnit.NANOSECONDS.convert(timeout, timeoutUnit);
@@ -228,7 +229,7 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
         }
 
         public Map<ResponseId, Object[]> waitForResponses(Command.Id responseId, long timeout, long timeBetweenChecks, TimeUnit timeoutUnit)
-                throws InterruptedException {
+            throws InterruptedException {
             session.trackResponses(responseId);
 
             long timeoutNanos = TimeUnit.NANOSECONDS.convert(timeout, timeoutUnit);

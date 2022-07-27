@@ -109,31 +109,31 @@ public abstract class CommandHandler<T extends ConnectionHandler<?>> {
 
         if (classes == null) {
             getLogger().warn(
-                    "Received unregistered command {} (Command name may have been \"{}\")",
-                    commandId,
-                    idsToCommandIds.get(commandId).name()
+                "Received unregistered command {} (Command name may have been \"{}\")",
+                commandId,
+                idsToCommandIds.get(commandId).name()
             );
 
             if (dataLength > inputStream.available()) {
                 getLogger().warn(
-                        "Received incomplete command {}\nBad data: {}",
-                        idsToCommandIds.get(commandId).formattedToString(),
-                        Arrays.toString(inputStream.readAllBytes())
+                    "Received incomplete command {}\nBad data: {}",
+                    idsToCommandIds.get(commandId).formattedToString(),
+                    Arrays.toString(inputStream.readAllBytes())
                 );
             } else {
                 getLogger().warn(
-                        "Received incomplete command {}\nBad data: {}",
-                        idsToCommandIds.get(commandId).formattedToString(),
-                        Arrays.toString(inputStream.readNBytes((int) dataLength))
+                    "Received incomplete command {}\nBad data: {}",
+                    idsToCommandIds.get(commandId).formattedToString(),
+                    Arrays.toString(inputStream.readNBytes((int) dataLength))
                 );
             }
         }
 
         if (dataLength > inputStream.available()) {
             getLogger().warn(
-                    "Received incomplete command {}\nBad data: {}",
-                    idsToCommandIds.get(commandId).formattedToString(),
-                    Arrays.toString(inputStream.readAllBytes())
+                "Received incomplete command {}\nBad data: {}",
+                idsToCommandIds.get(commandId).formattedToString(),
+                Arrays.toString(inputStream.readAllBytes())
             );
         }
 
@@ -143,48 +143,48 @@ public abstract class CommandHandler<T extends ConnectionHandler<?>> {
             runCommand(commandId, client, readObject(classes1.t1(), inputStream));
         } else if (classes instanceof Classes2<?, ?> classes2) {
             runCommand(
-                    commandId,
-                    client,
-                    readObject(classes2.t1(), inputStream),
-                    readObject(classes2.t2(), inputStream)
+                commandId,
+                client,
+                readObject(classes2.t1(), inputStream),
+                readObject(classes2.t2(), inputStream)
             );
         } else if (classes instanceof Classes3<?, ?, ?> classes3) {
             runCommand(
-                    commandId,
-                    client,
-                    readObject(classes3.t1(), inputStream),
-                    readObject(classes3.t2(), inputStream),
-                    readObject(classes3.t3(), inputStream)
+                commandId,
+                client,
+                readObject(classes3.t1(), inputStream),
+                readObject(classes3.t2(), inputStream),
+                readObject(classes3.t3(), inputStream)
             );
         } else if (classes instanceof Classes4<?, ?, ?, ?> classes4) {
             runCommand(
-                    commandId,
-                    client,
-                    readObject(classes4.t1(), inputStream),
-                    readObject(classes4.t2(), inputStream),
-                    readObject(classes4.t3(), inputStream),
-                    readObject(classes4.t4(), inputStream)
+                commandId,
+                client,
+                readObject(classes4.t1(), inputStream),
+                readObject(classes4.t2(), inputStream),
+                readObject(classes4.t3(), inputStream),
+                readObject(classes4.t4(), inputStream)
             );
         } else if (classes instanceof Classes5<?, ?, ?, ?, ?> classes5) {
             runCommand(
-                    commandId,
-                    client,
-                    readObject(classes5.t1(), inputStream),
-                    readObject(classes5.t2(), inputStream),
-                    readObject(classes5.t3(), inputStream),
-                    readObject(classes5.t4(), inputStream),
-                    readObject(classes5.t5(), inputStream)
+                commandId,
+                client,
+                readObject(classes5.t1(), inputStream),
+                readObject(classes5.t2(), inputStream),
+                readObject(classes5.t3(), inputStream),
+                readObject(classes5.t4(), inputStream),
+                readObject(classes5.t5(), inputStream)
             );
         } else if (classes instanceof Classes6<?, ?, ?, ?, ?, ?> classes6) {
             runCommand(
-                    commandId,
-                    client,
-                    readObject(classes6.t1(), inputStream),
-                    readObject(classes6.t2(), inputStream),
-                    readObject(classes6.t3(), inputStream),
-                    readObject(classes6.t4(), inputStream),
-                    readObject(classes6.t5(), inputStream),
-                    readObject(classes6.t6(), inputStream)
+                commandId,
+                client,
+                readObject(classes6.t1(), inputStream),
+                readObject(classes6.t2(), inputStream),
+                readObject(classes6.t3(), inputStream),
+                readObject(classes6.t4(), inputStream),
+                readObject(classes6.t5(), inputStream),
+                readObject(classes6.t6(), inputStream)
             );
         }
     }

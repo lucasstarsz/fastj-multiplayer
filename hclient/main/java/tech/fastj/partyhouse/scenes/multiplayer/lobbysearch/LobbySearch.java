@@ -65,10 +65,10 @@ public class LobbySearch extends Scene {
         user = User.getInstance();
 
         titleText = Text2D.create("Lobby Search")
-                .withFill(Colors.Snowy)
-                .withFont(Fonts.H3TextFont)
-                .withTransform(new Pointf(25f, 25f), Transform2D.DefaultRotation, Transform2D.DefaultScale)
-                .build();
+            .withFill(Colors.Snowy)
+            .withFont(Fonts.H3TextFont)
+            .withTransform(new Pointf(25f, 25f), Transform2D.DefaultRotation, Transform2D.DefaultScale)
+            .build();
         drawableManager.addGameObject(titleText);
 
         joinSelectedLobbyButton = Buttons.create(this, canvas, (Shapes.ButtonSize.x * 0.25f), 50f, "Join Lobby");
@@ -80,10 +80,10 @@ public class LobbySearch extends Scene {
                 } catch (IOException | InterruptedException exception) {
                     if (exception instanceof IOException joinException) {
                         Dialogs.message(
-                                DialogConfig.create()
-                                        .withTitle("Error while trying to join lobby")
-                                        .withPrompt(joinException.getMessage())
-                                        .build()
+                            DialogConfig.create()
+                                .withTitle("Error while trying to join lobby")
+                                .withPrompt(joinException.getMessage())
+                                .build()
                         );
                     } else {
                         Main.gameCrashed("Crashed while trying to join lobby", exception);
@@ -101,10 +101,10 @@ public class LobbySearch extends Scene {
                 } catch (IOException | InterruptedException exception) {
                     if (exception instanceof ConnectException connectException) {
                         Dialogs.message(
-                                DialogConfig.create()
-                                        .withTitle("Error while trying to connect")
-                                        .withPrompt(connectException.getMessage())
-                                        .build()
+                            DialogConfig.create()
+                                .withTitle("Error while trying to connect")
+                                .withPrompt(connectException.getMessage())
+                                .build()
                         );
                     } else {
                         Main.gameCrashed("Crashed while checking for lobbies", exception);
@@ -186,10 +186,10 @@ public class LobbySearch extends Scene {
 
         if (selectedLobby == null) {
             Dialogs.message(
-                    DialogConfig.create()
-                            .withTitle("No selected lobby")
-                            .withPrompt("You must select an available lobby before trying to connect.")
-                            .build()
+                DialogConfig.create()
+                    .withTitle("No selected lobby")
+                    .withPrompt("You must select an available lobby before trying to connect.")
+                    .build()
             );
 
             return;
@@ -200,11 +200,11 @@ public class LobbySearch extends Scene {
 
         SwingUtilities.invokeLater(() -> {
             String name = Dialogs.userInput(
-                    DialogConfig.create()
-                            .withParentComponent(FastJEngine.getDisplay().getWindow())
-                            .withTitle("Set nickname")
-                            .withPrompt("Please set a nickname. (must not be whitespace)")
-                            .build()
+                DialogConfig.create()
+                    .withParentComponent(FastJEngine.getDisplay().getWindow())
+                    .withTitle("Set nickname")
+                    .withPrompt("Please set a nickname. (must not be whitespace)")
+                    .build()
             );
 
             user.setClientInfo(new ClientInfo(client.getClientId(), name));

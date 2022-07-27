@@ -67,7 +67,7 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
 
     @Override
     public synchronized void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId, byte[] rawData)
-            throws IOException {
+        throws IOException {
         ServerClientLogger.trace("{} sending {} \"{}\" to {}:{}", clientId, networkType.name(), commandId.name(), clientConfig.address(), clientConfig.port());
 
         switch (networkType) {
@@ -118,7 +118,7 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
 
     @Override
     protected void readMessageType(NetworkType networkType, UUID senderId, MessageInputStream inputStream, SentMessageType sentMessageType)
-            throws IOException {
+        throws IOException {
         switch (sentMessageType) {
             case KeepAlive -> {
                 ServerClientLogger.debug("{} Received {} keep-alive packet. Now returning the favor.", senderId, networkType);
@@ -160,21 +160,21 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
                 server.receiveRequest(requestType, dataLength, senderId, inputStream);
             }
             default -> ServerClientLogger.warn(
-                    "{} Received unused message type {}, discarding {}",
-                    senderId,
-                    sentMessageType.name(),
-                    Arrays.toString(inputStream.readAllBytes())
+                "{} Received unused message type {}, discarding {}",
+                senderId,
+                sentMessageType.name(),
+                Arrays.toString(inputStream.readAllBytes())
             );
         }
     }
 
     public void sendPingResponse(long timestamp) throws IOException {
         byte[] packetData = ByteBuffer.allocate(MessageUtils.UuidBytes + MessageUtils.EnumBytes + Long.BYTES)
-                .putLong(clientId.getMostSignificantBits())
-                .putLong(clientId.getLeastSignificantBits())
-                .putInt(SentMessageType.PingResponse.ordinal())
-                .putLong(timestamp)
-                .array();
+            .putLong(clientId.getMostSignificantBits())
+            .putLong(clientId.getLeastSignificantBits())
+            .putInt(SentMessageType.PingResponse.ordinal())
+            .putLong(timestamp)
+            .array();
 
         ServerClientLogger.trace("{} sending ping response to {}:{}", clientId, clientConfig.address(), clientConfig.port());
 

@@ -33,36 +33,36 @@ public class HomeSession extends Session {
         setOnReceiveNewClient(this::addClientGameState);
         setOnClientDisconnect(this::removeClientGameState);
         addCommand(Commands.UpdateClientGameState, ClientInfo.class, ClientPosition.class, ClientVelocity.class,
-                (client, info, position, velocity) -> {
-                    HomeSessionLogger.info("{} has moved to: {}, {}", info.clientName(), position.x(), position.y());
+            (client, info, position, velocity) -> {
+                HomeSessionLogger.info("{} has moved to: {}, {}", info.clientName(), position.x(), position.y());
 
-                    ClientGameState clientGameState = clientGameStates.get(info.clientId());
-                    clientGameState.setClientInfo(info);
-                    clientGameState.setClientPosition(position);
-                    clientGameState.setClientVelocity(velocity);
+                ClientGameState clientGameState = clientGameStates.get(info.clientId());
+                clientGameState.setClientInfo(info);
+                clientGameState.setClientPosition(position);
+                clientGameState.setClientVelocity(velocity);
 
-                    for (ServerClient serverClient : getClients()) {
-                        if (client.getClientId().equals(serverClient.getClientId())) {
-                            HomeSessionLogger.info(
-                                    "Don't tell {} that {} moved",
-                                    clientGameStates.get(serverClient.getClientId()).getClientInfo().clientName(),
-                                    clientGameStates.get(client.getClientId()).getClientInfo().clientName()
-                            );
-                            continue;
-                        }
+                for (ServerClient serverClient : getClients()) {
+                    if (client.getClientId().equals(serverClient.getClientId())) {
+                        HomeSessionLogger.info(
+                            "Don't tell {} that {} moved",
+                            clientGameStates.get(serverClient.getClientId()).getClientInfo().clientName(),
+                            clientGameStates.get(client.getClientId()).getClientInfo().clientName()
+                        );
+                        continue;
+                    }
 
-                        try {
-                            HomeSessionLogger.info(
-                                    "Telling {} that {} moved",
-                                    clientGameStates.get(serverClient.getClientId()).getClientInfo().clientName(),
-                                    clientGameStates.get(client.getClientId()).getClientInfo().clientName()
-                            );
-                            serverClient.sendCommand(NetworkType.UDP, CommandTarget.Client, Commands.UpdateClientGameState, info, position, velocity);
-                        } catch (IOException exception) {
-                            HomeSessionLogger.warn("error while trying to send {}'s game state update: {}", serverClient.getClientId(), exception.getMessage());
-                        }
+                    try {
+                        HomeSessionLogger.info(
+                            "Telling {} that {} moved",
+                            clientGameStates.get(serverClient.getClientId()).getClientInfo().clientName(),
+                            clientGameStates.get(client.getClientId()).getClientInfo().clientName()
+                        );
+                        serverClient.sendCommand(NetworkType.UDP, CommandTarget.Client, Commands.UpdateClientGameState, info, position, velocity);
+                    } catch (IOException exception) {
+                        HomeSessionLogger.warn("error while trying to send {}'s game state update: {}", serverClient.getClientId(), exception.getMessage());
                     }
                 }
+            }
         );
     }
 
@@ -88,8 +88,8 @@ public class HomeSession extends Session {
                 HomeSessionLogger.info("sending new game state from {} to {}", client.getClientId(), serverClient.getClientId());
 
                 serverClient.sendCommand(
-                        NetworkType.TCP, CommandTarget.Client, Commands.UpdateClientGameState,
-                        newGameState.getClientInfo(), newGameState.getClientPosition(), newGameState.getClientVelocity()
+                    NetworkType.TCP, CommandTarget.Client, Commands.UpdateClientGameState,
+                    newGameState.getClientInfo(), newGameState.getClientPosition(), newGameState.getClientVelocity()
                 );
             } catch (IOException exception) {
                 HomeSessionLogger.warn("Error while trying to send client game state to {}: {}", serverClient.getClientId(), exception);
@@ -100,8 +100,8 @@ public class HomeSession extends Session {
 
                 ClientGameState existingGameState = clientGameStates.get(serverClient.getClientId());
                 client.sendCommand(
-                        NetworkType.TCP, CommandTarget.Client, Commands.UpdateClientGameState,
-                        existingGameState.getClientInfo(), existingGameState.getClientPosition(), existingGameState.getClientVelocity()
+                    NetworkType.TCP, CommandTarget.Client, Commands.UpdateClientGameState,
+                    existingGameState.getClientInfo(), existingGameState.getClientPosition(), existingGameState.getClientVelocity()
                 );
             } catch (IOException exception) {
                 HomeSessionLogger.warn("Error while trying to send client game state to {}: {}", client.getClientId(), exception);

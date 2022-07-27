@@ -1,6 +1,6 @@
 package tech.fastj.partyhouse.util;
 
-import java.awt.*;
+import java.awt.Color;
 
 public class Colors {
 

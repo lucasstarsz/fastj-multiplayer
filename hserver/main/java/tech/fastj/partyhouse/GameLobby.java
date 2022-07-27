@@ -46,9 +46,9 @@ public class GameLobby extends Lobby {
 
                 try {
                     GameLobbyLogger.info(
-                            "Telling {}:{} that {}:{} changed its name",
-                            serverClient.getClientId(), clientInfoMap.get(serverClient.getClientId()).clientName(),
-                            client.getClientId(), clientInfoMap.get(client.getClientId()).clientName()
+                        "Telling {}:{} that {}:{} changed its name",
+                        serverClient.getClientId(), clientInfoMap.get(serverClient.getClientId()).clientName(),
+                        client.getClientId(), clientInfoMap.get(client.getClientId()).clientName()
                     );
                     serverClient.sendCommand(NetworkType.TCP, CommandTarget.Client, Commands.UpdateClientInfo, clientInfo);
                 } catch (IOException exception) {

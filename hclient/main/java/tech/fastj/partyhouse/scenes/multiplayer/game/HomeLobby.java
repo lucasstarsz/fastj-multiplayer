@@ -206,23 +206,23 @@ public class HomeLobby extends Scene {
         });
 
         client.addCommand(Commands.UpdateClientGameState,
-                ClientInfo.class, ClientPosition.class, ClientVelocity.class,
-                (c, clientInfo, clientPosition, clientVelocity) -> {
-                    Log.info("{} moved: {}, {}", clientInfo.clientName(), clientPosition.x(), clientPosition.y());
+            ClientInfo.class, ClientPosition.class, ClientVelocity.class,
+            (c, clientInfo, clientPosition, clientVelocity) -> {
+                Log.info("{} moved: {}, {}", clientInfo.clientName(), clientPosition.x(), clientPosition.y());
 
-                    ClientGameState clientState = otherGameStates.get(clientInfo.clientId());
-                    Player otherPlayer = otherPlayers.get(clientInfo.clientId());
+                ClientGameState clientState = otherGameStates.get(clientInfo.clientId());
+                Player otherPlayer = otherPlayers.get(clientInfo.clientId());
 
-                    if (clientState == null || otherPlayer == null) {
-                        return;
-                    }
-
-                    clientState.setClientInfo(clientInfo);
-                    clientState.setClientPosition(clientPosition);
-                    clientState.setClientVelocity(clientVelocity);
-
-                    otherPlayer.setPlayerName(clientInfo.clientName());
+                if (clientState == null || otherPlayer == null) {
+                    return;
                 }
+
+                clientState.setClientInfo(clientInfo);
+                clientState.setClientPosition(clientPosition);
+                clientState.setClientVelocity(clientVelocity);
+
+                otherPlayer.setPlayerName(clientInfo.clientName());
+            }
         );
     }
 

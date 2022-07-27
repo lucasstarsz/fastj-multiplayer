@@ -20,8 +20,8 @@ public class RecordSerializerUtils {
     @SuppressWarnings("unchecked")
     public static <T extends Message> RecordSerializer<T> get(Serializer serializer, Class<T> networkableType) {
         return (RecordSerializer<T>) generatedMessageTypes.computeIfAbsent(
-                new MessageType<>(serializer, networkableType),
-                messageType -> generate(serializer, (Class<T>) messageType.networkableType())
+            new MessageType<>(serializer, networkableType),
+            messageType -> generate(serializer, (Class<T>) messageType.networkableType())
         );
     }
 
@@ -33,18 +33,18 @@ public class RecordSerializerUtils {
         Constructor<T> constructor;
         try {
             constructor = networkableType.getDeclaredConstructor(
-                    Arrays.stream(components)
-                            .map(RecordComponent::getType)
-                            .toArray(Class<?>[]::new)
+                Arrays.stream(components)
+                    .map(RecordComponent::getType)
+                    .toArray(Class<?>[]::new)
             );
         } catch (NoSuchMethodException exception) {
             throw new IllegalArgumentException(exception);
         }
         return new RecordSerializer<>(
-                networkableType,
-                generateByteSizeFunction(serializer, components),
-                generateReader(constructor),
-                generateWriter(components)
+            networkableType,
+            generateByteSizeFunction(serializer, components),
+            generateReader(constructor),
+            generateWriter(components)
         );
     }
 

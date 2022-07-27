@@ -4,7 +4,7 @@ package tech.fastj.partyhouse.user;
 
 public class UserSettings {
 
-//    private GameStartDifficulty gameStartDifficulty;
+    //    private GameStartDifficulty gameStartDifficulty;
     private int highestDifficultyReached;
 
     public UserSettings() {

@@ -42,7 +42,7 @@ public class LobbyContentBox extends UIElement<MouseButtonEvent> implements Mous
 
         this.format = DefaultFormat;
         super.setOnActionCondition(
-                event -> Mouse.interactsWith(LobbyContentBox.this, MouseAction.Release)
+            event -> Mouse.interactsWith(LobbyContentBox.this, MouseAction.Release)
         );
 
         origin.inputManager.addMouseActionListener(this);

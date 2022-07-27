@@ -211,9 +211,9 @@ public class Server extends CommandHandler<ServerClient> {
             }
 
             throw new IOException(
-                    "Unable to connect to client "
-                            + (client != null ? client.getClientId() : "(null)"),
-                    exception
+                "Unable to connect to client "
+                    + (client != null ? client.getClientId() : "(null)"),
+                exception
             );
         }
     }
@@ -223,7 +223,7 @@ public class Server extends CommandHandler<ServerClient> {
     }
 
     public void receiveCommand(CommandTarget commandTarget, long dataLength, UUID commandId, UUID senderId, MessageInputStream stream)
-            throws IOException {
+        throws IOException {
         ServerClient client = getClient(senderId);
 
         if (client == null) {
@@ -271,10 +271,10 @@ public class Server extends CommandHandler<ServerClient> {
 
     public void returnAvailableLobbies(ServerClient client) throws IOException {
         LobbyIdentifier[] lobbyIdentifiers = getLobbies()
-                .values()
-                .stream()
-                .map(Lobby::getLobbyIdentifier)
-                .toArray(LobbyIdentifier[]::new);
+            .values()
+            .stream()
+            .map(Lobby::getLobbyIdentifier)
+            .toArray(LobbyIdentifier[]::new);
 
         client.getTcpOut().writeObject(SentMessageType.AvailableLobbiesUpdate, SentMessageType.class);
         client.getTcpOut().writeArray(lobbyIdentifiers);
@@ -313,7 +313,7 @@ public class Server extends CommandHandler<ServerClient> {
     }
 
     public void receiveRequest(RequestType requestType, long dataLength, UUID senderId, MessageInputStream inputStream)
-            throws IOException {
+        throws IOException {
         ServerClient client = getClient(senderId);
 
         if (client == null) {
@@ -332,9 +332,9 @@ public class Server extends CommandHandler<ServerClient> {
             case JoinLobby -> {
                 if (inputStream.available() < dataLength) {
                     serverLogger.warn(
-                            "Unable to read {}'s lobby \"{}\" to join",
-                            senderId,
-                            Arrays.toString(inputStream.readAllBytes())
+                        "Unable to read {}'s lobby \"{}\" to join",
+                        senderId,
+                        Arrays.toString(inputStream.readAllBytes())
                     );
 
                     return;

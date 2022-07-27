@@ -31,12 +31,14 @@
 
 package tech.fastj.partyhouse.util;
 
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.Spring;
+import javax.swing.SpringLayout;
+import java.awt.Component;
+import java.awt.Container;
 
 /**
- * A 1.4 file that provides utility methods for creating form- or grid-style layouts with SpringLayout. These utilities
- * are used by several programs, such as SpringBox and SpringCompactGrid.
+ * A 1.4 file that provides utility methods for creating form- or grid-style layouts with SpringLayout. These utilities are used by several
+ * programs, such as SpringBox and SpringCompactGrid.
  */
 public class SpringUtilities {
     /**
@@ -46,9 +48,8 @@ public class SpringUtilities {
     }
 
     /**
-     * Aligns the first <code>rows</code> * <code>cols</code> components of <code>parent</code> in a grid. Each
-     * component is as big as the maximum preferred width and height of the components. The parent is made just big
-     * enough to fit them all.
+     * Aligns the first <code>rows</code> * <code>cols</code> components of <code>parent</code> in a grid. Each component is as big as the
+     * maximum preferred width and height of the components. The parent is made just big enough to fit them all.
      *
      * @param rows     number of rows
      * @param cols     number of columns
@@ -129,9 +130,9 @@ public class SpringUtilities {
     }
 
     /**
-     * Aligns the first <code>rows</code> * <code>cols</code> components of <code>parent</code> in a grid. Each
-     * component in a column is as wide as the maximum preferred width of the components in that column; height is
-     * similarly determined for each row. The parent is made just big enough to fit them all.
+     * Aligns the first <code>rows</code> * <code>cols</code> components of <code>parent</code> in a grid. Each component in a column is as
+     * wide as the maximum preferred width of the components in that column; height is similarly determined for each row. The parent is made
+     * just big enough to fit them all.
      *
      * @param rows     number of rows
      * @param cols     number of columns

@@ -34,13 +34,13 @@ public class Player extends GameObject {
         this.playerModel = Model2D.fromPolygons(ModelUtil.loadModel(FilePaths.Player));
         this.playerName = playerName;
         this.playerIndicator = Text2D.create(playerName)
-                .withFont(Fonts.DefaultNotoSans)
-                .build();
+            .withFont(Fonts.DefaultNotoSans)
+            .build();
 
         this.playerIndicatorBorder = Polygon2D.create(DrawUtil.createBox(0f, 0f, 0f))
-                .withRenderStyle(RenderStyle.Outline)
-                .withOutline(Shapes.ThickStroke, Color.black)
-                .build();
+            .withRenderStyle(RenderStyle.Outline)
+            .withOutline(Shapes.ThickStroke, Color.black)
+            .build();
 
         setPlayerName(playerName);
 

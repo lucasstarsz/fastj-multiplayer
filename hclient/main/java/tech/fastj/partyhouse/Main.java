@@ -1,20 +1,21 @@
 package tech.fastj.partyhouse;
 
-import com.formdev.flatlaf.FlatDarkLaf;
 import tech.fastj.engine.FastJEngine;
 import tech.fastj.engine.config.ExceptionAction;
-import tech.fastj.graphics.dialog.DialogConfig;
 import tech.fastj.logging.LogLevel;
+import tech.fastj.graphics.dialog.DialogConfig;
 
 import tech.fastj.network.rpc.Client;
 
+import javax.swing.JTextArea;
+import javax.swing.UIManager;
+import java.awt.Font;
+import java.util.Arrays;
+
+import com.formdev.flatlaf.FlatDarkLaf;
 import tech.fastj.partyhouse.user.User;
 import tech.fastj.partyhouse.util.Dialogs;
 import tech.fastj.partyhouse.util.Fonts;
-
-import javax.swing.*;
-import java.awt.*;
-import java.util.Arrays;
 
 public class Main {
     public static final String GameName = "Party House v0.0.1";
@@ -58,12 +59,12 @@ public class Main {
         Throwable currentException = exception;
         do {
             formattedException.append(System.lineSeparator())
-                    .append("Caused by: ")
-                    .append(currentException.getClass().getName())
-                    .append(": ")
-                    .append(currentException.getMessage())
-                    .append(System.lineSeparator())
-                    .append(formatStackTrace(currentException));
+                .append("Caused by: ")
+                .append(currentException.getClass().getName())
+                .append(": ")
+                .append(currentException.getMessage())
+                .append(System.lineSeparator())
+                .append(formatStackTrace(currentException));
         } while ((currentException = currentException.getCause()) != null);
 
         JTextArea textArea = new JTextArea(formattedException.toString());
@@ -71,21 +72,21 @@ public class Main {
         textArea.setFont(Fonts.notoSansMono(Font.PLAIN, 13));
 
         Dialogs.errorQuitMessage(DialogConfig.create().withParentComponent(null)
-                .withTitle(exception.getClass().getName() + (message != null ? (": " + message) : ""))
-                .withPrompt(textArea)
-                .build()
+            .withTitle(exception.getClass().getName() + (message != null ? (": " + message) : ""))
+            .withPrompt(textArea)
+            .build()
         );
     }
 
     private static String formatStackTrace(Throwable exception) {
         return Arrays.stream(exception.getStackTrace())
-                .map(stackTraceElement -> "at " + stackTraceElement.toString() + "\n")
-                .toList()
-                .toString()
-                .replaceFirst("\\[", "")
-                .replaceAll("](.*)\\[", "")
-                .replaceAll("(, )?at ", "    at ")
-                .replace("]", "")
-                .trim();
+            .map(stackTraceElement -> "at " + stackTraceElement.toString() + "\n")
+            .toList()
+            .toString()
+            .replaceFirst("\\[", "")
+            .replaceAll("](.*)\\[", "")
+            .replaceAll("(, )?at ", "    at ")
+            .replace("]", "")
+            .trim();
     }
 }

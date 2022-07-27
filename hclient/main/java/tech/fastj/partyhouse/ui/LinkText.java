@@ -2,6 +2,7 @@ package tech.fastj.partyhouse.ui;
 
 import tech.fastj.graphics.ui.UIElement;
 import tech.fastj.graphics.util.DrawUtil;
+
 import tech.fastj.input.mouse.Mouse;
 import tech.fastj.input.mouse.MouseAction;
 import tech.fastj.input.mouse.MouseActionListener;
@@ -11,7 +12,12 @@ import tech.fastj.input.mouse.events.MouseMotionEvent;
 import tech.fastj.systems.control.Scene;
 import tech.fastj.systems.control.SimpleManager;
 
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Desktop;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
+import java.awt.Paint;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
@@ -335,10 +341,10 @@ public class LinkText extends UIElement<MouseButtonEvent> implements MouseAction
         Rectangle2D.Float renderPathBounds = (Rectangle2D.Float) collisionPath.getBounds2D();
 
         textBounds = new Rectangle2D.Float(
-                (renderPathBounds.width - textWidth) / 2f,
-                textHeight,
-                textWidth,
-                textHeight
+            (renderPathBounds.width - textWidth) / 2f,
+            textHeight,
+            textWidth,
+            textHeight
         );
 
         Rectangle2D.Float newPathBounds = (Rectangle2D.Float) super.collisionPath.getBounds2D();

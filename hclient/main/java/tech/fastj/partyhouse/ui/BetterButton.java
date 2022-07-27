@@ -1,20 +1,27 @@
 package tech.fastj.partyhouse.ui;
 
+import tech.fastj.math.Maths;
+import tech.fastj.math.Pointf;
+import tech.fastj.math.Transform2D;
 import tech.fastj.graphics.ui.UIElement;
 import tech.fastj.graphics.util.DrawUtil;
+
 import tech.fastj.input.mouse.Mouse;
 import tech.fastj.input.mouse.MouseAction;
 import tech.fastj.input.mouse.MouseActionListener;
 import tech.fastj.input.mouse.MouseButtons;
 import tech.fastj.input.mouse.events.MouseButtonEvent;
 import tech.fastj.input.mouse.events.MouseMotionEvent;
-import tech.fastj.math.Maths;
-import tech.fastj.math.Pointf;
-import tech.fastj.math.Transform2D;
 import tech.fastj.systems.control.Scene;
 import tech.fastj.systems.control.SimpleManager;
 
-import java.awt.*;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
+import java.awt.Paint;
+import java.awt.Stroke;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
@@ -91,9 +98,8 @@ public class BetterButton extends UIElement<MouseButtonEvent> implements MouseAc
         super(origin);
         if (initialSize.x < Maths.FloatPrecision || initialSize.y < Maths.FloatPrecision) {
             throw new IllegalArgumentException(
-                    "The size " + initialSize + " is too small." +
-                            System.lineSeparator() +
-                            "The minimum size in both x and y directions is " + Maths.FloatPrecision + "."
+                "The size " + initialSize + " is too small." + System.lineSeparator() +
+                    "The minimum size in both x and y directions is " + Maths.FloatPrecision + "."
             );
         }
 
@@ -130,9 +136,8 @@ public class BetterButton extends UIElement<MouseButtonEvent> implements MouseAc
         super(origin);
         if (initialSize.x < Maths.FloatPrecision || initialSize.y < Maths.FloatPrecision) {
             throw new IllegalArgumentException(
-                    "The size " + initialSize + " is too small." +
-                            System.lineSeparator() +
-                            "The minimum size in both x and y directions is " + Maths.FloatPrecision + "."
+                "The size " + initialSize + " is too small." + System.lineSeparator() +
+                    "The minimum size in both x and y directions is " + Maths.FloatPrecision + "."
             );
         }
 
@@ -479,10 +484,10 @@ public class BetterButton extends UIElement<MouseButtonEvent> implements MouseAc
         Rectangle2D.Float renderPathBounds = (Rectangle2D.Float) collisionPath.getBounds2D();
 
         textBounds = new Rectangle2D.Float(
-                (renderPathBounds.width - textWidth) / 2f,
-                textHeight,
-                textWidth,
-                textHeight
+            (renderPathBounds.width - textWidth) / 2f,
+            textHeight,
+            textWidth,
+            textHeight
         );
 
         Rectangle2D.Float newPathBounds = (Rectangle2D.Float) super.collisionPath.getBounds2D();

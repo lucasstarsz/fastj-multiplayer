@@ -2,11 +2,12 @@ package tech.fastj.partyhouse.ui;
 
 import tech.fastj.graphics.game.Text2D;
 import tech.fastj.graphics.ui.UIElement;
+
 import tech.fastj.input.InputActionEvent;
 import tech.fastj.systems.control.Scene;
 import tech.fastj.systems.control.SimpleManager;
 
-import java.awt.*;
+import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
 
