@@ -64,19 +64,19 @@ public class GameLobby extends Lobby {
         ClientInfo clientInfo = new ClientInfo(client.getClientId(), "Player " + (clients.size() + 1));
         updateClientInfo(clientInfo);
 
-        System.out.println("new client " + clientInfo);
-        System.out.println(clients.size() + " to notify from lobby");
+        GameLobbyLogger.info("new client {}", clientInfo);
+        GameLobbyLogger.info("{} to notify from lobby", clients.size());
 
         for (ServerClient serverClient : getClients()) {
             try {
-                System.out.println("updating " + getClientInfo(serverClient) + " on this");
+                GameLobbyLogger.info("Notifying {} on new client {}", getClientInfo(serverClient).clientName(), clientInfo.clientName());
                 serverClient.sendCommand(NetworkType.TCP, CommandTarget.Client, Commands.ClientJoined, clientInfo);
             } catch (IOException exception) {
                 GameLobbyLogger.warn("tried to send notification to all clients, but {}", exception.getMessage());
             }
 
             try {
-                System.out.println("client info: " + getClientInfo(serverClient));
+                GameLobbyLogger.info("Notifying new client {} on existing client {}", clientInfo.clientName(), getClientInfo(serverClient).clientName());
                 client.sendCommand(NetworkType.TCP, CommandTarget.Client, Commands.ClientJoined, getClientInfo(serverClient));
             } catch (IOException exception) {
                 GameLobbyLogger.warn("tried to send notification to newly joined client, but {}", exception.getMessage());
@@ -85,11 +85,11 @@ public class GameLobby extends Lobby {
     }
 
     private void notifyClientLeft(Lobby lobby, ServerClient client) {
-        System.out.println("client " + getClientInfo(client).clientName() + " leaving");
-        System.out.println(clients.size() + " to notify from lobby");
+        GameLobbyLogger.info("client {} leaving", getClientInfo(client).clientName());
+        GameLobbyLogger.info("{} to notify from lobby", clients.size());
 
         for (ServerClient serverClient : getClients()) {
-            System.out.println("telling " + getClientInfo(serverClient).clientName() + " that " + getClientInfo(client).clientName() + " is leaving");
+            GameLobbyLogger.info("telling {} that {} is leaving", getClientInfo(serverClient).clientName(), getClientInfo(client).clientName());
             try {
                 serverClient.sendCommand(NetworkType.TCP, CommandTarget.Client, Commands.ClientLeft, getClientInfo(client));
             } catch (IOException exception) {
@@ -111,7 +111,7 @@ public class GameLobby extends Lobby {
 
     public void updateClientInfo(ClientInfo clientInfo) {
         ClientInfo replacedInfo = clientInfoMap.put(clientInfo.clientId(), clientInfo);
-        System.out.println("updated client info: set up " + clientInfo + " replacing " + replacedInfo);
+        GameLobbyLogger.info("updated client info: set up {} replacing {}", clientInfo, replacedInfo);
     }
 
     public void removeClientInfo(ServerClient client) {

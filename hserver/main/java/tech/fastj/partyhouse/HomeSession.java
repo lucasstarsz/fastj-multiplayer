@@ -81,31 +81,30 @@ public class HomeSession extends Session {
 
         clientGameStates.put(client.getClientId(), newGameState);
 
-        System.out.println(getClients().size() + " to notify from session about client game state adding");
+        HomeSessionLogger.info(getClients().size() + " to notify from session about client game state adding");
 
         for (ServerClient serverClient : getClients()) {
             try {
-                System.out.println("sending new game state from " + client.getClientId() + " to " + serverClient.getClientId());
+                HomeSessionLogger.info("sending new game state from {} to {}", client.getClientId(), serverClient.getClientId());
 
                 serverClient.sendCommand(
                         NetworkType.TCP, CommandTarget.Client, Commands.UpdateClientGameState,
                         newGameState.getClientInfo(), newGameState.getClientPosition(), newGameState.getClientVelocity()
                 );
             } catch (IOException exception) {
-                HomeSessionLogger.warn("error while trying to send client game state to " + serverClient.getClientId(), exception);
+                HomeSessionLogger.warn("Error while trying to send client game state to {}: {}", serverClient.getClientId(), exception);
             }
 
             try {
+                HomeSessionLogger.info("sending existing game state from {} to {}", serverClient.getClientId(), client.getClientId());
+
                 ClientGameState existingGameState = clientGameStates.get(serverClient.getClientId());
-
-                System.out.println("sending existing game state from " + serverClient.getClientId() + " to " + client.getClientId());
-
                 client.sendCommand(
                         NetworkType.TCP, CommandTarget.Client, Commands.UpdateClientGameState,
                         existingGameState.getClientInfo(), existingGameState.getClientPosition(), existingGameState.getClientVelocity()
                 );
             } catch (IOException exception) {
-                HomeSessionLogger.warn("error while trying to send client game state to " + serverClient.getClientId(), exception);
+                HomeSessionLogger.warn("Error while trying to send client game state to {}: {}", client.getClientId(), exception);
             }
         }
     }

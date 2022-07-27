@@ -35,117 +35,40 @@ import tech.fastj.partyhousecore.Commands;
 
 public class HomeLobby extends Scene {
 
-    private ContentBox pingDisplay;
     private final User user;
 
-    private final Map<UUID, ClientGameState> otherClients;
-    private Map<UUID, Player> otherPlayers;
+    private ContentBox pingDisplay;
 
+    private final Map<UUID, ClientGameState> otherGameStates;
+    private final Map<UUID, Player> otherPlayers;
+
+    private ClientGameState playerGameState;
     private Player player;
     private HomeController homeController;
-    private ClientGameState playerGameState;
 
     public HomeLobby() {
         super(SceneNames.HomeLobby);
 
-        otherClients = new LinkedHashMap<>();
+        otherGameStates = new LinkedHashMap<>();
         otherPlayers = new LinkedHashMap<>();
         user = User.getInstance();
-    }
-
-    public void setupClientCommands() {
-        Client client = user.getClient();
-        Pointf center = FastJEngine.getCanvas().getCanvasCenter();
-
-        client.addCommand(Commands.ClientJoined, ClientInfo.class, (c, clientInfo) -> {
-            Log.info("{} joined.", clientInfo.clientName());
-
-            ClientGameState clientGameState = createGameState(clientInfo, center);
-            Player otherPlayer = createPlayer(clientGameState);
-
-            drawableManager.addGameObject(otherPlayer);
-            otherPlayers.put(clientInfo.clientId(), otherPlayer);
-            otherClients.put(clientInfo.clientId(), clientGameState);
-        });
-
-        client.addCommand(Commands.ClientLeft, ClientInfo.class, (c, clientInfo) -> {
-            Log.info("{} left.", clientInfo.clientName());
-
-            FastJEngine.runAfterUpdate(() -> {
-                otherClients.remove(clientInfo.clientId());
-
-                Player otherPlayer = otherPlayers.remove(clientInfo.clientId());
-                drawableManager.removeGameObject(otherPlayer);
-                otherPlayer.destroy(this);
-            });
-        });
-
-        client.addCommand(Commands.UpdateClientInfo, ClientInfo.class, (c, clientInfo) -> {
-            Log.info("{} updated their client info.", clientInfo.clientName());
-
-            ClientGameState clientGameState = otherClients.get(clientInfo.clientId());
-            Player otherPlayer = otherPlayers.get(clientInfo.clientId());
-
-            if (clientGameState == null || otherPlayer == null) {
-                return;
-            }
-
-            clientGameState.setClientInfo(clientInfo);
-            otherPlayer.setPlayerName(clientInfo.clientName());
-        });
-
-        client.addCommand(Commands.UpdateClientGameState,
-                ClientInfo.class, ClientPosition.class, ClientVelocity.class,
-                (c, clientInfo, clientPosition, clientVelocity) -> {
-                    Log.info("{} moved: {}, {}", clientInfo.clientName(), clientPosition.x(), clientPosition.y());
-
-                    ClientGameState clientState = otherClients.get(clientInfo.clientId());
-                    Player otherPlayer = otherPlayers.get(clientInfo.clientId());
-
-                    if (clientState == null || otherPlayer == null) {
-                        return;
-                    }
-
-                    clientState.setClientInfo(clientInfo);
-                    clientState.setClientPosition(clientPosition);
-                    clientState.setClientVelocity(clientVelocity);
-
-                    otherPlayer.setPlayerName(clientInfo.clientName());
-                }
-        );
-    }
-
-    private Player createPlayer(ClientGameState clientState) {
-        System.out.println("creating new player instance for " + clientState.getClientInfo().clientName());
-        return new Player(clientState.getClientInfo().clientName());
-    }
-
-    private ClientGameState createGameState(ClientInfo clientInfo, Pointf center) {
-        System.out.println("creating new client info for " + clientInfo.clientName());
-
-        ClientGameState gameState = new ClientGameState();
-
-        gameState.setClientInfo(clientInfo);
-        gameState.setClientPosition(new ClientPosition(center.x, center.y));
-        gameState.setClientVelocity(new ClientVelocity());
-
-        return gameState;
     }
 
     @Override
     public void load(FastJCanvas canvas) {
         Log.debug(MainMenu.class, "loading {}", getSceneName());
-        Pointf center = canvas.getCanvasCenter();
+
+        Client client = user.getClient();
+
+        if (client == null) {
+            Main.gameCrashed("Client has not been initialized, can't proceed with the game.", new IllegalStateException());
+            return;
+        }
 
         pingDisplay = new ContentBox(this, "Ping", "???ms");
         pingDisplay.translate(new Pointf(25f));
         pingDisplay.getStatDisplay().setFill(Colors.Snowy);
         pingDisplay.getStatDisplay().setFont(Fonts.StatTextFont);
-
-        Client client = user.getClient();
-        if (client == null) {
-            return;
-        }
 
         client.onPingReceived(ping -> {
             double pingMillis = TimeUnit.MILLISECONDS.convert(ping, TimeUnit.NANOSECONDS);
@@ -159,16 +82,18 @@ public class HomeLobby extends Scene {
         client.startPings(100L, TimeUnit.MILLISECONDS);
         client.startKeepAlives(1L, TimeUnit.SECONDS);
 
+        Pointf center = canvas.getCanvasCenter();
         playerGameState = new ClientGameState();
         playerGameState.setClientInfo(user.getClientInfo());
-        playerGameState.setClientPosition(new ClientPosition());
+        playerGameState.setClientPosition(new ClientPosition(center.x, center.y));
         playerGameState.setClientVelocity(new ClientVelocity());
+
         player = new Player(playerGameState.getClientInfo().clientName());
         player.addTag(Tags.LocalPlayer);
-        playerGameState.setClientPosition(new ClientPosition(center.x, center.y));
 
         homeController = new HomeController(250, 300, playerGameState);
         player.addBehavior(homeController, this);
+
         drawableManager.addGameObject(player);
 
         Log.debug(MainMenu.class, "loaded {}", getSceneName());
@@ -191,7 +116,6 @@ public class HomeLobby extends Scene {
             }
 
             otherPlayers.clear();
-            otherPlayers = null;
         }
 
         if (pingDisplay != null) {
@@ -221,7 +145,7 @@ public class HomeLobby extends Scene {
 
     @Override
     public void update(FastJCanvas canvas) {
-        for (ClientGameState clientState : otherClients.values()) {
+        for (ClientGameState clientState : otherGameStates.values()) {
             Player otherPlayer = otherPlayers.get(clientState.getClientInfo().clientId());
 
             if (otherPlayer == null) {
@@ -238,5 +162,84 @@ public class HomeLobby extends Scene {
         }
 
         playerGameState.updatePlayerPosition(player);
+    }
+
+    public void setupClientCommands() {
+        Client client = user.getClient();
+        Pointf center = FastJEngine.getCanvas().getCanvasCenter();
+
+        client.addCommand(Commands.ClientJoined, ClientInfo.class, (c, clientInfo) -> {
+            Log.info("{} joined.", clientInfo.clientName());
+
+            ClientGameState clientGameState = createGameState(clientInfo, center);
+            Player otherPlayer = createPlayer(clientGameState);
+
+            drawableManager.addGameObject(otherPlayer);
+            otherPlayers.put(clientInfo.clientId(), otherPlayer);
+            otherGameStates.put(clientInfo.clientId(), clientGameState);
+        });
+
+        client.addCommand(Commands.ClientLeft, ClientInfo.class, (c, clientInfo) -> {
+            Log.info("{} left.", clientInfo.clientName());
+
+            FastJEngine.runAfterUpdate(() -> {
+                otherGameStates.remove(clientInfo.clientId());
+
+                Player otherPlayer = otherPlayers.remove(clientInfo.clientId());
+                drawableManager.removeGameObject(otherPlayer);
+                otherPlayer.destroy(this);
+            });
+        });
+
+        client.addCommand(Commands.UpdateClientInfo, ClientInfo.class, (c, clientInfo) -> {
+            Log.info("{} updated their client info.", clientInfo.clientName());
+
+            ClientGameState clientGameState = otherGameStates.get(clientInfo.clientId());
+            Player otherPlayer = otherPlayers.get(clientInfo.clientId());
+
+            if (clientGameState == null || otherPlayer == null) {
+                return;
+            }
+
+            clientGameState.setClientInfo(clientInfo);
+            otherPlayer.setPlayerName(clientInfo.clientName());
+        });
+
+        client.addCommand(Commands.UpdateClientGameState,
+                ClientInfo.class, ClientPosition.class, ClientVelocity.class,
+                (c, clientInfo, clientPosition, clientVelocity) -> {
+                    Log.info("{} moved: {}, {}", clientInfo.clientName(), clientPosition.x(), clientPosition.y());
+
+                    ClientGameState clientState = otherGameStates.get(clientInfo.clientId());
+                    Player otherPlayer = otherPlayers.get(clientInfo.clientId());
+
+                    if (clientState == null || otherPlayer == null) {
+                        return;
+                    }
+
+                    clientState.setClientInfo(clientInfo);
+                    clientState.setClientPosition(clientPosition);
+                    clientState.setClientVelocity(clientVelocity);
+
+                    otherPlayer.setPlayerName(clientInfo.clientName());
+                }
+        );
+    }
+
+    private Player createPlayer(ClientGameState clientState) {
+        Log.info("creating new player instance for {}", clientState.getClientInfo().clientName());
+        return new Player(clientState.getClientInfo().clientName());
+    }
+
+    private ClientGameState createGameState(ClientInfo clientInfo, Pointf center) {
+        Log.info("creating new client info for {}", clientInfo.clientName());
+
+        ClientGameState gameState = new ClientGameState();
+
+        gameState.setClientInfo(clientInfo);
+        gameState.setClientPosition(new ClientPosition(center.x, center.y));
+        gameState.setClientVelocity(new ClientVelocity());
+
+        return gameState;
     }
 }
