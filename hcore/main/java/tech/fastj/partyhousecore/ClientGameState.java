@@ -49,7 +49,8 @@ public class ClientGameState {
 
     public void updatePlayerPosition(GameObject player) {
         player.setTranslation(new Pointf(clientPosition.x(), clientPosition.y()));
-        player.setRotation(clientVelocity.angle());
+        player.rotate(-player.getRotation());
+        player.rotate(clientVelocity.angle());
     }
 
     public boolean needsUpdate() {
