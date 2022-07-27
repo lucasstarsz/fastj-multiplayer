@@ -103,11 +103,11 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
     }
 
     public void receiveNewClient(ServerClient client) throws IOException {
-        getLogger().debug("Lobby {} received new client {}", lobbyIdentifier.name(), client.getClientId());
-
-        clients.add(client);
+        getLogger().info("Lobby {} received new client {}", lobbyIdentifier.name(), client.getClientId());
 
         onReceiveNewClient.accept(this, client);
+
+        clients.add(client);
         lobbyIdentifier = new LobbyIdentifier(lobbyIdentifier.id(), lobbyIdentifier.name(), clients.size(), lobbyIdentifier.maxPlayers());
 
         client.sendLobbyUpdate(lobbyIdentifier);
@@ -135,6 +135,7 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
 
     public void clientDisconnect(ServerClient client) {
         clients.remove(client);
+        lobbyIdentifier = new LobbyIdentifier(lobbyIdentifier.id(), lobbyIdentifier.name(), clients.size(), lobbyIdentifier.maxPlayers());
 
         Session session = getClientSession(client);
 

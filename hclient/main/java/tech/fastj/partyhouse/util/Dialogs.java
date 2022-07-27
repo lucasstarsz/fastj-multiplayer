@@ -42,4 +42,13 @@ public class Dialogs {
             SwingUtilities.invokeLater(() -> message(dialogConfig));
         }
     }
+
+    public static void errorQuitMessage(DialogConfig dialogConfig) {
+        if (SwingUtilities.isEventDispatchThread()) {
+            DialogUtil.showMessageDialog(dialogConfig);
+            System.exit(0);
+        } else {
+            SwingUtilities.invokeLater(() -> message(dialogConfig));
+        }
+    }
 }

@@ -1,35 +1,55 @@
 package tech.fastj.partyhouse.scenes.multiplayer.lobbysearch;
 
 import tech.fastj.engine.FastJEngine;
-import tech.fastj.graphics.display.FastJCanvas;
-import tech.fastj.graphics.game.Text2D;
 import tech.fastj.logging.Log;
 import tech.fastj.math.Pointf;
 import tech.fastj.math.Transform2D;
-import tech.fastj.network.config.ClientConfig;
-import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
-import tech.fastj.partyhouse.Main;
-import tech.fastj.partyhouse.scenes.mainmenu.MainMenu;
-import tech.fastj.partyhouse.ui.BetterButton;
-import tech.fastj.partyhouse.user.User;
-import tech.fastj.partyhouse.util.Colors;
-import tech.fastj.partyhouse.util.Fonts;
-import tech.fastj.partyhouse.util.SceneNames;
-import tech.fastj.partyhouse.util.Shapes;
+import tech.fastj.graphics.dialog.DialogConfig;
+import tech.fastj.graphics.display.FastJCanvas;
+import tech.fastj.graphics.game.Text2D;
+
 import tech.fastj.systems.control.Scene;
 import tech.fastj.systems.control.SceneManager;
 
-import java.awt.*;
+import tech.fastj.network.config.ClientConfig;
+import tech.fastj.network.rpc.Client;
+import tech.fastj.network.rpc.message.CommandTarget;
+import tech.fastj.network.rpc.message.NetworkType;
+import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
+
+import javax.swing.SwingUtilities;
 import java.io.IOException;
+import java.net.ConnectException;
+import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import tech.fastj.partyhouse.Main;
+import tech.fastj.partyhouse.scenes.mainmenu.MainMenu;
+import tech.fastj.partyhouse.scenes.multiplayer.game.HomeLobby;
+import tech.fastj.partyhouse.ui.BetterButton;
+import tech.fastj.partyhouse.ui.LobbyContentBox;
+import tech.fastj.partyhouse.user.User;
+import tech.fastj.partyhouse.util.Buttons;
+import tech.fastj.partyhouse.util.Colors;
+import tech.fastj.partyhouse.util.Dialogs;
+import tech.fastj.partyhouse.util.Fonts;
+import tech.fastj.partyhouse.util.SceneNames;
+import tech.fastj.partyhouse.util.Shapes;
+import tech.fastj.partyhousecore.ClientInfo;
+import tech.fastj.partyhousecore.Commands;
+import tech.fastj.partyhousecore.Info;
+import tech.fastj.partyhousecore.Messages;
 
 public class LobbySearch extends Scene {
 
     private Text2D titleText;
-    private BetterButton playButton;
-    private BetterButton infoButton;
-    private BetterButton songEditorButton;
-    private BetterButton settingsButton;
-    private BetterButton exitButton;
+    private BetterButton joinSelectedLobbyButton;
+    private BetterButton refreshLobbiesButton;
+    private BetterButton mainMenuButton;
+    private List<LobbyContentBox> lobbyList;
+    private LobbyContentBox selectedLobby;
 
     private User user;
 
@@ -42,67 +62,58 @@ public class LobbySearch extends Scene {
         Log.debug(MainMenu.class, "loading {}", getSceneName());
         Pointf center = canvas.getCanvasCenter();
 
-        titleText = Text2D.create(Main.GameName)
+        user = User.getInstance();
+
+        titleText = Text2D.create("Lobby Search")
                 .withFill(Colors.Snowy)
-                .withFont(Fonts.TitleTextFont)
-                .withTransform(Pointf.subtract(center, 260f, 200f), Transform2D.DefaultRotation, Transform2D.DefaultScale)
+                .withFont(Fonts.H3TextFont)
+                .withTransform(new Pointf(25f, 25f), Transform2D.DefaultRotation, Transform2D.DefaultScale)
                 .build();
         drawableManager.addGameObject(titleText);
 
-        playButton = new BetterButton(this, Pointf.subtract(center, 225f, 50f), Shapes.ButtonSize);
-        playButton.setText("Play Game");
-        playButton.setFill(Color.darkGray);
-        playButton.setFont(Fonts.ButtonTextFont);
-        playButton.setOutlineColor(Colors.Snowy);
-        playButton.setTextColor(Colors.Snowy);
-        playButton.setOnAction(mouseButtonEvent -> {
+        joinSelectedLobbyButton = Buttons.create(this, canvas, (Shapes.ButtonSize.x * 0.25f), 50f, "Join Lobby");
+        joinSelectedLobbyButton.setOnAction(mouseButtonEvent -> {
             mouseButtonEvent.consume();
-            FastJEngine.runAfterRender(() -> FastJEngine.<SceneManager>getLogicManager().switchScenes(SceneNames.SongPicker, false));
+            FastJEngine.runAfterRender(() -> {
+                try {
+                    joinSelectedLobby(canvas);
+                } catch (IOException | InterruptedException exception) {
+                    if (exception instanceof IOException joinException) {
+                        Dialogs.message(
+                                DialogConfig.create()
+                                        .withTitle("Error while trying to join lobby")
+                                        .withPrompt(joinException.getMessage())
+                                        .build()
+                        );
+                    } else {
+                        Main.gameCrashed("Crashed while trying to join lobby", exception);
+                    }
+                }
+            });
         });
 
-        infoButton = new BetterButton(this, Pointf.subtract(center, -25f, 50f), Shapes.ButtonSize);
-        infoButton.setText("Information");
-        infoButton.setFill(Color.darkGray);
-        infoButton.setFont(Fonts.ButtonTextFont);
-        infoButton.setOutlineColor(Colors.Snowy);
-        infoButton.setTextColor(Colors.Snowy);
-        infoButton.setOnAction(mouseButtonEvent -> {
+        refreshLobbiesButton = Buttons.create(this, canvas, -(Shapes.ButtonSize.x * 1.25f), 50f, "Refresh Lobbies");
+        refreshLobbiesButton.setOnAction(mouseButtonEvent -> {
             mouseButtonEvent.consume();
-            FastJEngine.runAfterRender(() -> FastJEngine.<SceneManager>getLogicManager().switchScenes(SceneNames.Information, false));
+            FastJEngine.runAfterRender(() -> {
+                try {
+                    checkForLobbies(center);
+                } catch (IOException | InterruptedException exception) {
+                    if (exception instanceof ConnectException connectException) {
+                        Dialogs.message(
+                                DialogConfig.create()
+                                        .withTitle("Error while trying to connect")
+                                        .withPrompt(connectException.getMessage())
+                                        .build()
+                        );
+                    } else {
+                        Main.gameCrashed("Crashed while checking for lobbies", exception);
+                    }
+                }
+            });
         });
 
-        songEditorButton = new BetterButton(this, Pointf.subtract(center, 225f, -50f), Shapes.ButtonSize);
-        songEditorButton.setText("Song Editor");
-        songEditorButton.setFill(Color.darkGray);
-        songEditorButton.setFont(Fonts.ButtonTextFont);
-        songEditorButton.setOutlineColor(Colors.Snowy);
-        songEditorButton.setTextColor(Colors.Snowy);
-        songEditorButton.setOnAction(mouseButtonEvent -> {
-            mouseButtonEvent.consume();
-            FastJEngine.runAfterRender(() -> FastJEngine.<SceneManager>getLogicManager().switchScenes(SceneNames.SongEditor));
-        });
-
-        settingsButton = new BetterButton(this, Pointf.subtract(center, -25f, -50f), Shapes.ButtonSize);
-        settingsButton.setText("Settings");
-        settingsButton.setFill(Color.darkGray);
-        settingsButton.setFont(Fonts.ButtonTextFont);
-        settingsButton.setOutlineColor(Colors.Snowy);
-        settingsButton.setTextColor(Colors.Snowy);
-        settingsButton.setOnAction(mouseButtonEvent -> {
-            mouseButtonEvent.consume();
-            FastJEngine.runAfterRender(() -> FastJEngine.<SceneManager>getLogicManager().switchScenes(SceneNames.Settings, false));
-        });
-
-        exitButton = new BetterButton(this, Pointf.subtract(center, 100f, -150f), Shapes.ButtonSize);
-        exitButton.setText("Quit Game");
-        exitButton.setFill(Color.darkGray);
-        exitButton.setFont(Fonts.ButtonTextFont);
-        exitButton.setOutlineColor(Colors.Snowy);
-        exitButton.setTextColor(Colors.Snowy);
-        exitButton.setOnAction(mouseButtonEvent -> {
-            mouseButtonEvent.consume();
-            FastJEngine.runAfterRender(FastJEngine.getDisplay()::close);
-        });
+        mainMenuButton = Buttons.menu(this, canvas, -100f, 200f, "Back", SceneNames.MainMenu);
 
         Log.debug(MainMenu.class, "loaded {}", getSceneName());
     }
@@ -115,29 +126,34 @@ public class LobbySearch extends Scene {
             titleText = null;
         }
 
-        if (playButton != null) {
-            playButton.destroy(this);
-            playButton = null;
+        if (joinSelectedLobbyButton != null) {
+            joinSelectedLobbyButton.destroy(this);
+            joinSelectedLobbyButton = null;
         }
 
-        if (infoButton != null) {
-            infoButton.destroy(this);
-            infoButton = null;
+        if (refreshLobbiesButton != null) {
+            refreshLobbiesButton.destroy(this);
+            refreshLobbiesButton = null;
         }
 
-        if (settingsButton != null) {
-            settingsButton.destroy(this);
-            settingsButton = null;
+        if (mainMenuButton != null) {
+            mainMenuButton.destroy(this);
+            mainMenuButton = null;
         }
 
-        if (songEditorButton != null) {
-            songEditorButton.destroy(this);
-            songEditorButton = null;
+        if (lobbyList != null) {
+            for (LobbyContentBox contentBox : lobbyList) {
+                contentBox.destroy(this);
+            }
+
+            lobbyList.clear();
+        } else {
+            lobbyList = new ArrayList<>();
         }
 
-        if (exitButton != null) {
-            exitButton.destroy(this);
-            exitButton = null;
+        if (selectedLobby != null) {
+            selectedLobby.destroy(this);
+            selectedLobby = null;
         }
 
         setInitialized(false);
@@ -152,12 +168,113 @@ public class LobbySearch extends Scene {
     public void update(FastJCanvas canvas) {
     }
 
-    private void checkForLobbies() throws IOException, InterruptedException {
-        LobbyIdentifier[] lobbies = user.getClient().getAvailableLobbies();
-        updateLobbyList(lobbies);
+    private void checkForLobbies(Pointf center) throws IOException, InterruptedException {
+        if (user.getClient() == null && !setupClient()) {
+            return;
+        }
+
+        Client client = user.getClient();
+
+        LobbyIdentifier[] lobbies = client.getAvailableLobbies();
+        updateLobbyList(center, lobbies);
     }
 
-    private void updateLobbyList(LobbyIdentifier[] lobbies) {
+    private void joinSelectedLobby(FastJCanvas canvas) throws IOException, InterruptedException {
+        if (user.getClient() == null && !setupClient()) {
+            return;
+        }
 
+        if (selectedLobby == null) {
+            Dialogs.message(
+                    DialogConfig.create()
+                            .withTitle("No selected lobby")
+                            .withPrompt("You must select an available lobby before trying to connect.")
+                            .build()
+            );
+
+            return;
+        }
+
+        LobbyIdentifier lobby = selectedLobby.getLobby();
+        Client client = user.getClient();
+
+        SwingUtilities.invokeLater(() -> {
+            String name = Dialogs.userInput(
+                    DialogConfig.create()
+                            .withParentComponent(FastJEngine.getDisplay().getWindow())
+                            .withTitle("Set nickname")
+                            .withPrompt("Please set a nickname. (must not be whitespace)")
+                            .build()
+            );
+
+            user.setClientInfo(new ClientInfo(client.getClientId(), name));
+            Log.info("New name: {}", name);
+
+            try {
+                LobbyIdentifier newLobbyId = client.joinLobby(lobby.id());
+
+                if (newLobbyId == null) {
+                    throw new IOException("Denied access to lobby.");
+                }
+
+                client.sendCommand(NetworkType.TCP, CommandTarget.Lobby, Commands.UpdateClientInfo, user.getClientInfo());
+
+                FastJEngine.runAfterUpdate(() -> {
+                    FastJEngine.<SceneManager>getLogicManager().getScene(SceneNames.MainMenu).unload(canvas);
+                    FastJEngine.<SceneManager>getLogicManager().switchScenes(SceneNames.HomeLobby);
+                });
+            } catch (Exception exception) {
+                Main.gameCrashed("Failed to join lobby", exception);
+            }
+        });
+    }
+
+    private boolean setupClient() throws IOException {
+        Client client = new Client(new ClientConfig(InetAddress.getByName(Info.DefaultIp), Info.DefaultPort));
+
+        client.connect();
+        client.startKeepAlives(1L, TimeUnit.SECONDS);
+        Messages.updateSerializer(client.getSerializer());
+
+        user.setClient(client);
+        user.setClientInfo(new ClientInfo(client.getClientId(), "???"));
+        FastJEngine.<SceneManager>getLogicManager().<HomeLobby>getScene(SceneNames.HomeLobby).setupClientCommands();
+
+        return true;
+    }
+
+    private void updateLobbyList(Pointf center, LobbyIdentifier[] lobbies) {
+        if (lobbyList != null) {
+            for (LobbyContentBox contentBox : lobbyList) {
+                contentBox.destroy(this);
+            }
+
+            lobbyList.clear();
+            selectedLobby = null;
+        } else {
+            lobbyList = new ArrayList<>();
+        }
+
+        for (int i = 0; i < lobbies.length; i++) {
+            LobbyIdentifier lobby = lobbies[i];
+            LobbyContentBox contentBox = new LobbyContentBox(this, lobby);
+
+            contentBox.setTranslation(Pointf.subtract(center, 100f, 100f - (25f * i)));
+            contentBox.getStatDisplay().setFill(Colors.Snowy);
+            contentBox.getStatDisplay().setFont(Fonts.StatTextFont);
+
+            contentBox.addOnAction((mouseButtonEvent) -> {
+                if (contentBox.isFocused()) {
+                    for (LobbyContentBox lobbyContentBox : lobbyList) {
+                        lobbyContentBox.setFocused(false);
+                    }
+
+                    contentBox.setFocused(true);
+                    selectedLobby = contentBox;
+                }
+            });
+
+            lobbyList.add(contentBox);
+        }
     }
 }

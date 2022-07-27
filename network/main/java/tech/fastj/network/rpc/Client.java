@@ -1,7 +1,5 @@
 package tech.fastj.network.rpc;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import tech.fastj.network.config.ClientConfig;
 import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.rpc.message.CommandTarget;
@@ -24,6 +22,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.LongConsumer;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Client extends ConnectionHandler<Client> implements Runnable, NetworkSender {
 
@@ -61,6 +62,8 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
         };
 
         updateFreshener = Executors.newWorkStealingPool();
+        serializer.registerSerializer(SessionIdentifier.class);
+        serializer.registerSerializer(LobbyIdentifier.class);
     }
 
     @Override
@@ -128,7 +131,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
 
         DatagramPacket packet = SendUtils.buildPacket(clientConfig, packetData);
 
-        ClientLogger.debug("sending ping to {}:{}", clientConfig.address(), clientConfig.port());
+        ClientLogger.trace("sending ping to {}:{}", clientConfig.address(), clientConfig.port());
 
         try {
             udpSocket.send(packet);
@@ -171,7 +174,6 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
     private void sendKeepAlives() {
         try {
             sendKeepAlive(NetworkType.TCP);
-            sendKeepAlive(NetworkType.UDP);
         } catch (IOException exception) {
             ClientLogger.error("Unable to send keep-alive(s). Stopping sending keep-alives.", exception);
             stopKeepAlives();
@@ -264,7 +266,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
     }
 
     public void sendRequest(NetworkType networkType, RequestType requestType, byte[] rawData) throws IOException {
-        ClientLogger.trace("{} sending {} \"{}\" to {}:{}", clientId, networkType.name(), requestType.name(), clientConfig.address(), clientConfig.port());
+        ClientLogger.debug("{} sending {} \"{}\" to {}:{}", clientId, networkType.name(), requestType.name(), clientConfig.address(), clientConfig.port());
 
         switch (networkType) {
             case TCP -> SendUtils.sendTCPRequest(tcpOut, requestType, rawData);
@@ -274,7 +276,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
 
     @Override
     public void sendDisconnect(NetworkType networkType, byte[] rawData) throws IOException {
-        ClientLogger.trace("{} sending {} disconnect to {}:{}", clientId, networkType.name(), clientConfig.address(), clientConfig.port());
+        ClientLogger.debug("{} sending {} disconnect to {}:{}", clientId, networkType.name(), clientConfig.address(), clientConfig.port());
 
         switch (networkType) {
             case TCP -> SendUtils.sendTCPDisconnect(tcpOut);
@@ -338,6 +340,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
                 }
 
                 UUID commandId = (UUID) inputStream.readObject(UUID.class);
+                ClientLogger.debug("RPC Command {} targeting {} with data length {}", commandId, commandTarget.name(), dataLength);
 
                 if (commandTarget != CommandTarget.Client) {
                     ClientLogger.warn("Received command \"{}\" targeted at {} instead of client", commandId, commandTarget.name());

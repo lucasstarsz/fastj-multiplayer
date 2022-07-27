@@ -2,6 +2,8 @@ package tech.fastj.partyhouse.user;
 
 import tech.fastj.network.rpc.Client;
 
+import tech.fastj.partyhousecore.ClientInfo;
+
 public class User {
 
     private static final User Instance = new User();
@@ -13,6 +15,7 @@ public class User {
     private boolean hasHighScore;
     private boolean hasHighBlocksStacked;
     private Client client;
+    private ClientInfo clientInfo;
     private final UserSettings settings;
 
     private User() {
@@ -59,6 +62,14 @@ public class User {
 
     public void setClient(Client client) {
         this.client = client;
+    }
+
+    public ClientInfo getClientInfo() {
+        return clientInfo;
+    }
+
+    public void setClientInfo(ClientInfo clientInfo) {
+        this.clientInfo = clientInfo;
     }
 
     public void addToScore(int scoreIncrement) {

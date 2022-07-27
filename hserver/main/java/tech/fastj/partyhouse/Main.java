@@ -21,6 +21,10 @@ public class Main {
 
             server.get().start();
             server.get().allowClients();
+            server.get().createLobby("Test");
+            server.get().createLobby("Test 2");
+            server.get().createLobby("Test 3");
+            server.get().createLobby("Test 4");
         } catch (IOException exception) {
             server.get().stop();
         }

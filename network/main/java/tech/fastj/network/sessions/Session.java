@@ -30,7 +30,7 @@ import java.util.function.BooleanSupplier;
 public abstract class Session extends SessionHandler<ServerClient> implements NetworkSender {
     private static final Logger SessionLogger = LoggerFactory.getLogger(Client.class);
 
-    private final Lobby lobby;
+    protected final Lobby lobby;
     private final List<ServerClient> clients;
     private final SessionIdentifier sessionIdentifier;
     private BiConsumer<Session, ServerClient> onReceiveNewClient;
@@ -171,9 +171,9 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
     }
 
     public void receiveNewClient(ServerClient client) throws IOException {
-        clients.add(client);
         client.sendSessionUpdate(sessionIdentifier);
         onReceiveNewClient.accept(this, client);
+        clients.add(client);
     }
 
     public void clientDisconnect(ServerClient client) {

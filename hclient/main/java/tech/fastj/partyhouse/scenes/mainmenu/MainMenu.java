@@ -1,24 +1,27 @@
 package tech.fastj.partyhouse.scenes.mainmenu;
 
 import tech.fastj.engine.FastJEngine;
-import tech.fastj.graphics.display.FastJCanvas;
-import tech.fastj.graphics.game.Text2D;
 import tech.fastj.logging.Log;
 import tech.fastj.math.Pointf;
 import tech.fastj.math.Transform2D;
-import tech.fastj.partyhouse.Main;
-import tech.fastj.partyhouse.ui.BetterButton;
-import tech.fastj.partyhouse.util.Colors;
-import tech.fastj.partyhouse.util.Fonts;
-import tech.fastj.partyhouse.util.SceneNames;
-import tech.fastj.partyhouse.util.Shapes;
+import tech.fastj.graphics.display.FastJCanvas;
+import tech.fastj.graphics.game.Text2D;
+
 import tech.fastj.systems.audio.AudioEvent;
 import tech.fastj.systems.audio.MemoryAudio;
 import tech.fastj.systems.control.Scene;
 import tech.fastj.systems.control.SceneManager;
 
-import java.awt.*;
+import javax.swing.SwingUtilities;
 import java.io.IOException;
+
+import tech.fastj.partyhouse.Main;
+import tech.fastj.partyhouse.ui.BetterButton;
+import tech.fastj.partyhouse.util.Buttons;
+import tech.fastj.partyhouse.util.Colors;
+import tech.fastj.partyhouse.util.Fonts;
+import tech.fastj.partyhouse.util.SceneNames;
+import tech.fastj.partyhouse.util.Shapes;
 
 public class MainMenu extends Scene {
 
@@ -42,70 +45,25 @@ public class MainMenu extends Scene {
         titleText = Text2D.create(Main.GameName)
                 .withFill(Colors.Snowy)
                 .withFont(Fonts.TitleTextFont)
-                .withTransform(Pointf.subtract(center, 260f, 200f), Transform2D.DefaultRotation, Transform2D.DefaultScale)
+                .withTransform(Pointf.subtract(center, 225f, 200f), Transform2D.DefaultRotation, Transform2D.DefaultScale)
                 .build();
         drawableManager.addGameObject(titleText);
 
-        playButton = new BetterButton(this, Pointf.subtract(center, 225f, 50f), Shapes.ButtonSize);
-        playButton.setText("Play Game");
-        playButton.setFill(Color.darkGray);
-        playButton.setFont(Fonts.ButtonTextFont);
-        playButton.setOutlineColor(Colors.Snowy);
-        playButton.setTextColor(Colors.Snowy);
-        playButton.setOnAction(mouseButtonEvent -> {
-            mouseButtonEvent.consume();
-            FastJEngine.runAfterRender(() -> FastJEngine.<SceneManager>getLogicManager().switchScenes(SceneNames.SongPicker, false));
-        });
+        playButton = Buttons.menu(this, canvas, -(Shapes.ButtonSize.x * 1.25f), -50f, "Play Game", SceneNames.LobbySearch, false);
+        infoButton = Buttons.menu(this, canvas, (Shapes.ButtonSize.x * 0.25f), 50f, "Information", SceneNames.Information, false);
+        settingsButton = Buttons.menu(this, canvas, (Shapes.ButtonSize.x * 0.25f), -50f, "Settings", SceneNames.Settings, false);
 
-        infoButton = new BetterButton(this, Pointf.subtract(center, -25f, 50f), Shapes.ButtonSize);
-        infoButton.setText("Information");
-        infoButton.setFill(Color.darkGray);
-        infoButton.setFont(Fonts.ButtonTextFont);
-        infoButton.setOutlineColor(Colors.Snowy);
-        infoButton.setTextColor(Colors.Snowy);
-        infoButton.setOnAction(mouseButtonEvent -> {
-            mouseButtonEvent.consume();
-            FastJEngine.runAfterRender(() -> FastJEngine.<SceneManager>getLogicManager().switchScenes(SceneNames.Information, false));
-        });
-
-        songEditorButton = new BetterButton(this, Pointf.subtract(center, 225f, -50f), Shapes.ButtonSize);
-        songEditorButton.setText("Song Editor");
-        songEditorButton.setFill(Color.darkGray);
-        songEditorButton.setFont(Fonts.ButtonTextFont);
-        songEditorButton.setOutlineColor(Colors.Snowy);
-        songEditorButton.setTextColor(Colors.Snowy);
+        songEditorButton = Buttons.create(this, canvas, -(Shapes.ButtonSize.x * 1.25f), 50f, "Song Editor");
         songEditorButton.setOnAction(mouseButtonEvent -> {
             mouseButtonEvent.consume();
             FastJEngine.runAfterRender(() -> FastJEngine.<SceneManager>getLogicManager().switchScenes(SceneNames.SongEditor));
         });
 
-        settingsButton = new BetterButton(this, Pointf.subtract(center, -25f, -50f), Shapes.ButtonSize);
-        settingsButton.setText("Settings");
-        settingsButton.setFill(Color.darkGray);
-        settingsButton.setFont(Fonts.ButtonTextFont);
-        settingsButton.setOutlineColor(Colors.Snowy);
-        settingsButton.setTextColor(Colors.Snowy);
-        settingsButton.setOnAction(mouseButtonEvent -> {
-            mouseButtonEvent.consume();
-            FastJEngine.runAfterRender(() -> FastJEngine.<SceneManager>getLogicManager().switchScenes(SceneNames.Settings, false));
-        });
-
-        exitButton = new BetterButton(this, Pointf.subtract(center, 100f, -150f), Shapes.ButtonSize);
-        exitButton.setText("Quit Game");
-        exitButton.setFill(Color.darkGray);
-        exitButton.setFont(Fonts.ButtonTextFont);
-        exitButton.setOutlineColor(Colors.Snowy);
-        exitButton.setTextColor(Colors.Snowy);
+        exitButton = Buttons.create(this, canvas, -Shapes.ButtonSize.x / 2f, 150f, "Quit Game");
         exitButton.setOnAction(mouseButtonEvent -> {
             mouseButtonEvent.consume();
-            FastJEngine.runAfterRender(FastJEngine.getDisplay()::close);
+            SwingUtilities.invokeLater(FastJEngine::forceCloseGame);
         });
-
-//        mainMenuMusic = FastJEngine.getAudioManager().loadMemoryAudio(FilePaths.MainMenuMusic);
-//        mainMenuMusic.setLoopPoints(0.0096f, 0.951f);
-//        mainMenuMusic.setShouldLoop(true);
-//        mainMenuMusic.setLoopCount(MemoryAudio.ContinuousLoop);
-//        mainMenuMusic.play();
 
         Log.debug(MainMenu.class, "loaded {}", getSceneName());
     }

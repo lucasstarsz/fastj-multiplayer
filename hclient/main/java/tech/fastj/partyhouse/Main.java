@@ -5,6 +5,10 @@ import tech.fastj.engine.FastJEngine;
 import tech.fastj.engine.config.ExceptionAction;
 import tech.fastj.graphics.dialog.DialogConfig;
 import tech.fastj.logging.LogLevel;
+
+import tech.fastj.network.rpc.Client;
+
+import tech.fastj.partyhouse.user.User;
 import tech.fastj.partyhouse.util.Dialogs;
 import tech.fastj.partyhouse.util.Fonts;
 
@@ -17,6 +21,7 @@ public class Main {
 
     public static void main(String[] args) {
         try {
+            System.setProperty("sun.java2d.uiScale", "1");
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
             FlatDarkLaf.setup();
 
@@ -26,15 +31,26 @@ public class Main {
             FastJEngine.configureExceptionAction(ExceptionAction.Throw);
 
             FastJEngine.run();
-        } catch (Exception exception) {
-            if (FastJEngine.isRunning()) {
-                FastJEngine.closeGame();
-            }
 
-            displayException("Error while running FastJ", exception);
-        } finally {
-            System.exit(0);
+            Client client = User.getInstance().getClient();
+            if (client != null) {
+                client.disconnect();
+            }
+        } catch (Exception exception) {
+            gameCrashed("Error while running FastJ.", exception);
         }
+    }
+
+    public static void gameCrashed(String message, Exception exception) {
+        if (FastJEngine.isRunning()) {
+            FastJEngine.closeGame();
+        }
+
+        if (User.getInstance().getClient() != null) {
+            User.getInstance().getClient().disconnect();
+        }
+
+        displayException(message, exception);
     }
 
     public static void displayException(String message, Exception exception) {
@@ -51,11 +67,10 @@ public class Main {
         } while ((currentException = currentException.getCause()) != null);
 
         JTextArea textArea = new JTextArea(formattedException.toString());
-        textArea.setBackground(new Color(238, 238, 238));
         textArea.setEditable(false);
         textArea.setFont(Fonts.notoSansMono(Font.PLAIN, 13));
 
-        Dialogs.message(DialogConfig.create().withParentComponent(null)
+        Dialogs.errorQuitMessage(DialogConfig.create().withParentComponent(null)
                 .withTitle(exception.getClass().getName() + (message != null ? (": " + message) : ""))
                 .withPrompt(textArea)
                 .build()

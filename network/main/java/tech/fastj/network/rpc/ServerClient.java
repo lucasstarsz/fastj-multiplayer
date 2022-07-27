@@ -1,7 +1,5 @@
 package tech.fastj.network.rpc;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import tech.fastj.network.config.ClientConfig;
 import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.rpc.message.CommandTarget;
@@ -22,6 +20,9 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class ServerClient extends ConnectionHandler<ServerClient> implements Runnable, NetworkSender {
 
     private final Logger ServerClientLogger = LoggerFactory.getLogger(ServerClient.class);
@@ -33,6 +34,8 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
     public ServerClient(Socket socket, Server server, DatagramSocket udpServer) throws IOException {
         super(socket, udpServer);
         this.server = server;
+        serializer.registerSerializer(SessionIdentifier.class);
+        serializer.registerSerializer(LobbyIdentifier.class);
     }
 
     public MessageOutputStream getTcpOut() {
@@ -173,11 +176,14 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
                 .putLong(timestamp)
                 .array();
 
-        ServerClientLogger.debug("{} sending ping response to {}:{}", clientId, clientConfig.address(), clientConfig.port());
+        ServerClientLogger.trace("{} sending ping response to {}:{}", clientId, clientConfig.address(), clientConfig.port());
 
         DatagramPacket packet = SendUtils.buildPacket(udpConfig, packetData);
         udpSocket.send(packet);
+    }
 
-        ServerClientLogger.debug("{} ping response sent.", clientId);
+    @Override
+    public void disconnect() {
+        server.disconnectClient(this);
     }
 }

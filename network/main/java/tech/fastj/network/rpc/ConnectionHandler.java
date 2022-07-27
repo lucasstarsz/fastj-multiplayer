@@ -13,6 +13,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -147,13 +148,20 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
 
         while (isListening && !tcpSocket.isClosed()) {
             try {
-                getLogger().trace("{} waiting for new TCP data...", clientId);
+                getLogger().debug("{} waiting for new TCP data...", clientId);
 
                 SentMessageType sentMessageType = (SentMessageType) tcpIn.readObject(SentMessageType.class);
 
-                getLogger().trace("{} received TCP: {}", clientId, sentMessageType);
+                getLogger().debug("{} received TCP: {}", clientId, sentMessageType);
 
                 readMessageType(NetworkType.TCP, clientId, tcpIn, sentMessageType);
+            } catch (SocketException exception) {
+                getLogger().warn("{} Error receiving TCP packet: {}", clientId, exception.getMessage());
+
+                connectionStatus = ConnectionStatus.Disconnected;
+                disconnect();
+
+                break;
             } catch (IOException exception) {
                 if (!tcpSocket.isClosed() && isListening) {
                     getLogger().error(clientId + " Error receiving TCP packet", exception);
@@ -173,7 +181,7 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
                 byte[] receivePacketBuffer = new byte[SendUtils.UdpPacketBufferLength];
                 DatagramPacket packet = new DatagramPacket(receivePacketBuffer, SendUtils.UdpPacketBufferLength);
 
-                getLogger().debug("{} waiting for new UDP packet...", clientId);
+                getLogger().trace("{} waiting for new UDP packet...", clientId);
 
                 udpSocket.receive(packet);
 
@@ -184,9 +192,18 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
                 UUID senderId = (UUID) tempStream.readObject(UUID.class);
                 SentMessageType sentMessageType = (SentMessageType) tempStream.readObject(SentMessageType.class);
 
-                getLogger().trace("{} received UDP: {}", senderId, sentMessageType);
+                if (sentMessageType != SentMessageType.PingRequest && sentMessageType != SentMessageType.PingResponse) {
+                    getLogger().trace("{} received UDP: {}", senderId, sentMessageType);
+                }
 
                 readMessageType(NetworkType.UDP, senderId, tempStream, sentMessageType);
+            } catch (SocketException exception) {
+                getLogger().warn("{} Error receiving UDP packet: {}", clientId, exception.getMessage());
+
+                connectionStatus = ConnectionStatus.Disconnected;
+                disconnect();
+
+                break;
             } catch (IOException exception) {
                 if (!udpSocket.isClosed() && isListening) {
                     getLogger().error(clientId + " Error receiving UDP packet", exception);
