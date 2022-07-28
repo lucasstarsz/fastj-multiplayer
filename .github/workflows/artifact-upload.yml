@@ -22,11 +22,16 @@ jobs:
         run: chmod +x ./gradlew
       - name: JPackage using Gradle
         run: ./gradlew jpackage
-      - name: Upload JPackage artifact
+      - name: Upload JPackage server artifact
         uses: actions/upload-artifact@v2
         with:
-          name: ubuntu-artifact
-          path: build/jpackage/
+          name: ubuntu-server-artifact
+          path: hserver/build/jpackage/
+      - name: Upload JPackage client artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ubuntu-client-artifact
+          path: hclient/build/jpackage/
 
   upload-windows:
     runs-on: windows-latest
@@ -40,8 +45,13 @@ jobs:
           architecture: x64
       - name: JPackage using Gradle
         run: ./gradlew jpackage
-      - name: Upload JPackage artifact
+      - name: Upload JPackage server artifact
         uses: actions/upload-artifact@v2
         with:
-          name: win-artifact
-          path: build/jpackage/
+          name: windows-server-artifact
+          path: hserver/build/jpackage/
+      - name: Upload JPackage client artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: windows-client-artifact
+          path: hclient/build/jpackage/
