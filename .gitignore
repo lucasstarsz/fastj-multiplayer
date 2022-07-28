@@ -51,9 +51,9 @@ hs_err_pid*
 *.jks
 *.cer
 
-# Game Asset Files/Folders
-*.psdf
-*.obj
-*.mtl
-*.ttf
-*.wav
+## Game Asset Files/Folders
+#*.psdf
+#*.obj
+#*.mtl
+#*.ttf
+#*.wav
