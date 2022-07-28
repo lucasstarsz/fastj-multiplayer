@@ -111,30 +111,34 @@ public abstract class CommandHandler<T extends ConnectionHandler<?>> {
             getLogger().warn(
                 "Received unregistered command {} (Command name may have been \"{}\")",
                 commandId,
-                idsToCommandIds.get(commandId).name()
+                idsToCommandIds.get(commandId)
             );
 
             if (dataLength > inputStream.available()) {
                 getLogger().warn(
                     "Received incomplete command {}\nBad data: {}",
-                    idsToCommandIds.get(commandId).formattedToString(),
-                    Arrays.toString(inputStream.readAllBytes())
+                    commandId,
+                    Arrays.toString(inputStream.readNBytes(inputStream.available()))
                 );
             } else {
                 getLogger().warn(
                     "Received incomplete command {}\nBad data: {}",
-                    idsToCommandIds.get(commandId).formattedToString(),
+                    commandId,
                     Arrays.toString(inputStream.readNBytes((int) dataLength))
                 );
             }
+
+            return;
         }
 
         if (dataLength > inputStream.available()) {
             getLogger().warn(
                 "Received incomplete command {}\nBad data: {}",
-                idsToCommandIds.get(commandId).formattedToString(),
+                commandId,
                 Arrays.toString(inputStream.readAllBytes())
             );
+
+            return;
         }
 
         if (classes instanceof Classes0) {
@@ -191,15 +195,7 @@ public abstract class CommandHandler<T extends ConnectionHandler<?>> {
 
     @SuppressWarnings("unchecked")
     protected Object readObject(Class<?> objectClass, MessageInputStream inputStream) throws IOException {
-        Object result;
-
-        if (Message.class.isAssignableFrom(objectClass)) {
-            result = serializer.readMessage(inputStream, (Class<? extends Message>) objectClass);
-        } else {
-            result = inputStream.readObject(objectClass);
-        }
-
-        return result;
+        return inputStream.readObject(objectClass);
     }
 
     @SuppressWarnings("unchecked")
@@ -260,7 +256,7 @@ public abstract class CommandHandler<T extends ConnectionHandler<?>> {
 
     protected void idRegisterCheck(Command.Id id) {
         if (commandIds.contains(id)) {
-            throw new IllegalArgumentException("Command (" + id.formattedToString() + ") has already been registered.");
+            getLogger().warn("Replacing command {}.", id.formattedToString());
         }
     }
 }

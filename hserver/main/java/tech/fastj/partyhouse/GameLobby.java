@@ -16,28 +16,40 @@ import org.slf4j.LoggerFactory;
 import tech.fastj.partyhousecore.ClientInfo;
 import tech.fastj.partyhousecore.Commands;
 import tech.fastj.partyhousecore.Messages;
+import tech.fastj.partyhousecore.PointsState;
 
 public class GameLobby extends Lobby {
 
     private static final Logger GameLobbyLogger = LoggerFactory.getLogger(GameLobby.class);
 
     HomeSession homeSession;
+    SnowballFightSession snowballFightSession;
 
     private final Map<UUID, ClientInfo> clientInfoMap;
+    private final Map<UUID, PointsState> totalPoints;
 
     public GameLobby(Server server, String name) {
         super(server, 8, name);
 
         clientInfoMap = new HashMap<>();
+        totalPoints = new HashMap<>();
+
         Messages.updateSerializer(serializer);
+
         setOnReceiveNewClient(this::notifyClientJoined);
         setOnClientDisconnect(this::notifyClientLeft);
 
         homeSession = new HomeSession(this);
+        snowballFightSession = new SnowballFightSession(this);
+
         addSession(homeSession);
+        addSession(snowballFightSession);
+
         addCommand(Commands.UpdateClientInfo, ClientInfo.class, (client, clientInfo) -> {
             GameLobbyLogger.info("Updating client info of {} to {}:{}", client.getClientId(), clientInfo.clientId(), clientInfo.clientName());
+
             updateClientInfo(clientInfo);
+            updateClientPoints(clientInfo);
 
             for (ServerClient serverClient : clients) {
                 if (client.getClientId().equals(serverClient.getClientId())) {
@@ -70,14 +82,14 @@ public class GameLobby extends Lobby {
         for (ServerClient serverClient : getClients()) {
             try {
                 GameLobbyLogger.info("Notifying {} on new client {}", getClientInfo(serverClient).clientName(), clientInfo.clientName());
-                serverClient.sendCommand(NetworkType.TCP, CommandTarget.Client, Commands.ClientJoined, clientInfo);
+                serverClient.sendCommand(NetworkType.TCP, CommandTarget.Client, Commands.ClientJoinLobby, clientInfo);
             } catch (IOException exception) {
                 GameLobbyLogger.warn("tried to send notification to all clients, but {}", exception.getMessage());
             }
 
             try {
                 GameLobbyLogger.info("Notifying new client {} on existing client {}", clientInfo.clientName(), getClientInfo(serverClient).clientName());
-                client.sendCommand(NetworkType.TCP, CommandTarget.Client, Commands.ClientJoined, getClientInfo(serverClient));
+                client.sendCommand(NetworkType.TCP, CommandTarget.Client, Commands.ClientJoinLobby, getClientInfo(serverClient));
             } catch (IOException exception) {
                 GameLobbyLogger.warn("tried to send notification to newly joined client, but {}", exception.getMessage());
             }
@@ -85,19 +97,27 @@ public class GameLobby extends Lobby {
     }
 
     private void notifyClientLeft(Lobby lobby, ServerClient client) {
-        GameLobbyLogger.info("client {} leaving", getClientInfo(client).clientName());
+        ClientInfo clientInfo = getClientInfo(client);
+
+        if (clientInfo == null) {
+            clientInfo = new ClientInfo(client.getClientId(), client.getClientId().toString());
+        }
+
+        GameLobbyLogger.info("client {} leaving", clientInfo.clientName());
         GameLobbyLogger.info("{} to notify from lobby", clients.size());
 
         for (ServerClient serverClient : getClients()) {
-            GameLobbyLogger.info("telling {} that {} is leaving", getClientInfo(serverClient).clientName(), getClientInfo(client).clientName());
+            GameLobbyLogger.info("telling {} that {} is leaving", getClientInfo(serverClient).clientName(), clientInfo.clientName());
+
             try {
-                serverClient.sendCommand(NetworkType.TCP, CommandTarget.Client, Commands.ClientLeft, getClientInfo(client));
+                serverClient.sendCommand(NetworkType.TCP, CommandTarget.Client, Commands.ClientLeaveLobby, clientInfo);
             } catch (IOException exception) {
                 GameLobbyLogger.warn("tried to send notification to all clients, but {}", exception.getMessage());
             }
         }
 
-        removeClientInfo(client);
+        clientInfoMap.remove(client.getClientId());
+        totalPoints.remove(client.getClientId());
     }
 
     @Override
@@ -114,7 +134,23 @@ public class GameLobby extends Lobby {
         GameLobbyLogger.info("updated client info: set up {} replacing {}", clientInfo, replacedInfo);
     }
 
-    public void removeClientInfo(ServerClient client) {
-        clientInfoMap.remove(client.getClientId());
+    private void updateClientPoints(ClientInfo clientInfo) {
+        PointsState pointsState = new PointsState();
+        pointsState.setClientInfo(clientInfo);
+
+        PointsState replacedPoints = totalPoints.put(clientInfo.clientId(), pointsState);
+        GameLobbyLogger.info("updated client points: set up {} replacing {}", pointsState, replacedPoints);
+    }
+
+    public void updateTotalPoints(Map<UUID, PointsState> clientPoints) {
+        for (Map.Entry<UUID, PointsState> pointsEntry : clientPoints.entrySet()) {
+            System.out.println("updating on " + pointsEntry);
+            totalPoints.get(pointsEntry.getKey()).modifyPoints(pointsEntry.getValue().getPoints());
+            pointsEntry.getValue().resetPoints();
+        }
+    }
+
+    public Map<UUID, PointsState> getTotalPoints() {
+        return totalPoints;
     }
 }

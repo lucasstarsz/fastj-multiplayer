@@ -115,7 +115,7 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
         Session newClientSession = sessions.get(homeSessionId);
 
         if (newClientSession != null) {
-            newClientSession.receiveNewClient(client);
+            newClientSession.clientJoin(client);
         }
     }
 
@@ -140,7 +140,7 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
         Session session = getClientSession(client);
 
         if (session != null) {
-            session.clientDisconnect(client);
+            session.clientLeave(client);
         }
 
         onClientDisconnect.accept(this, client);
@@ -163,10 +163,38 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
         this.homeSessionId = homeSessionId;
     }
 
-    protected void switchCurrentSession(UUID nextSession) {
+    public void switchCurrentSession(UUID nextSession) {
         Session previousSession = currentSession;
         currentSession = sessions.get(nextSession);
 
         onSwitchSession.accept(previousSession, currentSession);
+    }
+
+    public void switchCurrentSession(String sessionName) {
+        Session previousSession = currentSession;
+        System.out.println("previous session: " + previousSession.getSessionIdentifier().sessionName());
+        currentSession = findSession(sessionName);
+        System.out.println("current session: " + currentSession.getSessionIdentifier().sessionName());
+        onSwitchSession.accept(previousSession, currentSession);
+    }
+
+    private Session findSession(String sessionName) {
+        System.out.println("sessions: " + sessions.values());
+
+        for (Session session : sessions.values()) {
+            if (session == null) {
+                continue;
+            }
+
+            System.out.println(session.getSessionIdentifier().sessionName());
+            if (sessionName.equals(session.getSessionIdentifier().sessionName())) {
+                return session;
+            }
+        }
+
+        throw new IllegalStateException(
+            "Could not find session named " + sessionName + "." + System.lineSeparator()
+                + "Sessions: " + sessions.values()
+        );
     }
 }

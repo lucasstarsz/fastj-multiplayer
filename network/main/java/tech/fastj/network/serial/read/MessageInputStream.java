@@ -83,6 +83,7 @@ public class MessageInputStream extends DataInputStream {
 
     private String readString() throws IOException {
         int stringLength = readInt();
+        System.out.println("string of " + stringLength + " length");
 
         if (stringLength == MessageUtils.Null) {
             return null;
@@ -151,6 +152,7 @@ public class MessageInputStream extends DataInputStream {
             return null;
         } else {
             T[] array = (T[]) Array.newInstance(serializer.networkableClass(), arrayLength);
+            System.out.println("array of " + arrayLength + " \"" + serializer.networkableClass() + "\"s");
             for (int i = 0; i < arrayLength; i++) {
                 array[i] = (T) readMessage((RecordSerializer<?>) serializer);
             }

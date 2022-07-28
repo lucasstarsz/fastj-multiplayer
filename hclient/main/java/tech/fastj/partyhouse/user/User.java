@@ -2,54 +2,36 @@ package tech.fastj.partyhouse.user;
 
 import tech.fastj.network.rpc.Client;
 
+import java.net.InetAddress;
+
 import tech.fastj.partyhousecore.ClientInfo;
+import tech.fastj.partyhousecore.PointsState;
 
 public class User {
 
     private static final User Instance = new User();
 
-    private int score;
-    private int highScore;
-    private int numberStacked;
-    private int highestNumberStacked;
-    private boolean hasHighScore;
-    private boolean hasHighBlocksStacked;
     private Client client;
     private ClientInfo clientInfo;
+    private final PointsState pointsState;
     private final UserSettings settings;
+    private InetAddress customIp;
 
     private User() {
-        score = 0;
-        highScore = 0;
-        numberStacked = 0;
-        highestNumberStacked = 0;
-        hasHighScore = false;
-        hasHighBlocksStacked = false;
         settings = new UserSettings();
+        pointsState = new PointsState();
     }
 
-    public int getScore() {
-        return score;
+    public void setCustomIp(InetAddress customIp) {
+        this.customIp = customIp;
     }
 
-    public int getHighScore() {
-        return highScore;
+    public InetAddress getCustomIp() {
+        return customIp;
     }
 
-    public int getNumberStacked() {
-        return numberStacked;
-    }
-
-    public int getHighestNumberStacked() {
-        return highestNumberStacked;
-    }
-
-    public boolean getHasHighScore() {
-        return hasHighScore;
-    }
-
-    public boolean getHasHighBlocksStacked() {
-        return hasHighBlocksStacked;
+    public PointsState getPointsState() {
+        return pointsState;
     }
 
     public UserSettings getSettings() {
@@ -70,27 +52,6 @@ public class User {
 
     public void setClientInfo(ClientInfo clientInfo) {
         this.clientInfo = clientInfo;
-    }
-
-    public void addToScore(int scoreIncrement) {
-        score += scoreIncrement;
-        if (score > highScore) {
-            highScore = score;
-            hasHighScore = true;
-        }
-
-        numberStacked++;
-        if (highestNumberStacked < numberStacked) {
-            highestNumberStacked = numberStacked;
-            hasHighBlocksStacked = true;
-        }
-    }
-
-    public void resetScore() {
-        score = 0;
-        numberStacked = 0;
-        hasHighScore = false;
-        hasHighBlocksStacked = false;
     }
 
     public static User getInstance() {

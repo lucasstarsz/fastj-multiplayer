@@ -7,5 +7,7 @@ public class Messages {
         serializer.registerSerializer(ClientInfo.class);
         serializer.registerSerializer(ClientPosition.class);
         serializer.registerSerializer(ClientVelocity.class);
+        serializer.registerSerializer(SnowballInfo.class);
+        serializer.registerSerializer(ClientPoints.class);
     }
 }

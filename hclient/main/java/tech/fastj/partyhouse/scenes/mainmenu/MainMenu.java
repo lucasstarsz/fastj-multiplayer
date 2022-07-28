@@ -4,21 +4,25 @@ import tech.fastj.engine.FastJEngine;
 import tech.fastj.logging.Log;
 import tech.fastj.math.Pointf;
 import tech.fastj.math.Transform2D;
+import tech.fastj.graphics.dialog.DialogConfig;
 import tech.fastj.graphics.display.FastJCanvas;
 import tech.fastj.graphics.game.Text2D;
 
 import tech.fastj.systems.audio.AudioEvent;
 import tech.fastj.systems.audio.MemoryAudio;
 import tech.fastj.systems.control.Scene;
-import tech.fastj.systems.control.SceneManager;
 
 import javax.swing.SwingUtilities;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 import tech.fastj.partyhouse.Main;
 import tech.fastj.partyhouse.ui.BetterButton;
+import tech.fastj.partyhouse.user.User;
 import tech.fastj.partyhouse.util.Buttons;
 import tech.fastj.partyhouse.util.Colors;
+import tech.fastj.partyhouse.util.Dialogs;
 import tech.fastj.partyhouse.util.Fonts;
 import tech.fastj.partyhouse.util.SceneNames;
 import tech.fastj.partyhouse.util.Shapes;
@@ -28,7 +32,7 @@ public class MainMenu extends Scene {
     private Text2D titleText;
     private BetterButton playButton;
     private BetterButton infoButton;
-    private BetterButton songEditorButton;
+    private BetterButton setServerIPButton;
     private BetterButton settingsButton;
     private BetterButton exitButton;
     private MemoryAudio mainMenuMusic;
@@ -50,16 +54,41 @@ public class MainMenu extends Scene {
         drawableManager.addGameObject(titleText);
 
         playButton = Buttons.menu(this, canvas, -(Shapes.ButtonSize.x * 1.25f), -50f, "Play Game", SceneNames.LobbySearch, false);
-        infoButton = Buttons.menu(this, canvas, (Shapes.ButtonSize.x * 0.25f), 50f, "Information", SceneNames.Information, false);
-        settingsButton = Buttons.menu(this, canvas, (Shapes.ButtonSize.x * 0.25f), -50f, "Settings", SceneNames.Settings, false);
+        infoButton = Buttons.menu(this, canvas, (Shapes.ButtonSize.x * 0.25f), -50f, "Information", SceneNames.Information, false);
+//        settingsButton = Buttons.menu(this, canvas, (Shapes.ButtonSize.x * 0.25f), -50f, "Settings", SceneNames.Settings, false);
 
-        songEditorButton = Buttons.create(this, canvas, -(Shapes.ButtonSize.x * 1.25f), 50f, "Song Editor");
-        songEditorButton.setOnAction(mouseButtonEvent -> {
+        setServerIPButton = Buttons.create(this, canvas, -(Shapes.ButtonSize.x * 1.25f), 50f, "Set Server IP");
+        setServerIPButton.setOnAction(mouseButtonEvent -> {
             mouseButtonEvent.consume();
-            FastJEngine.runAfterRender(() -> FastJEngine.<SceneManager>getLogicManager().switchScenes(SceneNames.SongEditor));
+            FastJEngine.runAfterRender(() -> {
+                 String newIp = Dialogs.userInput(
+                     DialogConfig.create()
+                         .withParentComponent(FastJEngine.getDisplay().getWindow())
+                         .withTitle("Set Custom Server IP")
+                         .withPrompt("Please set a custom server IP Address.")
+                         .build()
+                 );
+
+                 if (newIp == null) {
+                     return;
+                 }
+
+                 try {
+                     InetAddress newIpAddress = InetAddress.getByName(newIp);
+                     User.getInstance().setCustomIp(newIpAddress);
+                 } catch (UnknownHostException exception) {
+                     Dialogs.message(
+                         DialogConfig.create()
+                             .withParentComponent(FastJEngine.getDisplay().getWindow())
+                             .withTitle("Invalid Custom Server IP")
+                             .withPrompt("COuld not set the custom server IP to this value: " + exception.getMessage())
+                             .build()
+                     );
+                 }
+            });
         });
 
-        exitButton = Buttons.create(this, canvas, -Shapes.ButtonSize.x / 2f, 150f, "Quit Game");
+        exitButton = Buttons.create(this, canvas, (Shapes.ButtonSize.x * 0.25f), 50f, "Quit Game");
         exitButton.setOnAction(mouseButtonEvent -> {
             mouseButtonEvent.consume();
             SwingUtilities.invokeLater(FastJEngine::forceCloseGame);
@@ -91,9 +120,9 @@ public class MainMenu extends Scene {
             settingsButton = null;
         }
 
-        if (songEditorButton != null) {
-            songEditorButton.destroy(this);
-            songEditorButton = null;
+        if (setServerIPButton != null) {
+            setServerIPButton.destroy(this);
+            setServerIPButton = null;
         }
 
         if (exitButton != null) {

@@ -51,28 +51,28 @@ public class InformationMenu extends Scene {
             .build();
         drawableManager.addGameObject(howToPlayHeader);
 
-        controlsText = Text2D.create("When running a song, music notes will fall down from the top of the screen.")
+        controlsText = Text2D.create("Choose a server IP and join a lobby.")
             .withFont(Fonts.SmallStatTextFontPlain)
             .withFill(Colors.Snowy)
             .withTransform(Pointf.subtract(center, 605f, 75f), Transform2D.DefaultRotation, Transform2D.DefaultScale)
             .build();
         drawableManager.addGameObject(controlsText);
 
-        gameAimText = Text2D.create("Time your key presses correctly to match when the note falls on the block.")
+        gameAimText = Text2D.create("It requires two to tango -- at least two players are required in a lobby for a match to begin.")
             .withFont(Fonts.SmallStatTextFontPlain)
             .withFill(Colors.Snowy)
             .withTransform(Pointf.subtract(center, 605f, 50f), Transform2D.DefaultRotation, Transform2D.DefaultScale)
             .build();
         drawableManager.addGameObject(gameAimText);
 
-        themeText = Text2D.create("Just one problem: you're limited by the delayed reaction of your speakers!")
+        themeText = Text2D.create("Use WASD to move, R to reload snowballs, and SPACE to throw them.")
             .withFont(Fonts.SmallStatTextFontPlain)
             .withFill(Colors.Snowy)
             .withTransform(Pointf.subtract(center, 605f, 25f), Transform2D.DefaultRotation, Transform2D.DefaultScale)
             .build();
         drawableManager.addGameObject(themeText);
 
-        sendoffText = Text2D.create("Try to keep up with the notes as they fall down.")
+        sendoffText = Text2D.create("May the best player win!")
             .withFont(Fonts.SmallStatTextFontPlain)
             .withFill(Colors.Snowy)
             .withTransform(Pointf.subtract(center, 605f, 0f), Transform2D.DefaultRotation, Transform2D.DefaultScale)
@@ -99,7 +99,7 @@ public class InformationMenu extends Scene {
             githubLink.setFill(Colors.Snowy);
             githubLink.setTranslation(Pointf.subtract(center, -222.5f, 50f));
 
-            spotifyLink = new LinkText(this, "lucasstarsz's Spotify", new URL("https://soundcloud.com/lucas-z-43717769/"));
+            spotifyLink = new LinkText(this, "Link to the Game Repo", new URL("https://github.com/lucasstarsz/java-jam-2022"));
             spotifyLink.setFont(Fonts.SmallStatTextFontBold);
             spotifyLink.setFill(Colors.Snowy);
             spotifyLink.setTranslation(Pointf.subtract(center, -222.5f, 25f));

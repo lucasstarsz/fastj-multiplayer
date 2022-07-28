@@ -1,5 +1,5 @@
 module partyhouse.hserver {
-    requires fastj.library;
+    requires org.slf4j;
     requires partyhouse.hcore;
     requires fastj.network;
 }

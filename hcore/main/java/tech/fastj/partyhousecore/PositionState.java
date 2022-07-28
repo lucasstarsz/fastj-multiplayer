@@ -9,15 +9,24 @@ import tech.fastj.network.rpc.message.NetworkType;
 
 import java.io.IOException;
 
-public class ClientGameState {
+public class PositionState {
 
     private ClientInfo clientInfo;
     private ClientPosition clientPosition;
     private ClientVelocity clientVelocity;
+    private boolean isPlayerDead;
 
     private boolean needsUpdate;
 
-    public ClientGameState() {
+    public PositionState() {
+    }
+
+    public boolean isPlayerDead() {
+        return isPlayerDead;
+    }
+
+    public void setPlayerDead(boolean playerDead) {
+        isPlayerDead = playerDead;
     }
 
     public ClientInfo getClientInfo() {
@@ -59,7 +68,9 @@ public class ClientGameState {
 
     public void sendUpdate(NetworkSender sender, CommandTarget target) throws IOException {
         needsUpdate = false;
-        sender.sendCommand(NetworkType.UDP, target, Commands.UpdateClientGameState, clientInfo, clientPosition, clientVelocity);
+        if (!isPlayerDead) {
+            sender.sendCommand(NetworkType.UDP, target, Commands.UpdateClientGameState, clientInfo, clientPosition, clientVelocity);
+        }
     }
 
     public void updateVelocity(float inputAngle, float v) {

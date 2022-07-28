@@ -77,7 +77,7 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
     }
 
     @Override
-    public void sendRequest(NetworkType networkType, RequestType requestType, byte[] rawData) throws IOException {
+    public synchronized void sendRequest(NetworkType networkType, RequestType requestType, byte[] rawData) throws IOException {
         ServerClientLogger.trace("{} sending {} \"{}\" to {}:{}", clientId, networkType.name(), requestType.name(), clientConfig.address(), clientConfig.port());
 
         switch (networkType) {
@@ -87,7 +87,7 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
     }
 
     @Override
-    public void sendDisconnect(NetworkType networkType, byte[] rawData) throws IOException {
+    public synchronized void sendDisconnect(NetworkType networkType, byte[] rawData) throws IOException {
         ServerClientLogger.trace("{} sending {} disconnect to {}:{}", clientId, networkType.name(), clientConfig.address(), clientConfig.port());
 
         switch (networkType) {
@@ -97,7 +97,7 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
     }
 
     @Override
-    public void sendKeepAlive(NetworkType networkType) throws IOException {
+    public synchronized void sendKeepAlive(NetworkType networkType) throws IOException {
         ServerClientLogger.trace("{} sending {} keep-alive to {}:{}", clientId, networkType.name(), clientConfig.address(), clientConfig.port());
 
         switch (networkType) {
@@ -106,12 +106,12 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
         }
     }
 
-    public void sendLobbyUpdate(LobbyIdentifier lobbyUpdate) throws IOException {
+    public synchronized void sendLobbyUpdate(LobbyIdentifier lobbyUpdate) throws IOException {
         ServerClientLogger.trace("{} sending TCP lobby update to {}:{}", clientId, clientConfig.address(), clientConfig.port());
         SendUtils.sendTCPLobbyUpdate(tcpOut, serializer.writeMessage(lobbyUpdate));
     }
 
-    public void sendSessionUpdate(SessionIdentifier sessionUpdate) throws IOException {
+    public synchronized void sendSessionUpdate(SessionIdentifier sessionUpdate) throws IOException {
         ServerClientLogger.trace("{} sending TCP session update to {}:{}", clientId, clientConfig.address(), clientConfig.port());
         SendUtils.sendTCPSessionUpdate(tcpOut, serializer.writeMessage(sessionUpdate));
     }

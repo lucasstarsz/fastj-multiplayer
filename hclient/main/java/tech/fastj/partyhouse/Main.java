@@ -2,6 +2,7 @@ package tech.fastj.partyhouse;
 
 import tech.fastj.engine.FastJEngine;
 import tech.fastj.engine.config.ExceptionAction;
+import tech.fastj.logging.Log;
 import tech.fastj.logging.LogLevel;
 import tech.fastj.graphics.dialog.DialogConfig;
 
@@ -51,6 +52,7 @@ public class Main {
             User.getInstance().getClient().disconnect();
         }
 
+        Log.error(Main.class, message, exception);
         displayException(message, exception);
     }
 

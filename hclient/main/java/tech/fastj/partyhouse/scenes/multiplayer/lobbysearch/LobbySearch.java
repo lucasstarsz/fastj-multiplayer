@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 
 import tech.fastj.partyhouse.Main;
 import tech.fastj.partyhouse.scenes.mainmenu.MainMenu;
-import tech.fastj.partyhouse.scenes.multiplayer.game.HomeLobby;
+import tech.fastj.partyhouse.scenes.multiplayer.home.LobbyHome;
 import tech.fastj.partyhouse.ui.BetterButton;
 import tech.fastj.partyhouse.ui.LobbyContentBox;
 import tech.fastj.partyhouse.user.User;
@@ -86,7 +86,11 @@ public class LobbySearch extends Scene {
                                 .build()
                         );
                     } else {
-                        Main.gameCrashed("Crashed while trying to join lobby", exception);
+                        if (!User.getInstance().getClient().isConnected()) {
+                            disconnectClient();
+                        } else {
+                            Main.gameCrashed("Crashed while trying to join lobby", exception);
+                        }
                     }
                 }
             });
@@ -107,7 +111,11 @@ public class LobbySearch extends Scene {
                                 .build()
                         );
                     } else {
-                        Main.gameCrashed("Crashed while checking for lobbies", exception);
+                        if (!User.getInstance().getClient().isConnected()) {
+                            disconnectClient();
+                        } else {
+                            Main.gameCrashed("Crashed while checking for lobbies", exception);
+                        }
                     }
                 }
             });
@@ -207,6 +215,10 @@ public class LobbySearch extends Scene {
                     .build()
             );
 
+            if (name == null) {
+                return;
+            }
+
             user.setClientInfo(new ClientInfo(client.getClientId(), name));
             Log.info("New name: {}", name);
 
@@ -219,12 +231,16 @@ public class LobbySearch extends Scene {
 
                 client.sendCommand(NetworkType.TCP, CommandTarget.Lobby, Commands.UpdateClientInfo, user.getClientInfo());
 
-                FastJEngine.runAfterUpdate(() -> {
+                FastJEngine.runAfterRender(() -> {
                     FastJEngine.<SceneManager>getLogicManager().getScene(SceneNames.MainMenu).unload(canvas);
                     FastJEngine.<SceneManager>getLogicManager().switchScenes(SceneNames.HomeLobby);
                 });
             } catch (Exception exception) {
-                Main.gameCrashed("Failed to join lobby", exception);
+                if (!User.getInstance().getClient().isConnected()) {
+                    disconnectClient();
+                } else {
+                    Main.gameCrashed("Failed to join lobby", exception);
+                }
             }
         });
     }
@@ -232,15 +248,46 @@ public class LobbySearch extends Scene {
     private boolean setupClient() throws IOException {
         Client client = new Client(new ClientConfig(InetAddress.getByName(Info.DefaultIp), Info.DefaultPort));
 
+        client.setOnDisconnect((c) -> {
+            if (!FastJEngine.isRunning()) {
+                return;
+            }
+
+            String sceneName = FastJEngine.<SceneManager>getLogicManager().getCurrentScene().getSceneName();
+
+            if (!sceneName.equals(SceneNames.HomeLobby) && !sceneName.equals(SceneNames.SnowballFight)) {
+                return;
+            }
+
+            disconnectClient();
+        });
+
         client.connect();
         client.startKeepAlives(1L, TimeUnit.SECONDS);
         Messages.updateSerializer(client.getSerializer());
 
         user.setClient(client);
         user.setClientInfo(new ClientInfo(client.getClientId(), "???"));
-        FastJEngine.<SceneManager>getLogicManager().<HomeLobby>getScene(SceneNames.HomeLobby).setupClientCommands();
+        FastJEngine.<SceneManager>getLogicManager().<LobbyHome>getScene(SceneNames.HomeLobby).setupClientCommands();
 
         return true;
+    }
+
+    private void disconnectClient() {
+        SwingUtilities.invokeLater(() -> {
+            Dialogs.message(DialogConfig.create()
+                .withParentComponent(FastJEngine.getDisplay().getWindow())
+                .withTitle("Disconnected")
+                .withPrompt("You were disconnected from the server. You will now return to the main menu.")
+                .build()
+            );
+
+            FastJEngine.runAfterRender(() -> {
+                FastJEngine.<SceneManager>getLogicManager().switchScenes(SceneNames.MainMenu);
+                User.getInstance().setClientInfo(null);
+                User.getInstance().setClient(null);
+            });
+        });
     }
 
     private void updateLobbyList(Pointf center, LobbyIdentifier[] lobbies) {

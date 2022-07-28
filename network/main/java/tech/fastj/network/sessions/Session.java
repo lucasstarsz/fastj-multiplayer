@@ -34,8 +34,8 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
     protected final Lobby lobby;
     private final List<ServerClient> clients;
     private final SessionIdentifier sessionIdentifier;
-    private BiConsumer<Session, ServerClient> onReceiveNewClient;
-    private BiConsumer<Session, ServerClient> onClientDisconnect;
+    private BiConsumer<Session, ServerClient> onClientJoin;
+    private BiConsumer<Session, ServerClient> onClientLeave;
     private ExecutorService sequenceRunner;
 
     protected Session(Lobby lobby, String name, List<ServerClient> clients) {
@@ -43,9 +43,9 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
         this.clients = clients;
         sessionIdentifier = new SessionIdentifier(UUID.randomUUID(), name);
 
-        onReceiveNewClient = (session, client) -> {
+        onClientJoin = (session, client) -> {
         };
-        onClientDisconnect = (session, client) -> {
+        onClientLeave = (session, client) -> {
         };
     }
 
@@ -61,12 +61,12 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
         return Collections.unmodifiableList(clients);
     }
 
-    public void setOnReceiveNewClient(BiConsumer<Session, ServerClient> onReceiveNewClient) {
-        this.onReceiveNewClient = onReceiveNewClient;
+    public void setOnClientJoin(BiConsumer<Session, ServerClient> onClientJoin) {
+        this.onClientJoin = onClientJoin;
     }
 
-    public void setOnClientDisconnect(BiConsumer<Session, ServerClient> onClientDisconnect) {
-        this.onClientDisconnect = onClientDisconnect;
+    public void setOnClientLeave(BiConsumer<Session, ServerClient> onClientLeave) {
+        this.onClientLeave = onClientLeave;
     }
 
     public <T> Future<T> startSessionSequence(Sequence<T> sessionSequence) {
@@ -138,8 +138,8 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
             clients.size()
         );
 
-        for (ServerClient client : clients) {
-            client.disconnect();
+        for (int clientsSize = clients.size() - 1, i = clientsSize; i > 0; i--) {
+            clients.get(i).disconnect();
         }
     }
 
@@ -171,15 +171,15 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
         }
     }
 
-    public void receiveNewClient(ServerClient client) throws IOException {
+    public void clientJoin(ServerClient client) throws IOException {
         client.sendSessionUpdate(sessionIdentifier);
-        onReceiveNewClient.accept(this, client);
+        onClientJoin.accept(this, client);
         clients.add(client);
     }
 
-    public void clientDisconnect(ServerClient client) {
+    public void clientLeave(ServerClient client) {
         clients.remove(client);
-        onClientDisconnect.accept(this, client);
+        onClientLeave.accept(this, client);
     }
 
     public void stop() {
@@ -191,20 +191,11 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
         sendDisconnect(NetworkType.TCP, null);
     }
 
-    public abstract static class Sequence<T> {
+    public interface Sequence<T> {
 
-        private final ExecutorService completionExecutor;
+        T start() throws Exception;
 
-        protected final Session session;
-
-        public Sequence(Session session) {
-            this.session = session;
-            completionExecutor = Executors.newWorkStealingPool();
-        }
-
-        public abstract T start();
-
-        public boolean waitForCompletion(BooleanSupplier task, long timeout, long timeBetweenChecks, TimeUnit timeoutUnit)
+        default boolean waitForCompletion(BooleanSupplier task, long timeout, long timeBetweenChecks, TimeUnit timeoutUnit)
             throws InterruptedException {
 
             long currentTime = System.nanoTime();
@@ -224,12 +215,17 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
             return false;
         }
 
-        public Future<Boolean> waitForCompletionAsync(BooleanSupplier task, long timeout, long timeBetweenChecks, TimeUnit timeoutUnit) {
-            return completionExecutor.submit(() -> waitForCompletion(task, timeout, timeBetweenChecks, timeoutUnit));
+        default Future<Boolean> waitForCompletionAsync(BooleanSupplier task, long timeout, long timeBetweenChecks, TimeUnit timeoutUnit) {
+            ExecutorService completionExecutor = Executors.newWorkStealingPool();
+            try {
+                return completionExecutor.submit(() -> waitForCompletion(task, timeout, timeBetweenChecks, timeoutUnit));
+            } finally {
+                completionExecutor.shutdown();
+            }
         }
 
-        public Map<ResponseId, Object[]> waitForResponses(Command.Id responseId, long timeout, long timeBetweenChecks, TimeUnit timeoutUnit)
-            throws InterruptedException {
+        default Map<ResponseId, Object[]> waitForResponses(Session session, Command.Id responseId, long timeout, long timeBetweenChecks,
+                                                           TimeUnit timeoutUnit) throws InterruptedException {
             session.trackResponses(responseId);
 
             long timeoutNanos = TimeUnit.NANOSECONDS.convert(timeout, timeoutUnit);
@@ -250,9 +246,14 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
             return Map.of();
         }
 
-        public Future<Map<ResponseId, Object[]>> waitForResponsesAsync(Command.Id responseId, long timeout, long timeBetweenChecks,
-                                                                       TimeUnit timeoutUnit) {
-            return completionExecutor.submit(() -> waitForResponses(responseId, timeout, timeBetweenChecks, timeoutUnit));
+        default Future<Map<ResponseId, Object[]>> waitForResponsesAsync(Session session, Command.Id responseId, long timeout,
+                                                                        long timeBetweenChecks, TimeUnit timeoutUnit) {
+            ExecutorService completionExecutor = Executors.newWorkStealingPool();
+            try {
+                return completionExecutor.submit(() -> waitForResponses(session, responseId, timeout, timeBetweenChecks, timeoutUnit));
+            } finally {
+                completionExecutor.shutdown();
+            }
         }
     }
 }

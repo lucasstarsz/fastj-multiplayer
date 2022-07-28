@@ -21,6 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 
 import org.slf4j.Logger;
@@ -265,7 +266,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
         }
     }
 
-    public void sendRequest(NetworkType networkType, RequestType requestType, byte[] rawData) throws IOException {
+    public synchronized void sendRequest(NetworkType networkType, RequestType requestType, byte[] rawData) throws IOException {
         ClientLogger.debug("{} sending {} \"{}\" to {}:{}", clientId, networkType.name(), requestType.name(), clientConfig.address(), clientConfig.port());
 
         switch (networkType) {
@@ -275,7 +276,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
     }
 
     @Override
-    public void sendDisconnect(NetworkType networkType, byte[] rawData) throws IOException {
+    public synchronized void sendDisconnect(NetworkType networkType, byte[] rawData) throws IOException {
         ClientLogger.debug("{} sending {} disconnect to {}:{}", clientId, networkType.name(), clientConfig.address(), clientConfig.port());
 
         switch (networkType) {
@@ -285,7 +286,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
     }
 
     @Override
-    public void sendKeepAlive(NetworkType networkType) throws IOException {
+    public synchronized void sendKeepAlive(NetworkType networkType) throws IOException {
         ClientLogger.trace("{} sending {} keep-alive to {}:{}", clientId, networkType.name(), clientConfig.address(), clientConfig.port());
 
         switch (networkType) {

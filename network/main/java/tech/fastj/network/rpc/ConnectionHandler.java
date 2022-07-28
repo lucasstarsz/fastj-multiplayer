@@ -14,6 +14,7 @@ import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.Arrays;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -165,7 +166,20 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
             } catch (IOException exception) {
                 if (!tcpSocket.isClosed() && isListening) {
                     getLogger().error(clientId + " Error receiving TCP packet", exception);
-                    break;
+                    try {
+                        getLogger().warn("discarding data: {}", Arrays.toString(tcpIn.readAllBytes()));
+                    } catch (IOException e) {
+                        getLogger().warn("unable to discard {}'s TCP data fully.", clientId);
+                    }
+                } else {
+                    getLogger().warn("IOException while reading TCP packet: {}, {}", exception.getMessage(), exception);
+                }
+            } catch (Exception exception) {
+                getLogger().error("Exception while reading TCP packet: " + exception.getMessage(), exception);
+                try {
+                    getLogger().warn("discarding data: {}", Arrays.toString(tcpIn.readAllBytes()));
+                } catch (IOException e) {
+                    getLogger().warn("unable to discard {}'s TCP data fully.", clientId);
                 }
             }
         }
@@ -207,8 +221,12 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
             } catch (IOException exception) {
                 if (!udpSocket.isClosed() && isListening) {
                     getLogger().error(clientId + " Error receiving UDP packet", exception);
-                    break;
+                } else {
+                    getLogger().warn("IOException while reading UDP packet: {}, {}", exception.getMessage(), exception);
                 }
+            } catch (Exception exception) {
+                getLogger().error("Exception while reading UDP packet: " + exception.getMessage(), exception);
+                getLogger().warn("Discarding packet.");
             }
         }
 

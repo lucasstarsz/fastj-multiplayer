@@ -8,7 +8,7 @@ import tech.fastj.input.keyboard.Keyboard;
 import tech.fastj.input.keyboard.Keys;
 import tech.fastj.systems.behaviors.Behavior;
 
-import tech.fastj.partyhousecore.ClientGameState;
+import tech.fastj.partyhousecore.PositionState;
 
 public class HomeController implements Behavior {
 
@@ -19,9 +19,9 @@ public class HomeController implements Behavior {
     private float inputRotation;
 
     private Pointf inputTranslation;
-    private final ClientGameState gameState;
+    private final PositionState gameState;
 
-    public HomeController(float speedInterval, float rotationInterval, ClientGameState gameState) {
+    public HomeController(float speedInterval, float rotationInterval, PositionState gameState) {
         speed = speedInterval;
         rotation = rotationInterval;
         this.gameState = gameState;
