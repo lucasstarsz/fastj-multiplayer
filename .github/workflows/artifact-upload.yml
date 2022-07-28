@@ -1,0 +1,47 @@
+# This workflow uploads artifacts of <jam game name here> via jpackage using Gradle.
+
+name: Upload-Artifacts
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  upload-ubuntu:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 17
+        uses: actions/setup-java@v1
+        with:
+          java-version: '17'
+          architecture: x64
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+      - name: JPackage using Gradle
+        run: ./gradlew jpackage
+      - name: Upload JPackage artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ubuntu-artifact
+          path: build/jpackage/
+
+  upload-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 17
+        uses: actions/setup-java@v1
+        with:
+          java-version: '17'
+          architecture: x64
+      - name: JPackage using Gradle
+        run: ./gradlew jpackage
+      - name: Upload JPackage artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: win-artifact
+          path: build/jpackage/
