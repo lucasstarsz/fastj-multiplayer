@@ -8,15 +8,13 @@ import tech.fastj.graphics.dialog.DialogConfig;
 import tech.fastj.graphics.display.FastJCanvas;
 import tech.fastj.graphics.game.Text2D;
 
-import tech.fastj.systems.audio.AudioEvent;
-import tech.fastj.systems.audio.MemoryAudio;
 import tech.fastj.systems.control.Scene;
 
 import javax.swing.SwingUtilities;
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
+import tech.fastj.gameloop.CoreLoopState;
 import tech.fastj.partyhouse.Main;
 import tech.fastj.partyhouse.ui.BetterButton;
 import tech.fastj.partyhouse.user.User;
@@ -29,14 +27,6 @@ import tech.fastj.partyhouse.util.Shapes;
 
 public class MainMenu extends Scene {
 
-    private Text2D titleText;
-    private BetterButton playButton;
-    private BetterButton infoButton;
-    private BetterButton setServerIPButton;
-    private BetterButton settingsButton;
-    private BetterButton exitButton;
-    private MemoryAudio mainMenuMusic;
-
     public MainMenu() {
         super(SceneNames.MainMenu);
     }
@@ -46,49 +36,50 @@ public class MainMenu extends Scene {
         Log.debug(MainMenu.class, "loading {}", getSceneName());
         Pointf center = canvas.getCanvasCenter();
 
-        titleText = Text2D.create(Main.GameName)
+        Text2D titleText = Text2D.create(Main.GameName)
             .withFill(Colors.Snowy)
             .withFont(Fonts.TitleTextFont)
             .withTransform(Pointf.subtract(center, 225f, 200f), Transform2D.DefaultRotation, Transform2D.DefaultScale)
             .build();
-        drawableManager.addGameObject(titleText);
+        drawableManager().addGameObject(titleText);
 
-        playButton = Buttons.menu(this, canvas, -(Shapes.ButtonSize.x * 1.25f), -50f, "Play Game", SceneNames.LobbySearch, false);
-        infoButton = Buttons.menu(this, canvas, (Shapes.ButtonSize.x * 0.25f), -50f, "Information", SceneNames.Information, false);
+        // keep -- menu button's functionality is fully declared in Buttons.menu(...);
+        BetterButton playButton = Buttons.menu(this, canvas, -(Shapes.ButtonSize.x * 1.25f), -50f, "Play Game", SceneNames.LobbySearch, false);
+        BetterButton infoButton = Buttons.menu(this, canvas, (Shapes.ButtonSize.x * 0.25f), -50f, "Information", SceneNames.Information, false);
 //        settingsButton = Buttons.menu(this, canvas, (Shapes.ButtonSize.x * 0.25f), -50f, "Settings", SceneNames.Settings, false);
 
-        setServerIPButton = Buttons.create(this, canvas, -(Shapes.ButtonSize.x * 1.25f), 50f, "Set Server IP");
+        BetterButton setServerIPButton = Buttons.create(this, canvas, -(Shapes.ButtonSize.x * 1.25f), 50f, "Set Server IP");
         setServerIPButton.setOnAction(mouseButtonEvent -> {
             mouseButtonEvent.consume();
-            FastJEngine.runAfterRender(() -> {
-                 String newIp = Dialogs.userInput(
-                     DialogConfig.create()
-                         .withParentComponent(FastJEngine.getDisplay().getWindow())
-                         .withTitle("Set Custom Server IP")
-                         .withPrompt("Please set a custom server IP Address.")
-                         .build()
-                 );
+            FastJEngine.runLater(() -> {
+                String newIp = Dialogs.userInput(
+                    DialogConfig.create()
+                        .withParentComponent(FastJEngine.getDisplay().getWindow())
+                        .withTitle("Set Custom Server IP")
+                        .withPrompt("Please set a custom server IP Address.")
+                        .build()
+                );
 
-                 if (newIp == null) {
-                     return;
-                 }
+                if (newIp == null) {
+                    return;
+                }
 
-                 try {
-                     InetAddress newIpAddress = InetAddress.getByName(newIp);
-                     User.getInstance().setCustomIp(newIpAddress);
-                 } catch (UnknownHostException exception) {
-                     Dialogs.message(
-                         DialogConfig.create()
-                             .withParentComponent(FastJEngine.getDisplay().getWindow())
-                             .withTitle("Invalid Custom Server IP")
-                             .withPrompt("COuld not set the custom server IP to this value: " + exception.getMessage())
-                             .build()
-                     );
-                 }
-            });
+                try {
+                    InetAddress newIpAddress = InetAddress.getByName(newIp);
+                    User.getInstance().setCustomIp(newIpAddress);
+                } catch (UnknownHostException exception) {
+                    Dialogs.message(
+                        DialogConfig.create()
+                            .withParentComponent(FastJEngine.getDisplay().getWindow())
+                            .withTitle("Invalid Custom Server IP")
+                            .withPrompt("COuld not set the custom server IP to this value: " + exception.getMessage())
+                            .build()
+                    );
+                }
+            }, CoreLoopState.LateUpdate);
         });
 
-        exitButton = Buttons.create(this, canvas, (Shapes.ButtonSize.x * 0.25f), 50f, "Quit Game");
+        BetterButton exitButton = Buttons.create(this, canvas, (Shapes.ButtonSize.x * 0.25f), 50f, "Quit Game");
         exitButton.setOnAction(mouseButtonEvent -> {
             mouseButtonEvent.consume();
             SwingUtilities.invokeLater(FastJEngine::forceCloseGame);
@@ -100,48 +91,6 @@ public class MainMenu extends Scene {
     @Override
     public void unload(FastJCanvas canvas) {
         Log.debug(MainMenu.class, "unloading {}", getSceneName());
-        if (titleText != null) {
-            titleText.destroy(this);
-            titleText = null;
-        }
-
-        if (playButton != null) {
-            playButton.destroy(this);
-            playButton = null;
-        }
-
-        if (infoButton != null) {
-            infoButton.destroy(this);
-            infoButton = null;
-        }
-
-        if (settingsButton != null) {
-            settingsButton.destroy(this);
-            settingsButton = null;
-        }
-
-        if (setServerIPButton != null) {
-            setServerIPButton.destroy(this);
-            setServerIPButton = null;
-        }
-
-        if (exitButton != null) {
-            exitButton.destroy(this);
-            exitButton = null;
-        }
-
-        if (mainMenuMusic != null) {
-            FastJEngine.getGameLoop().removeEventObserver(mainMenuMusic.getAudioEventListener(), AudioEvent.class);
-            mainMenuMusic.stop();
-            try {
-                mainMenuMusic.getAudioInputStream().close();
-            } catch (IOException exception) {
-                Log.warn(MainMenu.class, "Error occurred while closing main menu music", exception);
-            }
-            mainMenuMusic = null;
-        }
-
-        setInitialized(false);
         Log.debug(MainMenu.class, "unloaded {}", getSceneName());
     }
 

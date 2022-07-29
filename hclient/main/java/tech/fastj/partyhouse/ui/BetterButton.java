@@ -12,8 +12,7 @@ import tech.fastj.input.mouse.MouseActionListener;
 import tech.fastj.input.mouse.MouseButtons;
 import tech.fastj.input.mouse.events.MouseButtonEvent;
 import tech.fastj.input.mouse.events.MouseMotionEvent;
-import tech.fastj.systems.control.Scene;
-import tech.fastj.systems.control.SimpleManager;
+import tech.fastj.systems.control.GameHandler;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -74,16 +73,7 @@ public class BetterButton extends UIElement<MouseButtonEvent> implements MouseAc
      *
      * @param origin The scene to add the button as a gui object to.
      */
-    public BetterButton(Scene origin) {
-        this(origin, Transform2D.DefaultTranslation, DefaultSize);
-    }
-
-    /**
-     * Constructs a button with a default location and size.
-     *
-     * @param origin The simple manager to add the button as a gui object to.
-     */
-    public BetterButton(SimpleManager origin) {
+    public BetterButton(GameHandler origin) {
         this(origin, Transform2D.DefaultTranslation, DefaultSize);
     }
 
@@ -94,7 +84,7 @@ public class BetterButton extends UIElement<MouseButtonEvent> implements MouseAc
      * @param location    The location to create the button at.
      * @param initialSize The initial size of the button, though the button will get larger if the text outgrows it.
      */
-    public BetterButton(Scene origin, Pointf location, Pointf initialSize) {
+    public BetterButton(GameHandler origin, Pointf location, Pointf initialSize) {
         super(origin);
         if (initialSize.x < Maths.FloatPrecision || initialSize.y < Maths.FloatPrecision) {
             throw new IllegalArgumentException(
@@ -122,45 +112,7 @@ public class BetterButton extends UIElement<MouseButtonEvent> implements MouseAc
         setMetrics(graphics);
         graphics.dispose();
 
-        origin.inputManager.addMouseActionListener(this);
-    }
-
-    /**
-     * Constructs a button with the specified location and initial size.
-     *
-     * @param origin      The simple manager to add the button as a gui object to.
-     * @param location    The location to create the button at.
-     * @param initialSize The initial size of the button, though the button will get larger if the text outgrows it.
-     */
-    public BetterButton(SimpleManager origin, Pointf location, Pointf initialSize) {
-        super(origin);
-        if (initialSize.x < Maths.FloatPrecision || initialSize.y < Maths.FloatPrecision) {
-            throw new IllegalArgumentException(
-                "The size " + initialSize + " is too small." + System.lineSeparator() +
-                    "The minimum size in both x and y directions is " + Maths.FloatPrecision + "."
-            );
-        }
-
-        super.setOnActionCondition(event -> Mouse.interactsWith(BetterButton.this, MouseAction.Press) && Mouse.isMouseButtonPressed(MouseButtons.Left));
-
-        Pointf[] buttonCoords = DrawUtil.createBox(Pointf.origin(), initialSize);
-        super.setCollisionPath(DrawUtil.createPath(buttonCoords));
-
-        this.paint = DefaultFill;
-        this.font = DefaultFont;
-        this.text = DefaultText;
-        this.textColor = DefaultTextColor;
-        this.outlineStroke = DefaultOutlineStroke;
-        this.outlineColor = DefaultOutlineColor;
-        this.onEnterHoverEvents = new ArrayList<>();
-        this.onExitHoverEvents = new ArrayList<>();
-
-        translate(location);
-        Graphics2D graphics = GraphicsHelper.createGraphics();
-        setMetrics(graphics);
-        graphics.dispose();
-
-        origin.inputManager.addMouseActionListener(this);
+        origin.inputManager().addMouseActionListener(this);
     }
 
     /**
@@ -414,25 +366,14 @@ public class BetterButton extends UIElement<MouseButtonEvent> implements MouseAc
     }
 
     @Override
-    public void destroy(Scene origin) {
+    public void destroy(GameHandler origin) {
         super.destroyTheRest(origin);
         text = DefaultText;
         font = DefaultFont;
         paint = DefaultFill;
         outlineColor = DefaultOutlineColor;
         outlineStroke = DefaultOutlineStroke;
-        origin.inputManager.removeMouseActionListener(this);
-    }
-
-    @Override
-    public void destroy(SimpleManager origin) {
-        super.destroyTheRest(origin);
-        text = DefaultText;
-        font = DefaultFont;
-        paint = DefaultFill;
-        outlineColor = DefaultOutlineColor;
-        outlineStroke = DefaultOutlineStroke;
-        origin.inputManager.removeMouseActionListener(this);
+        origin.inputManager().removeMouseActionListener(this);
     }
 
     /**

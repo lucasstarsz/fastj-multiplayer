@@ -12,6 +12,7 @@ import tech.fastj.input.mouse.MouseActionListener;
 import tech.fastj.input.mouse.MouseButtons;
 import tech.fastj.input.mouse.events.MouseButtonEvent;
 import tech.fastj.input.mouse.events.MouseMotionEvent;
+import tech.fastj.systems.control.GameHandler;
 import tech.fastj.systems.control.Scene;
 import tech.fastj.systems.control.SimpleManager;
 
@@ -94,7 +95,7 @@ public class PauseButton extends UIElement<MouseButtonEvent> implements MouseAct
         this.onExitHoverEvents = new ArrayList<>();
 
         translate(location);
-        origin.inputManager.addMouseActionListener(this);
+        origin.inputManager().addMouseActionListener(this);
     }
 
     /**
@@ -127,7 +128,7 @@ public class PauseButton extends UIElement<MouseButtonEvent> implements MouseAct
 
         translate(location);
 
-        origin.inputManager.addMouseActionListener(this);
+        origin.inputManager().addMouseActionListener(this);
     }
 
     /**
@@ -313,21 +314,12 @@ public class PauseButton extends UIElement<MouseButtonEvent> implements MouseAct
     }
 
     @Override
-    public void destroy(Scene origin) {
+    public void destroy(GameHandler origin) {
         super.destroyTheRest(origin);
         paint = DefaultFill;
         outlineColor = DefaultOutlineColor;
         outlineStroke = DefaultOutlineStroke;
-        origin.inputManager.removeMouseActionListener(this);
-    }
-
-    @Override
-    public void destroy(SimpleManager origin) {
-        super.destroyTheRest(origin);
-        paint = DefaultFill;
-        outlineColor = DefaultOutlineColor;
-        outlineStroke = DefaultOutlineStroke;
-        origin.inputManager.removeMouseActionListener(this);
+        origin.inputManager().removeMouseActionListener(this);
     }
 
     /**

@@ -1,5 +1,5 @@
 [versions]
-fastj-core = "98b89d6e23"
+fastj-core = "4be136b7cb"
 slf4j-simple = "2.0.0-alpha7"
 junit-test = "5.8.2"
 

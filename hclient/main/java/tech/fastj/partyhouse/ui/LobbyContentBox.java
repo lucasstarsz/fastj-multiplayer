@@ -7,8 +7,7 @@ import tech.fastj.input.mouse.Mouse;
 import tech.fastj.input.mouse.MouseAction;
 import tech.fastj.input.mouse.MouseActionListener;
 import tech.fastj.input.mouse.events.MouseButtonEvent;
-import tech.fastj.systems.control.Scene;
-import tech.fastj.systems.control.SimpleManager;
+import tech.fastj.systems.control.GameHandler;
 
 import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
 
@@ -34,7 +33,7 @@ public class LobbyContentBox extends UIElement<MouseButtonEvent> implements Mous
     private final LobbyIdentifier lobby;
     private boolean isFocused;
 
-    public LobbyContentBox(Scene origin, LobbyIdentifier lobby) {
+    public LobbyContentBox(GameHandler origin, LobbyIdentifier lobby) {
         super(origin);
         this.lobby = lobby;
         this.name = "Lobby " + lobby.name();
@@ -45,7 +44,7 @@ public class LobbyContentBox extends UIElement<MouseButtonEvent> implements Mous
             event -> Mouse.interactsWith(LobbyContentBox.this, MouseAction.Release)
         );
 
-        origin.inputManager.addMouseActionListener(this);
+        origin.inputManager().addMouseActionListener(this);
 
         updateStatDisplay();
     }
@@ -136,17 +135,9 @@ public class LobbyContentBox extends UIElement<MouseButtonEvent> implements Mous
     }
 
     @Override
-    public void destroy(Scene origin) {
+    public void destroy(GameHandler origin) {
         destroyTheRest(origin);
-        origin.inputManager.removeMouseActionListener(this);
-        statDisplay = null;
-        content = null;
-    }
-
-    @Override
-    public void destroy(SimpleManager origin) {
-        destroyTheRest(origin);
-        origin.inputManager.removeMouseActionListener(this);
+        origin.inputManager().removeMouseActionListener(this);
         statDisplay = null;
         content = null;
     }

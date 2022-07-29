@@ -10,8 +10,7 @@ import tech.fastj.graphics.game.Text2D;
 import tech.fastj.graphics.util.DrawUtil;
 
 import tech.fastj.resources.models.ModelUtil;
-import tech.fastj.systems.control.Scene;
-import tech.fastj.systems.control.SimpleManager;
+import tech.fastj.systems.control.GameHandler;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -75,13 +74,8 @@ public class Player extends GameObject {
     }
 
     @Override
-    public void destroy(Scene origin) {
-        playerModel.destroy(origin);
-        playerIndicator.destroy(origin);
-    }
-
-    @Override
-    public void destroy(SimpleManager origin) {
+    public void destroy(GameHandler origin) {
+        super.destroyTheRest(origin);
         playerModel.destroy(origin);
         playerIndicator.destroy(origin);
     }

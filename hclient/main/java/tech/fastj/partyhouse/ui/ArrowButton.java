@@ -13,8 +13,8 @@ import tech.fastj.input.mouse.MouseAction;
 import tech.fastj.input.mouse.MouseActionListener;
 import tech.fastj.input.mouse.MouseButtons;
 import tech.fastj.input.mouse.events.MouseButtonEvent;
+import tech.fastj.systems.control.GameHandler;
 import tech.fastj.systems.control.Scene;
-import tech.fastj.systems.control.SimpleManager;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -100,7 +100,7 @@ public class ArrowButton extends UIElement<MouseButtonEvent> implements MouseAct
         this.selectedOption = selectedOption;
         setText(options.get(selectedOption));
 
-        origin.inputManager.addMouseActionListener(this);
+        origin.inputManager().addMouseActionListener(this);
     }
 
     @Override
@@ -215,21 +215,12 @@ public class ArrowButton extends UIElement<MouseButtonEvent> implements MouseAct
     }
 
     @Override
-    public void destroy(Scene origin) {
+    public void destroy(GameHandler origin) {
         super.destroyTheRest(origin);
         paint = null;
         renderPath = null;
         arrowLeft.destroy(origin);
-        origin.inputManager.removeMouseActionListener(this);
-    }
-
-    @Override
-    public void destroy(SimpleManager origin) {
-        super.destroyTheRest(origin);
-        paint = null;
-        renderPath = null;
-        arrowLeft.destroy(origin);
-        origin.inputManager.removeMouseActionListener(this);
+        origin.inputManager().removeMouseActionListener(this);
     }
 
     private void setMetrics(Graphics2D g) {

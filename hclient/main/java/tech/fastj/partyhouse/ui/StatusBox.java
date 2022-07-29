@@ -4,6 +4,7 @@ import tech.fastj.graphics.game.Text2D;
 import tech.fastj.graphics.ui.UIElement;
 
 import tech.fastj.input.InputActionEvent;
+import tech.fastj.systems.control.GameHandler;
 import tech.fastj.systems.control.Scene;
 import tech.fastj.systems.control.SimpleManager;
 
@@ -26,11 +27,11 @@ public class StatusBox extends UIElement<InputActionEvent> {
     private boolean currentStatus;
     private Text2D statDisplay;
 
-    public StatusBox(Scene origin, String name, boolean currentStatus) {
+    public StatusBox(GameHandler origin, String name, boolean currentStatus) {
         this(origin, name, currentStatus, DefaultReadyStatus, DefaultNotReadyStatus, DefaultFormat);
     }
 
-    public StatusBox(Scene origin, String name, boolean currentStatus, String readyStatus, String notReadyStatus, String customFormat) {
+    public StatusBox(GameHandler origin, String name, boolean currentStatus, String readyStatus, String notReadyStatus, String customFormat) {
         super(origin);
         this.name = name;
         this.readyStatus = readyStatus;
@@ -91,15 +92,8 @@ public class StatusBox extends UIElement<InputActionEvent> {
     }
 
     @Override
-    public void destroy(Scene origin) {
-        destroyTheRest(origin);
-        currentStatus = false;
-        statDisplay = null;
-    }
-
-    @Override
-    public void destroy(SimpleManager origin) {
-        destroyTheRest(origin);
+    public void destroy(GameHandler origin) {
+        super.destroyTheRest(origin);
         currentStatus = false;
         statDisplay = null;
     }

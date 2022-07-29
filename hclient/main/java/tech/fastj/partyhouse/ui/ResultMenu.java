@@ -11,8 +11,8 @@ import tech.fastj.graphics.ui.UIElement;
 import tech.fastj.graphics.util.DrawUtil;
 
 import tech.fastj.input.mouse.events.MouseActionEvent;
+import tech.fastj.systems.control.GameHandler;
 import tech.fastj.systems.control.Scene;
-import tech.fastj.systems.control.SimpleManager;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -44,7 +44,7 @@ public class ResultMenu extends UIElement<MouseActionEvent> {
     private ScheduledExecutorService timeLeftProgressor;
     private String nextTextString = "";
 
-    public ResultMenu(Scene origin, ClientInfo winnerInfo) {
+    public ResultMenu(GameHandler origin, ClientInfo winnerInfo) {
         super(origin);
 
         Pointf center = FastJEngine.getCanvas().getCanvasCenter();
@@ -82,7 +82,7 @@ public class ResultMenu extends UIElement<MouseActionEvent> {
         );
 
         setup(center);
-        origin.drawableManager.removeUIElement(playerScore);
+        origin.drawableManager().removeUIElement(playerScore);
         otherPlayerScores = new ArrayList<>();
     }
 
@@ -123,45 +123,7 @@ public class ResultMenu extends UIElement<MouseActionEvent> {
     }
 
     @Override
-    public void destroy(Scene origin) {
-        super.destroyTheRest(origin);
-
-        if (alphaScreen != null) {
-            alphaScreen.destroy(origin);
-            alphaScreen = null;
-        }
-
-        if (backgroundScreen != null) {
-            backgroundScreen.destroy(origin);
-            backgroundScreen = null;
-        }
-
-        if (gameEndText != null) {
-            gameEndText.destroy(origin);
-            gameEndText = null;
-        }
-
-        if (playerScore != null) {
-            playerScore.destroy(origin);
-            playerScore = null;
-        }
-
-        if (winnerText != null) {
-            winnerText.destroy(origin);
-            winnerText = null;
-        }
-
-        if (otherPlayerScores != null) {
-            for (ContentBox otherPlayerScore : otherPlayerScores) {
-                otherPlayerScore.destroy(origin);
-            }
-
-            otherPlayerScores.clear();
-        }
-    }
-
-    @Override
-    public void destroy(SimpleManager origin) {
+    public void destroy(GameHandler origin) {
         super.destroyTheRest(origin);
 
         if (alphaScreen != null) {

@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import tech.fastj.gameloop.CoreLoopState;
 import tech.fastj.partyhouse.Main;
 import tech.fastj.partyhouse.scenes.mainmenu.MainMenu;
 import tech.fastj.partyhouse.scenes.multiplayer.home.LobbyHome;
@@ -32,6 +33,7 @@ import tech.fastj.partyhouse.ui.BetterButton;
 import tech.fastj.partyhouse.ui.LobbyContentBox;
 import tech.fastj.partyhouse.user.User;
 import tech.fastj.partyhouse.util.Buttons;
+import tech.fastj.partyhouse.util.ClientUtil;
 import tech.fastj.partyhouse.util.Colors;
 import tech.fastj.partyhouse.util.Dialogs;
 import tech.fastj.partyhouse.util.Fonts;
@@ -44,17 +46,14 @@ import tech.fastj.partyhousecore.Messages;
 
 public class LobbySearch extends Scene {
 
-    private Text2D titleText;
-    private BetterButton joinSelectedLobbyButton;
-    private BetterButton refreshLobbiesButton;
-    private BetterButton mainMenuButton;
-    private List<LobbyContentBox> lobbyList;
+    private final List<LobbyContentBox> lobbyList;
     private LobbyContentBox selectedLobby;
 
     private User user;
 
     public LobbySearch() {
         super(SceneNames.LobbySearch);
+        lobbyList = new ArrayList<>();
     }
 
     @Override
@@ -64,20 +63,22 @@ public class LobbySearch extends Scene {
 
         user = User.getInstance();
 
-        titleText = Text2D.create("Lobby Search")
+        Text2D titleText = Text2D.create("Lobby Search")
             .withFill(Colors.Snowy)
             .withFont(Fonts.H3TextFont)
             .withTransform(new Pointf(25f, 25f), Transform2D.DefaultRotation, Transform2D.DefaultScale)
             .build();
-        drawableManager.addGameObject(titleText);
+        drawableManager().addGameObject(titleText);
 
-        joinSelectedLobbyButton = Buttons.create(this, canvas, (Shapes.ButtonSize.x * 0.25f), 50f, "Join Lobby");
+        BetterButton joinSelectedLobbyButton = Buttons.create(this, canvas, (Shapes.ButtonSize.x * 0.25f), 50f, "Join Lobby");
         joinSelectedLobbyButton.setOnAction(mouseButtonEvent -> {
             mouseButtonEvent.consume();
-            FastJEngine.runAfterRender(() -> {
+            FastJEngine.runLater(() -> {
                 try {
                     joinSelectedLobby(canvas);
                 } catch (IOException | InterruptedException exception) {
+                    Log.error("Error while trying to join lobby", exception);
+
                     if (exception instanceof IOException joinException) {
                         Dialogs.message(
                             DialogConfig.create()
@@ -87,41 +88,44 @@ public class LobbySearch extends Scene {
                         );
                     } else {
                         if (!User.getInstance().getClient().isConnected()) {
-                            disconnectClient();
+                            ClientUtil.disconnectClient();
                         } else {
                             Main.gameCrashed("Crashed while trying to join lobby", exception);
                         }
                     }
                 }
-            });
+            }, CoreLoopState.LateUpdate);
         });
 
-        refreshLobbiesButton = Buttons.create(this, canvas, -(Shapes.ButtonSize.x * 1.25f), 50f, "Refresh Lobbies");
+        BetterButton refreshLobbiesButton = Buttons.create(this, canvas, -(Shapes.ButtonSize.x * 1.25f), 50f, "Refresh Lobbies");
         refreshLobbiesButton.setOnAction(mouseButtonEvent -> {
             mouseButtonEvent.consume();
-            FastJEngine.runAfterRender(() -> {
+            FastJEngine.runLater(() -> {
                 try {
                     checkForLobbies(center);
                 } catch (IOException | InterruptedException exception) {
+                    Log.error("Error while trying to refresh lobbies", exception);
+
                     if (exception instanceof ConnectException connectException) {
                         Dialogs.message(
                             DialogConfig.create()
-                                .withTitle("Error while trying to connect")
+                                .withTitle("Error while trying to refresh lobbies")
                                 .withPrompt(connectException.getMessage())
                                 .build()
                         );
                     } else {
                         if (!User.getInstance().getClient().isConnected()) {
-                            disconnectClient();
+                            ClientUtil.disconnectClient();
                         } else {
-                            Main.gameCrashed("Crashed while checking for lobbies", exception);
+                            Main.gameCrashed("Crashed while trying to refresh lobbies", exception);
                         }
                     }
                 }
-            });
+            }, CoreLoopState.LateUpdate);
         });
 
-        mainMenuButton = Buttons.menu(this, canvas, -100f, 200f, "Back", SceneNames.MainMenu);
+        // keep -- main menu button's functionality is fully declared in Buttons.menu(...);
+        BetterButton mainMenuButton = Buttons.menu(this, canvas, -100f, 200f, "Back", SceneNames.MainMenu);
 
         Log.debug(MainMenu.class, "loaded {}", getSceneName());
     }
@@ -129,42 +133,9 @@ public class LobbySearch extends Scene {
     @Override
     public void unload(FastJCanvas canvas) {
         Log.debug(MainMenu.class, "unloading {}", getSceneName());
-        if (titleText != null) {
-            titleText.destroy(this);
-            titleText = null;
-        }
 
-        if (joinSelectedLobbyButton != null) {
-            joinSelectedLobbyButton.destroy(this);
-            joinSelectedLobbyButton = null;
-        }
+        lobbyList.clear();
 
-        if (refreshLobbiesButton != null) {
-            refreshLobbiesButton.destroy(this);
-            refreshLobbiesButton = null;
-        }
-
-        if (mainMenuButton != null) {
-            mainMenuButton.destroy(this);
-            mainMenuButton = null;
-        }
-
-        if (lobbyList != null) {
-            for (LobbyContentBox contentBox : lobbyList) {
-                contentBox.destroy(this);
-            }
-
-            lobbyList.clear();
-        } else {
-            lobbyList = new ArrayList<>();
-        }
-
-        if (selectedLobby != null) {
-            selectedLobby.destroy(this);
-            selectedLobby = null;
-        }
-
-        setInitialized(false);
         Log.debug(MainMenu.class, "unloaded {}", getSceneName());
     }
 
@@ -177,8 +148,12 @@ public class LobbySearch extends Scene {
     }
 
     private void checkForLobbies(Pointf center) throws IOException, InterruptedException {
-        if (user.getClient() == null && !setupClient()) {
-            return;
+        if (user.getClient() == null) {
+            trySetupClient();
+
+            if (user.getClient() == null) {
+                return;
+            }
         }
 
         Client client = user.getClient();
@@ -188,8 +163,12 @@ public class LobbySearch extends Scene {
     }
 
     private void joinSelectedLobby(FastJCanvas canvas) throws IOException, InterruptedException {
-        if (user.getClient() == null && !setupClient()) {
-            return;
+        if (user.getClient() == null) {
+            trySetupClient();
+
+            if (user.getClient() == null) {
+                return;
+            }
         }
 
         if (selectedLobby == null) {
@@ -231,13 +210,13 @@ public class LobbySearch extends Scene {
 
                 client.sendCommand(NetworkType.TCP, CommandTarget.Lobby, Commands.UpdateClientInfo, user.getClientInfo());
 
-                FastJEngine.runAfterRender(() -> {
+                FastJEngine.runLater(() -> {
                     FastJEngine.<SceneManager>getLogicManager().getScene(SceneNames.MainMenu).unload(canvas);
                     FastJEngine.<SceneManager>getLogicManager().switchScenes(SceneNames.HomeLobby);
-                });
+                }, CoreLoopState.LateUpdate);
             } catch (Exception exception) {
                 if (!User.getInstance().getClient().isConnected()) {
-                    disconnectClient();
+                    ClientUtil.disconnectClient();
                 } else {
                     Main.gameCrashed("Failed to join lobby", exception);
                 }
@@ -245,7 +224,7 @@ public class LobbySearch extends Scene {
         });
     }
 
-    private boolean setupClient() throws IOException {
+    private void trySetupClient() throws IOException {
         Client client = new Client(new ClientConfig(InetAddress.getByName(Info.DefaultIp), Info.DefaultPort));
 
         client.setOnDisconnect((c) -> {
@@ -259,7 +238,7 @@ public class LobbySearch extends Scene {
                 return;
             }
 
-            disconnectClient();
+            ClientUtil.disconnectClient();
         });
 
         client.connect();
@@ -269,38 +248,14 @@ public class LobbySearch extends Scene {
         user.setClient(client);
         user.setClientInfo(new ClientInfo(client.getClientId(), "???"));
         FastJEngine.<SceneManager>getLogicManager().<LobbyHome>getScene(SceneNames.HomeLobby).setupClientCommands();
-
-        return true;
-    }
-
-    private void disconnectClient() {
-        SwingUtilities.invokeLater(() -> {
-            Dialogs.message(DialogConfig.create()
-                .withParentComponent(FastJEngine.getDisplay().getWindow())
-                .withTitle("Disconnected")
-                .withPrompt("You were disconnected from the server. You will now return to the main menu.")
-                .build()
-            );
-
-            FastJEngine.runAfterRender(() -> {
-                FastJEngine.<SceneManager>getLogicManager().switchScenes(SceneNames.MainMenu);
-                User.getInstance().setClientInfo(null);
-                User.getInstance().setClient(null);
-            });
-        });
     }
 
     private void updateLobbyList(Pointf center, LobbyIdentifier[] lobbies) {
-        if (lobbyList != null) {
-            for (LobbyContentBox contentBox : lobbyList) {
-                contentBox.destroy(this);
-            }
-
-            lobbyList.clear();
-            selectedLobby = null;
-        } else {
-            lobbyList = new ArrayList<>();
+        for (LobbyContentBox contentBox : lobbyList) {
+            contentBox.destroy(this);
         }
+
+        lobbyList.clear();
 
         for (int i = 0; i < lobbies.length; i++) {
             LobbyIdentifier lobby = lobbies[i];

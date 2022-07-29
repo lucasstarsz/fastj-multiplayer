@@ -4,8 +4,7 @@ import tech.fastj.graphics.game.Text2D;
 import tech.fastj.graphics.ui.UIElement;
 
 import tech.fastj.input.InputActionEvent;
-import tech.fastj.systems.control.Scene;
-import tech.fastj.systems.control.SimpleManager;
+import tech.fastj.systems.control.GameHandler;
 
 import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
@@ -23,11 +22,11 @@ public class PercentageBox<T extends Number> extends UIElement<InputActionEvent>
     private T currentValue;
     private Text2D statDisplay;
 
-    public PercentageBox(Scene origin, T initialValue, T maxValue, String name) {
+    public PercentageBox(GameHandler origin, T initialValue, T maxValue, String name) {
         this(origin, initialValue, maxValue, name, DefaultFormat);
     }
 
-    public PercentageBox(Scene origin, T initialValue, T maxValue, String name, String customFormat) {
+    public PercentageBox(GameHandler origin, T initialValue, T maxValue, String name, String customFormat) {
         super(origin);
         this.currentValue = initialValue;
         this.maxValue = maxValue;
@@ -79,15 +78,8 @@ public class PercentageBox<T extends Number> extends UIElement<InputActionEvent>
     }
 
     @Override
-    public void destroy(Scene origin) {
-        destroyTheRest(origin);
-        currentValue = null;
-        statDisplay = null;
-    }
-
-    @Override
-    public void destroy(SimpleManager origin) {
-        destroyTheRest(origin);
+    public void destroy(GameHandler origin) {
+        super.destroyTheRest(origin);
         currentValue = null;
         statDisplay = null;
     }

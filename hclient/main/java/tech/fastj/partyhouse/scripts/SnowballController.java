@@ -75,7 +75,7 @@ public class SnowballController implements Behavior {
                     return;
                 }
 
-                FastJEngine.runAfterUpdate(() -> {
+                FastJEngine.runLater(() -> {
                     float playerRotation = player.getRotationWithin360();
                     Pointf trajectory = Pointf.up().rotate(-playerRotation);
 

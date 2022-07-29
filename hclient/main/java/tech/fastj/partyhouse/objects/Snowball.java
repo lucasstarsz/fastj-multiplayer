@@ -8,13 +8,13 @@ import tech.fastj.graphics.game.Model2D;
 
 import tech.fastj.resources.models.ModelUtil;
 import tech.fastj.systems.behaviors.Behavior;
-import tech.fastj.systems.control.Scene;
-import tech.fastj.systems.control.SimpleManager;
+import tech.fastj.systems.control.GameHandler;
 
 import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
 import java.util.UUID;
 
+import tech.fastj.gameloop.CoreLoopState;
 import tech.fastj.partyhouse.scenes.multiplayer.snowball.SnowballFight;
 import tech.fastj.partyhouse.util.FilePaths;
 import tech.fastj.partyhouse.util.Tags;
@@ -83,11 +83,11 @@ public class Snowball extends GameObject implements Behavior {
         life -= FastJEngine.getFixedDeltaTime();
 
         if (life <= 0f || !FastJEngine.getCanvas().isOnScreen(this, scene.getCamera())) {
-            FastJEngine.runAfterUpdate(() -> {
+            FastJEngine.runLater(() -> {
                 System.out.println("killing snowball from " + clientInfo.clientName());
                 scene.removeSnowball(getSnowballInfo());
                 destroy(scene);
-            });
+            }, CoreLoopState.FixedUpdate);
         }
 
         translate(travelMovement);
@@ -108,7 +108,7 @@ public class Snowball extends GameObject implements Behavior {
 
             if (localPlayer.collidesWith(this)) {
                 System.out.println("death by snowball?");
-                FastJEngine.runAfterUpdate(() -> this.destroy(scene));
+                FastJEngine.runLater(() -> this.destroy(scene), CoreLoopState.FixedUpdate);
                 scene.deathBySnowball(getSnowballInfo());
             }
         }
@@ -146,13 +146,7 @@ public class Snowball extends GameObject implements Behavior {
     }
 
     @Override
-    public void destroy(Scene origin) {
-        super.destroyTheRest(origin);
-        life = 0f;
-    }
-
-    @Override
-    public void destroy(SimpleManager origin) {
+    public void destroy(GameHandler origin) {
         super.destroyTheRest(origin);
         life = 0f;
     }

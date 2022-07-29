@@ -4,8 +4,7 @@ import tech.fastj.graphics.game.Text2D;
 import tech.fastj.graphics.ui.UIElement;
 
 import tech.fastj.input.InputActionEvent;
-import tech.fastj.systems.control.Scene;
-import tech.fastj.systems.control.SimpleManager;
+import tech.fastj.systems.control.GameHandler;
 
 import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
@@ -22,33 +21,15 @@ public class ContentBox extends UIElement<InputActionEvent> {
     private String content;
     private Text2D statDisplay;
 
-    public ContentBox(SimpleManager origin, String name) {
+    public ContentBox(GameHandler origin, String name) {
         this(origin, name, DefaultContent, DefaultFormat);
     }
 
-    public ContentBox(SimpleManager origin, String name, String content) {
+    public ContentBox(GameHandler origin, String name, String content) {
         this(origin, name, content, DefaultFormat);
     }
 
-    public ContentBox(SimpleManager origin, String name, String content, String customFormat) {
-        super(origin);
-        this.name = name;
-        this.content = content;
-        this.format = customFormat;
-
-        updateStatDisplay();
-        setCollisionPath((Path2D.Float) statDisplay.getCollisionPath().clone());
-    }
-
-    public ContentBox(Scene origin, String name) {
-        this(origin, name, DefaultContent, DefaultFormat);
-    }
-
-    public ContentBox(Scene origin, String name, String content) {
-        this(origin, name, content, DefaultFormat);
-    }
-
-    public ContentBox(Scene origin, String name, String content, String customFormat) {
+    public ContentBox(GameHandler origin, String name, String content, String customFormat) {
         super(origin);
         this.name = name;
         this.content = content;
@@ -99,14 +80,7 @@ public class ContentBox extends UIElement<InputActionEvent> {
     }
 
     @Override
-    public void destroy(Scene origin) {
-        destroyTheRest(origin);
-        statDisplay = null;
-        content = null;
-    }
-
-    @Override
-    public void destroy(SimpleManager origin) {
+    public void destroy(GameHandler origin) {
         destroyTheRest(origin);
         statDisplay = null;
         content = null;
