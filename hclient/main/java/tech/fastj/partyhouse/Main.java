@@ -19,7 +19,7 @@ import tech.fastj.partyhouse.util.Dialogs;
 import tech.fastj.partyhouse.util.Fonts;
 
 public class Main {
-    public static final String GameName = "Party House v0.0.1";
+    public static final String GameName = "Party House v0.0.2";
 
     public static void main(String[] args) {
         try {

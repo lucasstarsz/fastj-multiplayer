@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "tech.lucasz"
-version = "0.0.1"
+version = "0.0.2"
 description = "The server for a Java Jam 2022 submission"
 
 sourceSets {

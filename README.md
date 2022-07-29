@@ -22,7 +22,7 @@ https://user-images.githubusercontent.com/64715411/181523676-b83c3428-7ae2-468c-
 
 ## Version Logs
 
-#### v0.0.1
+#### v0.0.2
 - First prototype made for Java Community's Java Jam 2022
 - Engine is occasionally spotty with null rendering issues
 - reading/writing arrays through the network serializer(s) does not work as intended
