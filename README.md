@@ -1,6 +1,6 @@
 # Party House
 
-Party House is a multiplayer game built using Java, the [FastJ](https://github.com/FastJ/fastjengine) game engine, and a self-written multiplayer library.
+Party House is a multiplayer game built using Java, the [FastJ](https://github.com/fastjengine/FastJ) game engine, and a self-written multiplayer library.
 
 The game's port is 19999.
 
