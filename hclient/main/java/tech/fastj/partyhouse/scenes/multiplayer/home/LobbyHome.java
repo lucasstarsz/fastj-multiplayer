@@ -35,9 +35,6 @@ import tech.fastj.partyhouse.util.PlayerUtil;
 import tech.fastj.partyhouse.util.SceneNames;
 import tech.fastj.partyhouse.util.Shapes;
 import tech.fastj.partyhouse.util.Tags;
-import tech.fastj.partyhousecore.ClientInfo;
-import tech.fastj.partyhousecore.ClientPosition;
-import tech.fastj.partyhousecore.ClientVelocity;
 import tech.fastj.partyhousecore.Commands;
 import tech.fastj.partyhousecore.PositionState;
 
@@ -72,8 +69,11 @@ public class LobbyHome extends Scene {
     public void load(FastJCanvas canvas) {
         Log.debug(LobbyHome.class, "loading {}", getSceneName());
 
-        ClientUtil.clientNullCheck();
-        Client client = user.getClient();
+        if (ClientUtil.clientNullCheck()) {
+            return;
+        }
+
+        var client = user.getClient();
 
         client.startKeepAlives(1L, TimeUnit.SECONDS);
         setupClientCommands();
@@ -176,28 +176,25 @@ public class LobbyHome extends Scene {
     }
 
     public void setupClientCommands() {
-        Client client = user.getClient();
+        var client = user.getClient();
+
         Pointf center = FastJEngine.getCanvas().getCanvasCenter();
 
         ClientUtil.addDefault2DControlCommands(client, center, otherPlayers, otherPlayerPositionStates, this);
 
-        client.addCommand(Commands.SwitchScene, String.class, (c, sceneName) -> {
+        client.addCommand(Commands.SwitchScene, (Client<Commands> c, String sceneName) -> {
             Log.info("Switching to scene \"{}\"", sceneName);
             FastJEngine.runLater(() -> FastJEngine.<SceneManager>getLogicManager().switchScenes(sceneName), CoreLoopState.LateUpdate);
         });
     }
 
     public void disableClientCommands() {
-        Client client = user.getClient();
+        var client = user.getClient();
 
-        client.addCommand(Commands.ClientJoinLobby, ClientInfo.class, (c, clientInfo) -> {});
-        client.addCommand(Commands.ClientLeaveLobby, ClientInfo.class, (c, clientInfo) -> {});
-        client.addCommand(Commands.UpdateClientInfo, ClientInfo.class, (c, clientInfo) -> {});
-        client.addCommand(Commands.SwitchScene, String.class, (c, sceneName) -> {});
-
-        client.addCommand(Commands.UpdateClientGameState,
-            ClientInfo.class, ClientPosition.class, ClientVelocity.class,
-            (c, clientInfo, clientPosition, clientVelocity) -> {}
-        );
+        client.addCommand(Commands.ClientJoinLobby, (c, clientInfo) -> {});
+        client.addCommand(Commands.ClientLeaveLobby, (c, clientInfo) -> {});
+        client.addCommand(Commands.UpdateClientInfo, (c, clientInfo) -> {});
+        client.addCommand(Commands.SwitchScene, (c, sceneName) -> {});
+        client.addCommand(Commands.UpdateClientGameState, (c, clientInfo, clientPosition, clientVelocity) -> {});
     }
 }

@@ -1,7 +1,6 @@
 package tech.fastj.network.rpc;
 
 import tech.fastj.network.config.ClientConfig;
-import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.RequestType;
 import tech.fastj.network.rpc.message.SentMessageType;
@@ -33,19 +32,20 @@ public class SendUtils {
         assert rawData == null || rawData.length <= SendUtils.UdpRequestPacketDataLength;
     }
 
-    public static void sendTCPCommand(MessageOutputStream tcpOut, CommandTarget commandTarget, Command.Id commandId, byte[] rawData)
+    public static void sendTCPCommand(MessageOutputStream tcpOut, CommandTarget commandTarget, Enum<? extends CommandAlias> commandId, byte[] rawData)
         throws IOException {
-        byte[] packetData = buildTCPCommandData(commandTarget, commandId.uuid(), rawData);
+        byte[] packetData = buildTCPCommandData(commandTarget, commandId, rawData);
 
         tcpOut.write(packetData);
         tcpOut.flush();
     }
 
     public static void sendUDPCommand(DatagramSocket udpSocket, ClientConfig clientConfig, CommandTarget commandTarget,
-                                      Command.Id commandId, UUID senderId, byte[] rawData) throws IOException {
+                                      Enum<? extends CommandAlias> commandId, UUID senderId, byte[] rawData)
+        throws IOException {
         SendUtils.checkUDPCommandPacketSize(rawData);
 
-        byte[] packetData = buildUDPCommandData(commandTarget, senderId, commandId.uuid(), rawData);
+        byte[] packetData = buildUDPCommandData(commandTarget, senderId, commandId, rawData);
 
         DatagramPacket packet = buildPacket(clientConfig, packetData);
         udpSocket.send(packet);
@@ -55,30 +55,28 @@ public class SendUtils {
         return new DatagramPacket(packetData, packetData.length, clientConfig.address(), clientConfig.port());
     }
 
-    public static byte[] buildTCPCommandData(CommandTarget commandTarget, UUID commandId, byte[] rawData) {
+    public static byte[] buildTCPCommandData(CommandTarget commandTarget, Enum<? extends CommandAlias> commandId, byte[] rawData) {
         ByteBuffer packetDataBuffer;
 
         if (rawData == null) {
-            packetDataBuffer = ByteBuffer.allocate(Long.BYTES + (MessageUtils.EnumBytes * 2) + MessageUtils.UuidBytes);
+            packetDataBuffer = ByteBuffer.allocate(Long.BYTES + (MessageUtils.EnumBytes * 3));
             return packetDataBuffer.putInt(SentMessageType.RPCCommand.ordinal())
                 .putInt(commandTarget.ordinal())
                 .putLong(0L)
-                .putLong(commandId.getMostSignificantBits())
-                .putLong(commandId.getLeastSignificantBits())
+                .putInt(commandId.ordinal())
                 .array();
         } else {
-            packetDataBuffer = ByteBuffer.allocate(Long.BYTES + (MessageUtils.EnumBytes * 2) + MessageUtils.UuidBytes + rawData.length);
+            packetDataBuffer = ByteBuffer.allocate(Long.BYTES + (MessageUtils.EnumBytes * 3) + rawData.length);
             return packetDataBuffer.putInt(SentMessageType.RPCCommand.ordinal())
                 .putInt(commandTarget.ordinal())
                 .putLong(rawData.length)
-                .putLong(commandId.getMostSignificantBits())
-                .putLong(commandId.getLeastSignificantBits())
+                .putInt(commandId.ordinal())
                 .put(rawData)
                 .array();
         }
     }
 
-    public static byte[] buildUDPCommandData(CommandTarget commandTarget, UUID senderId, UUID commandId, byte[] rawData) {
+    public static byte[] buildUDPCommandData(CommandTarget commandTarget, UUID senderId, Enum<? extends CommandAlias> commandId, byte[] rawData) {
         ByteBuffer packetDataBuffer;
 
         if (rawData == null) {
@@ -87,8 +85,7 @@ public class SendUtils {
                 .putLong(senderId.getLeastSignificantBits())
                 .putInt(SentMessageType.RPCCommand.ordinal())
                 .putInt(commandTarget.ordinal())
-                .putLong(commandId.getMostSignificantBits())
-                .putLong(commandId.getLeastSignificantBits())
+                .putInt(commandId.ordinal())
                 .array();
         } else {
             packetDataBuffer = ByteBuffer.allocate(
@@ -99,8 +96,7 @@ public class SendUtils {
                 .putLong(senderId.getLeastSignificantBits())
                 .putInt(SentMessageType.RPCCommand.ordinal())
                 .putInt(commandTarget.ordinal())
-                .putLong(commandId.getMostSignificantBits())
-                .putLong(commandId.getLeastSignificantBits())
+                .putInt(commandId.ordinal())
                 .put(rawData)
                 .array();
         }

@@ -4,6 +4,8 @@ import java.util.UUID;
 
 public interface Command {
 
+    int commandArgumentCount();
+
     static Id named(String name) {
         return new Id(name);
     }

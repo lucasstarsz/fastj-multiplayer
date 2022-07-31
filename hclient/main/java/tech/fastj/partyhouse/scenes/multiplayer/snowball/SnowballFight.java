@@ -39,8 +39,6 @@ import tech.fastj.partyhouse.util.SceneNames;
 import tech.fastj.partyhouse.util.Tags;
 import tech.fastj.partyhousecore.ClientInfo;
 import tech.fastj.partyhousecore.ClientPoints;
-import tech.fastj.partyhousecore.ClientPosition;
-import tech.fastj.partyhousecore.ClientVelocity;
 import tech.fastj.partyhousecore.Commands;
 import tech.fastj.partyhousecore.PositionState;
 import tech.fastj.partyhousecore.SnowballInfo;
@@ -86,7 +84,7 @@ public class SnowballFight extends Scene {
         Log.debug(SnowballFight.class, "loading {}", getSceneName());
 
         ClientUtil.clientNullCheck();
-        Client client = user.getClient();
+        var client = user.getClient();
 
         client.startKeepAlives(1L, TimeUnit.SECONDS);
         setupClientCommands();
@@ -165,12 +163,12 @@ public class SnowballFight extends Scene {
     }
 
     public void setupClientCommands() {
-        Client client = user.getClient();
+        var client = user.getClient();
         Pointf center = FastJEngine.getCanvas().getCanvasCenter();
 
         ClientUtil.addDefault2DControlCommands(client, center, otherPlayers, otherPlayerPositionStates, this);
 
-        client.addCommand(Commands.SnowballThrow, SnowballInfo.class, (c, snowballInfo) -> FastJEngine.runLater(() -> {
+        client.addCommand(Commands.SnowballThrow, (Client<Commands> c, SnowballInfo snowballInfo) -> FastJEngine.runLater(() -> {
             Snowball snowball = new Snowball(snowballInfo, this);
             drawableManager().addGameObject(snowball);
             System.out.println(snowball.isDestroyed());
@@ -188,7 +186,7 @@ public class SnowballFight extends Scene {
             Log.info("{} threw a snowball.", snowballInfo.clientInfo().clientName());
         }, CoreLoopState.LateUpdate));
 
-        client.addCommand(Commands.SnowballHit, ClientInfo.class, SnowballInfo.class, (c, playerHit, snowballInfo) -> FastJEngine.runLater(() -> {
+        client.addCommand(Commands.SnowballHit, (Client<Commands> c, ClientInfo playerHit, SnowballInfo snowballInfo) -> FastJEngine.runLater(() -> {
             Log.info("{} was incapacitated by {}'s snowball.", playerHit.clientName(), snowballInfo.clientInfo().clientName());
 
             otherPlayerPositionStates.get(snowballInfo.clientInfo().clientId()).setPlayerDead(true);
@@ -199,13 +197,13 @@ public class SnowballFight extends Scene {
             }
         }, CoreLoopState.LateUpdate));
 
-        client.addCommand(Commands.GameFinished, ClientInfo.class, (c, winnerInfo) -> FastJEngine.runLater(() -> {
+        client.addCommand(Commands.GameFinished, (Client<Commands> c, ClientInfo winnerInfo) -> FastJEngine.runLater(() -> {
             Log.info("{} won!", winnerInfo);
             playerPositionState.setPlayerDead(true);
             resultMenu = new ResultMenu(this, winnerInfo);
         }, CoreLoopState.LateUpdate));
 
-        client.addCommand(Commands.GameResults, ClientPoints.class, (c, clientPoints) -> {
+        client.addCommand(Commands.GameResults, (Client<Commands> c, ClientPoints clientPoints) -> {
             if (resultMenu != null) {
                 System.out.println("ok but actually");
             } else {
@@ -215,7 +213,7 @@ public class SnowballFight extends Scene {
             FastJEngine.runLater(() -> resultMenu.addPointsResults(clientPoints, this, "Returning to lobby"), CoreLoopState.LateUpdate);
         });
 
-        client.addCommand(Commands.SwitchScene, String.class, (c, sceneName) -> {
+        client.addCommand(Commands.SwitchScene, (Client<Commands> c, String sceneName) -> {
             Log.info("Switching to scene \"{}\"", sceneName);
             FastJEngine.runLater(() -> {
                 FastJEngine.<SceneManager>getLogicManager().<LobbyHome>getScene(SceneNames.HomeLobby).drawableManager().clearAllLists();
@@ -225,22 +223,19 @@ public class SnowballFight extends Scene {
     }
 
     public void disableClientCommands() {
-        Client client = user.getClient();
+        var client = user.getClient();
 
-        client.addCommand(Commands.ClientJoinLobby, ClientInfo.class, (c, clientInfo) -> {});
-        client.addCommand(Commands.ClientLeaveLobby, ClientInfo.class, (c, clientInfo) -> {});
-        client.addCommand(Commands.UpdateClientInfo, ClientInfo.class, (c, clientInfo) -> {});
-        client.addCommand(Commands.SnowballThrow, SnowballInfo.class, (c, snowballInfo) -> {});
-        client.addCommand(Commands.SnowballHit, ClientInfo.class, SnowballInfo.class, (c, playerHit, snowballInfo) -> {});
+        client.addCommand(Commands.ClientJoinLobby, (c, clientInfo) -> {});
+        client.addCommand(Commands.ClientLeaveLobby, (c, clientInfo) -> {});
+        client.addCommand(Commands.UpdateClientInfo, (c, clientInfo) -> {});
+        client.addCommand(Commands.SwitchScene, (c, sceneName) -> {});
+        client.addCommand(Commands.UpdateClientGameState, (c, clientInfo, clientPosition, clientVelocity) -> {});
 
-        client.addCommand(Commands.GameFinished, ClientInfo.class, (c, winnerInfo) -> {});
-        client.addCommand(Commands.GameResults, ClientPoints.class, (c, clientPoints) -> {});
+        client.addCommand(Commands.SnowballThrow, (c, snowballInfo) -> {});
+        client.addCommand(Commands.SnowballHit, (c, playerHit, snowballInfo) -> {});
 
-        client.addCommand(Commands.SwitchScene, String.class, (c, sceneName) -> {});
-        client.addCommand(Commands.UpdateClientGameState,
-            ClientInfo.class, ClientPosition.class, ClientVelocity.class,
-            (c, clientInfo, clientPosition, clientVelocity) -> {}
-        );
+        client.addCommand(Commands.GameFinished, (c, winnerInfo) -> {});
+        client.addCommand(Commands.GameResults, (c, clientPoints) -> {});
     }
 
     public void updateSnowballsCarried(int snowballCount, boolean canMakeSnowball, boolean canThrowSnowball) {

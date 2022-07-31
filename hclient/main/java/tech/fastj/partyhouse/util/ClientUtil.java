@@ -61,9 +61,9 @@ public class ClientUtil {
         });
     }
 
-    public static void addDefault2DControlCommands(Client client, Pointf center, Map<UUID, Player> otherPlayers,
+    public static void addDefault2DControlCommands(Client<Commands> client, Pointf center, Map<UUID, Player> otherPlayers,
                                                    Map<UUID, PositionState> otherPlayerPositionStates, GameHandler gameHandler) {
-        client.addCommand(Commands.ClientJoinLobby, ClientInfo.class, (c, clientInfo) -> {
+        client.addCommand(Commands.ClientJoinLobby, (Client<Commands> c, ClientInfo clientInfo) -> {
             Log.info("{} joined.", clientInfo.clientName());
 
             PositionState positionState = PlayerUtil.createOtherPositionState(clientInfo, center, otherPlayerPositionStates);
@@ -73,7 +73,7 @@ public class ClientUtil {
             otherPlayerPositionStates.put(clientInfo.clientId(), positionState);
         });
 
-        client.addCommand(Commands.ClientLeaveLobby, ClientInfo.class, (c, clientInfo) -> {
+        client.addCommand(Commands.ClientLeaveLobby, (Client<Commands> c, ClientInfo clientInfo) -> {
             Log.info("{} left.", clientInfo.clientName());
 
             FastJEngine.runLater(() -> {
@@ -86,7 +86,7 @@ public class ClientUtil {
             }, CoreLoopState.LateUpdate);
         });
 
-        client.addCommand(Commands.UpdateClientInfo, ClientInfo.class, (c, clientInfo) -> {
+        client.addCommand(Commands.UpdateClientInfo, (Client<Commands> c, ClientInfo clientInfo) -> {
             Log.info("{} updated their client info.", clientInfo.clientName());
 
             PositionState positionState = otherPlayerPositionStates.get(clientInfo.clientId());
@@ -105,8 +105,7 @@ public class ClientUtil {
         });
 
         client.addCommand(Commands.UpdateClientGameState,
-            ClientInfo.class, ClientPosition.class, ClientVelocity.class,
-            (c, clientInfo, clientPosition, clientVelocity) -> {
+            (Client<Commands> c, ClientInfo clientInfo, ClientPosition clientPosition, ClientVelocity clientVelocity) -> {
                 Log.info("{} moved: {}, {}", clientInfo.clientName(), clientPosition.x(), clientPosition.y());
 
                 PositionState positionState = otherPlayerPositionStates.get(clientInfo.clientId());
@@ -129,7 +128,7 @@ public class ClientUtil {
         );
     }
 
-    public static ContentBox setupClientPingForDisplay(Client client, GameHandler gameHandler) {
+    public static ContentBox setupClientPingForDisplay(Client<Commands> client, GameHandler gameHandler) {
         ContentBox pingDisplay = new ContentBox(gameHandler, "Ping", "???ms");
 
         pingDisplay.translate(new Pointf(25f));

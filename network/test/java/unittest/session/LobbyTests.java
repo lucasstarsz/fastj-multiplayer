@@ -16,6 +16,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 
+import mock.EmptyCommands;
 import mock.SimpleLobby;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -30,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 class LobbyTests {
 
-    private static Server server;
+    private static Server<EmptyCommands> server;
     private static final int Port = 19999;
     private static final InetAddress ClientTargetAddress;
 
@@ -42,13 +43,14 @@ class LobbyTests {
         }
     }
 
-    private static final BiFunction<ServerClient, String, Lobby> LobbyCreator = (client, serverName) -> new SimpleLobby(server, serverName);
+    private static final BiFunction<ServerClient<EmptyCommands>, String, Lobby<EmptyCommands>> LobbyCreator =
+        (client, serverName) -> new SimpleLobby<>(server, serverName, EmptyCommands.class);
 
     @BeforeAll
     static void startServer() throws IOException {
         ServerConfig serverConfig = new ServerConfig(Port);
 
-        server = new Server(serverConfig, LobbyCreator);
+        server = new Server<>(serverConfig, EmptyCommands.class, LobbyCreator);
         server.start();
         server.allowClients();
     }
@@ -71,7 +73,7 @@ class LobbyTests {
 
         assertDoesNotThrow(() -> {
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client client = new Client(clientConfig);
+            Client<EmptyCommands> client = new Client<>(clientConfig, EmptyCommands.class);
             client.connect();
 
             LobbyIdentifier newLobby = client.createLobby(randomLobbyName);
@@ -101,12 +103,12 @@ class LobbyTests {
 
         assertDoesNotThrow(() -> {
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client client1 = new Client(clientConfig);
+            Client<EmptyCommands> client1 = new Client<>(clientConfig, EmptyCommands.class);
             client1.connect();
 
             LobbyIdentifier newLobby = client1.createLobby(randomLobbyName);
 
-            Client client2 = new Client(clientConfig);
+            Client<EmptyCommands> client2 = new Client<>(clientConfig, EmptyCommands.class);
             client2.connect();
 
             LobbyIdentifier joinedLobby = client2.joinLobby(newLobby.id());

@@ -156,7 +156,7 @@ public class LobbySearch extends Scene {
             }
         }
 
-        Client client = user.getClient();
+        var client = user.getClient();
 
         LobbyIdentifier[] lobbies = client.getAvailableLobbies();
         updateLobbyList(center, lobbies);
@@ -183,7 +183,7 @@ public class LobbySearch extends Scene {
         }
 
         LobbyIdentifier lobby = selectedLobby.getLobby();
-        Client client = user.getClient();
+        var client = user.getClient();
 
         SwingUtilities.invokeLater(() -> {
             String name = Dialogs.userInput(
@@ -225,7 +225,7 @@ public class LobbySearch extends Scene {
     }
 
     private void trySetupClient() throws IOException {
-        Client client = new Client(new ClientConfig(InetAddress.getByName(Info.DefaultIp), Info.DefaultPort));
+        var client = new Client<>(new ClientConfig(InetAddress.getByName(Info.DefaultIp), Info.DefaultPort), Commands.class);
 
         client.setOnDisconnect((c) -> {
             if (!FastJEngine.isRunning()) {

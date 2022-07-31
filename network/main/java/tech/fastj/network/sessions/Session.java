@@ -1,10 +1,10 @@
 package tech.fastj.network.sessions;
 
 import tech.fastj.network.rpc.Client;
+import tech.fastj.network.rpc.CommandAlias;
 import tech.fastj.network.rpc.NetworkSender;
 import tech.fastj.network.rpc.SendUtils;
 import tech.fastj.network.rpc.ServerClient;
-import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
 import tech.fastj.network.rpc.message.RequestType;
@@ -28,17 +28,18 @@ import java.util.function.BooleanSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class Session extends SessionHandler<ServerClient> implements NetworkSender {
+public abstract class Session<H extends Enum<H> & CommandAlias> extends SessionHandler<H, ServerClient<H>> implements NetworkSender {
     private static final Logger SessionLogger = LoggerFactory.getLogger(Client.class);
 
-    protected final Lobby lobby;
-    private final List<ServerClient> clients;
+    protected final Lobby<H> lobby;
+    private final List<ServerClient<H>> clients;
     private final SessionIdentifier sessionIdentifier;
-    private BiConsumer<Session, ServerClient> onClientJoin;
-    private BiConsumer<Session, ServerClient> onClientLeave;
+    private BiConsumer<Session<H>, ServerClient<H>> onClientJoin;
+    private BiConsumer<Session<H>, ServerClient<H>> onClientLeave;
     private ExecutorService sequenceRunner;
 
-    protected Session(Lobby lobby, String name, List<ServerClient> clients) {
+    protected Session(Lobby<H> lobby, String name, List<ServerClient<H>> clients, Class<H> aliacClass) {
+        super(aliacClass);
         this.lobby = lobby;
         this.clients = clients;
         sessionIdentifier = new SessionIdentifier(UUID.randomUUID(), name);
@@ -57,19 +58,19 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
         return sessionIdentifier;
     }
 
-    public List<ServerClient> getClients() {
+    public List<ServerClient<H>> getClients() {
         return Collections.unmodifiableList(clients);
     }
 
-    public void setOnClientJoin(BiConsumer<Session, ServerClient> onClientJoin) {
+    public void setOnClientJoin(BiConsumer<Session<H>, ServerClient<H>> onClientJoin) {
         this.onClientJoin = onClientJoin;
     }
 
-    public void setOnClientLeave(BiConsumer<Session, ServerClient> onClientLeave) {
+    public void setOnClientLeave(BiConsumer<Session<H>, ServerClient<H>> onClientLeave) {
         this.onClientLeave = onClientLeave;
     }
 
-    public <T> Future<T> startSessionSequence(Sequence<T> sessionSequence) {
+    public <T> Future<T> startSessionSequence(Sequence<T, H> sessionSequence) {
         if (sequenceRunner == null) {
             sequenceRunner = Executors.newWorkStealingPool();
         }
@@ -83,8 +84,10 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
     }
 
     @Override
-    public synchronized void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId, byte[] rawData)
+    public synchronized void sendCommand(NetworkType networkType, CommandTarget commandTarget, Enum<? extends CommandAlias> commandId, byte[] rawData)
         throws IOException {
+        assert aliasClass.isAssignableFrom(commandId.getClass());
+
         SessionLogger.trace(
             "Session {} sending {} \"{}\" to {} client(s)",
             sessionIdentifier.sessionId(),
@@ -95,12 +98,12 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
 
         switch (networkType) {
             case TCP -> {
-                byte[] data = SendUtils.buildTCPCommandData(commandTarget, commandId.uuid(), rawData);
+                byte[] data = SendUtils.buildTCPCommandData(commandTarget, commandId, rawData);
                 sendTCP(data);
             }
             case UDP -> {
                 DatagramSocket udpServer = lobby.getServer().getUdpServer();
-                byte[] data = SendUtils.buildUDPCommandData(commandTarget, sessionIdentifier.sessionId(), commandId.uuid(), rawData);
+                byte[] data = SendUtils.buildUDPCommandData(commandTarget, sessionIdentifier.sessionId(), commandId, rawData);
                 sendUDP(udpServer, data);
             }
         }
@@ -152,32 +155,32 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
             clients.size()
         );
 
-        for (ServerClient client : clients) {
+        for (ServerClient<H> client : clients) {
             client.sendKeepAlive(networkType);
         }
     }
 
     private void sendTCP(byte[] data) throws IOException {
-        for (ServerClient client : clients) {
+        for (ServerClient<H> client : clients) {
             client.getTcpOut().write(data);
             client.getTcpOut().flush();
         }
     }
 
     private void sendUDP(DatagramSocket udpServer, byte[] data) throws IOException {
-        for (ServerClient client : clients) {
+        for (ServerClient<H> client : clients) {
             DatagramPacket packet = SendUtils.buildPacket(client.getClientConfig(), data);
             udpServer.send(packet);
         }
     }
 
-    public void clientJoin(ServerClient client) throws IOException {
+    public void clientJoin(ServerClient<H> client) throws IOException {
         client.sendSessionUpdate(sessionIdentifier);
         onClientJoin.accept(this, client);
         clients.add(client);
     }
 
-    public void clientLeave(ServerClient client) {
+    public void clientLeave(ServerClient<H> client) {
         clients.remove(client);
         onClientLeave.accept(this, client);
     }
@@ -191,7 +194,7 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
         sendDisconnect(NetworkType.TCP, null);
     }
 
-    public interface Sequence<T> {
+    public interface Sequence<T, H extends Enum<H> & CommandAlias> {
 
         T start() throws Exception;
 
@@ -217,6 +220,7 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
 
         default Future<Boolean> waitForCompletionAsync(BooleanSupplier task, long timeout, long timeBetweenChecks, TimeUnit timeoutUnit) {
             ExecutorService completionExecutor = Executors.newWorkStealingPool();
+
             try {
                 return completionExecutor.submit(() -> waitForCompletion(task, timeout, timeBetweenChecks, timeoutUnit));
             } finally {
@@ -224,8 +228,8 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
             }
         }
 
-        default Map<ResponseId, Object[]> waitForResponses(Session session, Command.Id responseId, long timeout, long timeBetweenChecks,
-                                                           TimeUnit timeoutUnit) throws InterruptedException {
+        default Map<ResponseId<H>, Object[]> waitForResponses(Session<H> session, H responseId, long timeout, long timeBetweenChecks,
+                                                              TimeUnit timeoutUnit) throws InterruptedException {
             session.trackResponses(responseId);
 
             long timeoutNanos = TimeUnit.NANOSECONDS.convert(timeout, timeoutUnit);
@@ -246,9 +250,10 @@ public abstract class Session extends SessionHandler<ServerClient> implements Ne
             return Map.of();
         }
 
-        default Future<Map<ResponseId, Object[]>> waitForResponsesAsync(Session session, Command.Id responseId, long timeout,
-                                                                        long timeBetweenChecks, TimeUnit timeoutUnit) {
+        default Future<Map<ResponseId<H>, Object[]>> waitForResponsesAsync(Session<H> session, H responseId, long timeout,
+                                                                           long timeBetweenChecks, TimeUnit timeoutUnit) {
             ExecutorService completionExecutor = Executors.newWorkStealingPool();
+
             try {
                 return completionExecutor.submit(() -> waitForResponses(session, responseId, timeout, timeBetweenChecks, timeoutUnit));
             } finally {

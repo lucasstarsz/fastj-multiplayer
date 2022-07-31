@@ -3,8 +3,14 @@ package unittest;
 import tech.fastj.network.config.ClientConfig;
 import tech.fastj.network.config.ServerConfig;
 import tech.fastj.network.rpc.Client;
+import tech.fastj.network.rpc.CommandAlias;
 import tech.fastj.network.rpc.Server;
-import tech.fastj.network.rpc.commands.Command;
+import tech.fastj.network.rpc.ServerClient;
+import tech.fastj.network.rpc.classes.Classes;
+import tech.fastj.network.rpc.classes.Classes0;
+import tech.fastj.network.rpc.classes.Classes1;
+import tech.fastj.network.rpc.classes.Classes3;
+import tech.fastj.network.rpc.classes.Classes6;
 import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
 
@@ -39,7 +45,32 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 class ConnectionTests {
 
-    private static Server server;
+    enum TestCommands implements CommandAlias {
+        TCPNoData(new Classes0()),
+        UDPNoData(new Classes0()),
+        UDPCorrectClientReceiver(new Classes0()),
+        TCPGameState(new Classes1<>(GameState.class)),
+        UDPUuid(new Classes1<>(UUID.class)),
+        TCPChatMessage(new Classes1<>(ChatMessage.class)),
+        UDPChatMessage(new Classes1<>(ChatMessage.class)),
+        TCPMultipleChatMessage(new Classes3<>(ChatMessage.class, ChatMessage.class, ChatMessage.class)),
+        UDPMultipleChatMessage(new Classes3<>(ChatMessage.class, ChatMessage.class, ChatMessage.class)),
+        TCPMultipleData(new Classes6<>(boolean.class, byte.class, short.class, byte[].class, int[].class, String.class)),
+        UDPMultipleData(new Classes6<>(int.class, float.class, double.class, long.class, float[].class, ChatMessage.class));
+
+        private final Classes commandClasses;
+
+        @Override
+        public Classes getCommandClasses() {
+            return commandClasses;
+        }
+
+        TestCommands(Classes commandClasses) {
+            this.commandClasses = commandClasses;
+        }
+    }
+
+    private static Server<TestCommands> server;
     private static final InetAddress ClientTargetAddress;
     private static final Logger ConnectionTestsLogger = LoggerFactory.getLogger(ConnectionTests.class);
 
@@ -57,7 +88,7 @@ class ConnectionTests {
     static void startServer() throws IOException {
         ServerConfig serverConfig = new ServerConfig(Port);
 
-        server = new Server(serverConfig, null);
+        server = new Server<>(serverConfig, TestCommands.class, null);
         server.start();
         server.allowClients();
     }
@@ -76,7 +107,7 @@ class ConnectionTests {
     void checkConnectClientToServer() {
         assertDoesNotThrow(() -> {
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client client = new Client(clientConfig);
+            Client<TestCommands> client = new Client<>(clientConfig, TestCommands.class);
 
             client.connect();
         });
@@ -90,27 +121,24 @@ class ConnectionTests {
         CountDownLatch latch = new CountDownLatch(2);
 
         assertDoesNotThrow(() -> {
-            Command.Id receiveTCPChatMessage = Command.named("Receive TCP Chat Message");
-            Command.Id receiveUDPChatMessage = Command.named("Receive UDP Chat Message");
-
-            server.addCommand(receiveTCPChatMessage, (client) -> {
+            server.addCommand(TestCommands.TCPNoData, (client) -> {
                 receivedTCPData.set(true);
                 latch.countDown();
             });
 
-            server.addCommand(receiveUDPChatMessage, (client) -> {
+            server.addCommand(TestCommands.UDPNoData, (client) -> {
                 receivedUDPData.set(true);
                 latch.countDown();
             });
 
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client client = new Client(clientConfig);
+            Client<TestCommands> client = new Client<>(clientConfig, TestCommands.class);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
-            client.sendCommand(NetworkType.TCP, CommandTarget.Server, receiveTCPChatMessage);
+            client.sendCommand(NetworkType.TCP, CommandTarget.Server, TestCommands.TCPNoData);
 
             while (!receivedUDPData.get()) {
-                client.sendCommand(NetworkType.UDP, CommandTarget.Server, receiveUDPChatMessage);
+                client.sendCommand(NetworkType.UDP, CommandTarget.Server, TestCommands.UDPNoData);
                 TimeUnit.MILLISECONDS.sleep(100L);
             }
         });
@@ -136,29 +164,26 @@ class ConnectionTests {
         CountDownLatch latch = new CountDownLatch(2);
 
         assertDoesNotThrow(() -> {
-            Command.Id receiveTCPChatMessage = Command.named("Receive TCP Chat Message");
-            Command.Id receiveUDPChatMessage = Command.named("Receive UDP Chat Message");
-
-            server.addCommand(receiveTCPChatMessage, ChatMessage.class, (client, chatMessage) -> {
+            server.addCommand(TestCommands.TCPChatMessage, (client, chatMessage) -> {
                 assertEquals(tcpData, chatMessage, "The TCP data should match.");
                 receivedTCPData.set(true);
                 latch.countDown();
             });
 
-            server.addCommand(receiveUDPChatMessage, ChatMessage.class, (client, chatMessage) -> {
+            server.addCommand(TestCommands.UDPChatMessage, (client, chatMessage) -> {
                 assertEquals(udpData, chatMessage, "The UDP data should match.");
                 receivedUDPData.set(true);
                 latch.countDown();
             });
 
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client client = new Client(clientConfig);
+            Client<TestCommands> client = new Client<>(clientConfig, TestCommands.class);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
-            client.sendCommand(NetworkType.TCP, CommandTarget.Server, receiveTCPChatMessage, tcpData);
+            client.sendCommand(NetworkType.TCP, CommandTarget.Server, TestCommands.TCPChatMessage, tcpData);
 
             while (!receivedUDPData.get()) {
-                client.sendCommand(NetworkType.UDP, CommandTarget.Server, receiveUDPChatMessage, udpData);
+                client.sendCommand(NetworkType.UDP, CommandTarget.Server, TestCommands.UDPChatMessage, udpData);
                 TimeUnit.MILLISECONDS.sleep(100L);
             }
         });
@@ -187,11 +212,7 @@ class ConnectionTests {
         CountDownLatch latch = new CountDownLatch(2);
 
         assertDoesNotThrow(() -> {
-            Command.Id receiveTCPMultipleChatMessage = Command.named("Receive TCP Multiple Chat Messages");
-            Command.Id receiveUDPMultipleChatMessage = Command.named("Receive UDP Multiple Chat Messages");
-
-            server.addCommand(receiveTCPMultipleChatMessage, ChatMessage.class, ChatMessage.class, ChatMessage.class,
-                (client, chatMessage1, chatMessage2, chatMessage3) -> {
+            server.addCommand(TestCommands.TCPMultipleChatMessage, (client, chatMessage1, chatMessage2, chatMessage3) -> {
                     assertEquals(tcpData1, chatMessage1, "The TCP data should match for message 1.");
                     assertEquals(tcpData2, chatMessage2, "The TCP data should match for message 2.");
                     assertEquals(tcpData3, chatMessage3, "The TCP data should match for message 3.");
@@ -200,8 +221,7 @@ class ConnectionTests {
                 }
             );
 
-            server.addCommand(receiveUDPMultipleChatMessage, ChatMessage.class, ChatMessage.class, ChatMessage.class,
-                (client, chatMessage1, chatMessage2, chatMessage3) -> {
+            server.addCommand(TestCommands.UDPMultipleChatMessage, (client, chatMessage1, chatMessage2, chatMessage3) -> {
                     assertEquals(udpData1, chatMessage1, "The UDP data should match for message 1.");
                     assertEquals(udpData2, chatMessage2, "The UDP data should match for message 2.");
                     assertEquals(udpData3, chatMessage3, "The UDP data should match for message 3.");
@@ -211,13 +231,13 @@ class ConnectionTests {
             );
 
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client client = new Client(clientConfig);
+            Client<TestCommands> client = new Client<>(clientConfig, TestCommands.class);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
-            client.sendCommand(NetworkType.TCP, CommandTarget.Server, receiveTCPMultipleChatMessage, tcpData1, tcpData2, tcpData3);
+            client.sendCommand(NetworkType.TCP, CommandTarget.Server, TestCommands.TCPMultipleChatMessage, tcpData1, tcpData2, tcpData3);
 
             while (!receivedMultipleUDPData.get()) {
-                client.sendCommand(NetworkType.UDP, CommandTarget.Server, receiveUDPMultipleChatMessage, udpData1, udpData2, udpData3);
+                client.sendCommand(NetworkType.UDP, CommandTarget.Server, TestCommands.UDPMultipleChatMessage, udpData1, udpData2, udpData3);
                 TimeUnit.MILLISECONDS.sleep(100L);
             }
         });
@@ -235,6 +255,7 @@ class ConnectionTests {
     @Test
     void checkSendDataToServer_usingCommandsWithOneObject() throws InterruptedException {
         Random random = ThreadLocalRandom.current();
+
         GameState tcpData = GameState.values()[random.nextInt(0, GameState.values().length - 1)];
         UUID udpData = UUID.randomUUID();
 
@@ -244,29 +265,26 @@ class ConnectionTests {
         CountDownLatch latch = new CountDownLatch(2);
 
         assertDoesNotThrow(() -> {
-            Command.Id receiveTCPGameState = Command.named("Receive TCP GameState Enum");
-            Command.Id receiveUDPUuid = Command.named("Receive UDP UUID");
-
-            server.addCommand(receiveTCPGameState, GameState.class, (client, gameState) -> {
+            server.addCommand(TestCommands.TCPGameState, (client, gameState) -> {
                 assertEquals(tcpData, gameState, "The TCP data should match.");
                 receivedTCPData.set(true);
                 latch.countDown();
             });
 
-            server.addCommand(receiveUDPUuid, UUID.class, (client, uuid) -> {
+            server.addCommand(TestCommands.UDPUuid, (client, uuid) -> {
                 assertEquals(udpData, uuid, "The UDP data should match.");
                 receivedUDPData.set(true);
                 latch.countDown();
             });
 
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client client = new Client(clientConfig);
+            Client<TestCommands> client = new Client<>(clientConfig, TestCommands.class);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
-            client.sendCommand(NetworkType.TCP, CommandTarget.Server, receiveTCPGameState, tcpData);
+            client.sendCommand(NetworkType.TCP, CommandTarget.Server, TestCommands.TCPGameState, tcpData);
 
             while (!receivedUDPData.get()) {
-                client.sendCommand(NetworkType.UDP, CommandTarget.Server, receiveUDPUuid, udpData);
+                client.sendCommand(NetworkType.UDP, CommandTarget.Server, TestCommands.UDPUuid, udpData);
                 TimeUnit.MILLISECONDS.sleep(100L);
             }
         });
@@ -284,6 +302,7 @@ class ConnectionTests {
     @Test
     void checkSendDataToServer_usingCommandsWithMultipleObjects() throws InterruptedException {
         Random random = ThreadLocalRandom.current();
+
         boolean tcpData1 = random.nextBoolean();
         byte tcpData2 = (byte) random.nextInt(Byte.MIN_VALUE, Byte.MAX_VALUE);
         short tcpData3 = (short) random.nextInt(Short.MIN_VALUE, Short.MAX_VALUE);
@@ -309,12 +328,7 @@ class ConnectionTests {
         CountDownLatch latch = new CountDownLatch(2);
 
         assertDoesNotThrow(() -> {
-            Command.Id receiveTCPMultipleValues = Command.named("Receive TCP Multiple Values");
-            Command.Id receiveUDPMultipleValues = Command.named("Receive UDP Multiple Values");
-
-            server.addCommand(receiveTCPMultipleValues,
-                boolean.class, byte.class, short.class, byte[].class, int[].class, String.class,
-                (client, bl, bt, sh, bytes, ints, string) -> {
+            server.addCommand(TestCommands.TCPMultipleData, (ServerClient<TestCommands> client, Boolean bl, Byte bt, Short sh, byte[] bytes, int[] ints, String string) -> {
                     assertEquals(tcpData1, bl, "The TCP data should match for value 1.");
                     assertEquals(tcpData2, bt, "The TCP data should match for value 2.");
                     assertEquals(tcpData3, sh, "The TCP data should match for value 3.");
@@ -326,9 +340,7 @@ class ConnectionTests {
                 }
             );
 
-            server.addCommand(receiveUDPMultipleValues,
-                int.class, float.class, double.class, long.class, float[].class, ChatMessage.class,
-                (client, i, f, d, l, floats, chatMessage) -> {
+            server.addCommand(TestCommands.UDPMultipleData, (ServerClient<TestCommands> client, Integer i, Float f, Double d, Long l, float[] floats, ChatMessage chatMessage) -> {
                     assertEquals(udpData1, i, "The UDP data should match for value 1.");
                     assertEquals(udpData2, f, "The UDP data should match for value 2.");
                     assertEquals(udpData3, d, "The UDP data should match for value 3.");
@@ -341,13 +353,13 @@ class ConnectionTests {
             );
 
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client client = new Client(clientConfig);
+            Client<TestCommands> client = new Client<>(clientConfig, TestCommands.class);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
-            client.sendCommand(NetworkType.TCP, CommandTarget.Server, receiveTCPMultipleValues, tcpData1, tcpData2, tcpData3, tcpData4, tcpData5, tcpData6);
+            client.sendCommand(NetworkType.TCP, CommandTarget.Server, TestCommands.TCPMultipleData, tcpData1, tcpData2, tcpData3, tcpData4, tcpData5, tcpData6);
 
             while (!receivedMultipleUDPData.get()) {
-                client.sendCommand(NetworkType.UDP, CommandTarget.Server, receiveUDPMultipleValues, udpData1, udpData2, udpData3, udpData4, udpData5, udpData6);
+                client.sendCommand(NetworkType.UDP, CommandTarget.Server, TestCommands.UDPMultipleData, udpData1, udpData2, udpData3, udpData4, udpData5, udpData6);
                 TimeUnit.MILLISECONDS.sleep(100L);
             }
         });
@@ -366,13 +378,13 @@ class ConnectionTests {
     void checkPingsAndKeepAlives() throws InterruptedException {
         int countdownStart = 50;
         CountDownLatch latch = new CountDownLatch(countdownStart);
-        AtomicReference<Client> client = new AtomicReference<>();
 
+        AtomicReference<Client<TestCommands>> client = new AtomicReference<>();
         List<Long> pings = new ArrayList<>();
 
         assertDoesNotThrow(() -> {
             ClientConfig clientConfig = new ClientConfig(Port);
-            client.set(new Client(clientConfig));
+            client.set(new Client<>(clientConfig, TestCommands.class));
             client.get().connect();
 
             client.get().onPingReceived((ping) -> {
@@ -405,14 +417,13 @@ class ConnectionTests {
     @Test
     void checkUDPMessageIsReceivedFromCorrectClient() throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(5);
-        Command.Id messageReceiverTest = Command.named("order");
 
         assertDoesNotThrow(() -> {
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client client1 = new Client(clientConfig);
-            Client client2 = new Client(clientConfig);
+            Client<TestCommands> client1 = new Client<>(clientConfig, TestCommands.class);
+            Client<TestCommands> client2 = new Client<>(clientConfig, TestCommands.class);
 
-            server.addCommand(messageReceiverTest, client -> {
+            server.addCommand(TestCommands.UDPCorrectClientReceiver, client -> {
                 ConnectionTestsLogger.debug("client {} received message test", client.getClientId());
                 assertEquals(client1.getClientId(), client.getClientId());
                 latch.countDown();
@@ -425,7 +436,7 @@ class ConnectionTests {
             ConnectionTestsLogger.debug("client 2: {}", client2.getClientId());
 
             while (latch.getCount() > 0) {
-                client1.sendCommand(NetworkType.UDP, CommandTarget.Server, messageReceiverTest);
+                client1.sendCommand(NetworkType.UDP, CommandTarget.Server, TestCommands.UDPCorrectClientReceiver);
                 TimeUnit.MILLISECONDS.sleep(100L);
             }
         });

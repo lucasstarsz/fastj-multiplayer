@@ -5,13 +5,14 @@ import tech.fastj.network.rpc.Client;
 import java.net.InetAddress;
 
 import tech.fastj.partyhousecore.ClientInfo;
+import tech.fastj.partyhousecore.Commands;
 import tech.fastj.partyhousecore.PointsState;
 
 public class User {
 
     private static final User Instance = new User();
 
-    private Client client;
+    private Client<Commands> client;
     private ClientInfo clientInfo;
     private final PointsState pointsState;
     private final UserSettings settings;
@@ -38,11 +39,11 @@ public class User {
         return settings;
     }
 
-    public Client getClient() {
+    public Client<Commands> getClient() {
         return client;
     }
 
-    public void setClient(Client client) {
+    public void setClient(Client<Commands> client) {
         this.client = client;
     }
 

@@ -1,5 +1,6 @@
 package tech.fastj.network.sessions;
 
+import tech.fastj.network.rpc.CommandAlias;
 import tech.fastj.network.rpc.CommandHandler;
 import tech.fastj.network.rpc.Server;
 import tech.fastj.network.rpc.ServerClient;
@@ -14,21 +15,22 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 
-public abstract class Lobby extends CommandHandler<ServerClient> {
+public abstract class Lobby<H extends Enum<H> & CommandAlias> extends CommandHandler<H, ServerClient<H>> {
 
     protected LobbyIdentifier lobbyIdentifier;
 
-    protected final Server server;
-    protected final List<ServerClient> clients;
-    protected final Map<UUID, Session> sessions;
-    protected Session currentSession;
+    protected final Server<H> server;
+    protected final List<ServerClient<H>> clients;
+    protected final Map<UUID, Session<H>> sessions;
+    protected Session<H> currentSession;
     protected UUID homeSessionId;
 
-    private BiConsumer<Session, Session> onSwitchSession;
-    private BiConsumer<Lobby, ServerClient> onReceiveNewClient;
-    private BiConsumer<Lobby, ServerClient> onClientDisconnect;
+    private BiConsumer<Session<H>, Session<H>> onSwitchSession;
+    private BiConsumer<Lobby<H>, ServerClient<H>> onReceiveNewClient;
+    private BiConsumer<Lobby<H>, ServerClient<H>> onClientDisconnect;
 
-    protected Lobby(Server server, int expectedLobbySize, String name) {
+    protected Lobby(Server<H> server, int expectedLobbySize, String name, Class<H> aliasClass) {
+        super(aliasClass);
         this.server = server;
         clients = new ArrayList<>(expectedLobbySize);
         sessions = new HashMap<>();
@@ -46,12 +48,12 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
         return lobbyIdentifier;
     }
 
-    public boolean hasClient(ServerClient serverClient) {
+    public boolean hasClient(ServerClient<H> serverClient) {
         return clients.contains(serverClient);
     }
 
     public boolean hasClient(UUID clientId) {
-        for (ServerClient client : clients) {
+        for (ServerClient<H> client : clients) {
             if (clientId.equals(client.getClientId())) {
                 return true;
             }
@@ -60,40 +62,40 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
         return false;
     }
 
-    public List<ServerClient> getClients() {
+    public List<ServerClient<H>> getClients() {
         return Collections.unmodifiableList(clients);
     }
 
-    public Map<UUID, Session> getSessions() {
+    public Map<UUID, Session<H>> getSessions() {
         return Collections.unmodifiableMap(sessions);
     }
 
-    public Session getCurrentSession() {
+    public Session<H> getCurrentSession() {
         return currentSession;
     }
 
-    public Session getHomeSession() {
+    public Session<H> getHomeSession() {
         return sessions.get(homeSessionId);
     }
 
-    public Server getServer() {
+    public Server<H> getServer() {
         return server;
     }
 
-    public void setOnSwitchSession(BiConsumer<Session, Session> onSwitchSession) {
+    public void setOnSwitchSession(BiConsumer<Session<H>, Session<H>> onSwitchSession) {
         this.onSwitchSession = onSwitchSession;
     }
 
-    public void setOnReceiveNewClient(BiConsumer<Lobby, ServerClient> onReceiveNewClient) {
+    public void setOnReceiveNewClient(BiConsumer<Lobby<H>, ServerClient<H>> onReceiveNewClient) {
         this.onReceiveNewClient = onReceiveNewClient;
     }
 
-    public void setOnClientDisconnect(BiConsumer<Lobby, ServerClient> onClientDisconnect) {
+    public void setOnClientDisconnect(BiConsumer<Lobby<H>, ServerClient<H>> onClientDisconnect) {
         this.onClientDisconnect = onClientDisconnect;
     }
 
-    public Session getClientSession(ServerClient client) {
-        for (Session session : sessions.values()) {
+    public Session<H> getClientSession(ServerClient<H> client) {
+        for (Session<H> session : sessions.values()) {
             if (session.getClients().contains(client)) {
                 return session;
             }
@@ -102,7 +104,7 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
         return null;
     }
 
-    public void receiveNewClient(ServerClient client) throws IOException {
+    public void receiveNewClient(ServerClient<H> client) throws IOException {
         getLogger().info("Lobby {} received new client {}", lobbyIdentifier.name(), client.getClientId());
 
         onReceiveNewClient.accept(this, client);
@@ -112,7 +114,7 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
 
         client.sendLobbyUpdate(lobbyIdentifier);
 
-        Session newClientSession = sessions.get(homeSessionId);
+        Session<H> newClientSession = sessions.get(homeSessionId);
 
         if (newClientSession != null) {
             newClientSession.clientJoin(client);
@@ -120,7 +122,7 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
     }
 
     public void stop() {
-        for (Session session : sessions.values()) {
+        for (Session<H> session : sessions.values()) {
             session.stop();
         }
 
@@ -133,11 +135,11 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
         clients.clear();
     }
 
-    public void clientDisconnect(ServerClient client) {
+    public void clientDisconnect(ServerClient<H> client) {
         clients.remove(client);
         lobbyIdentifier = new LobbyIdentifier(lobbyIdentifier.id(), lobbyIdentifier.name(), clients.size(), lobbyIdentifier.maxPlayers());
 
-        Session session = getClientSession(client);
+        Session<H> session = getClientSession(client);
 
         if (session != null) {
             session.clientLeave(client);
@@ -146,7 +148,7 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
         onClientDisconnect.accept(this, client);
     }
 
-    protected void addSession(Session session) {
+    protected void addSession(Session<H> session) {
         sessions.put(session.getSessionId(), session);
 
         if (sessions.size() == 1) {
@@ -155,7 +157,7 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
         }
     }
 
-    protected void setCurrentSession(Session currentSession) {
+    protected void setCurrentSession(Session<H> currentSession) {
         this.currentSession = currentSession;
     }
 
@@ -164,24 +166,24 @@ public abstract class Lobby extends CommandHandler<ServerClient> {
     }
 
     public void switchCurrentSession(UUID nextSession) {
-        Session previousSession = currentSession;
+        Session<H> previousSession = currentSession;
         currentSession = sessions.get(nextSession);
 
         onSwitchSession.accept(previousSession, currentSession);
     }
 
     public void switchCurrentSession(String sessionName) {
-        Session previousSession = currentSession;
+        Session<H> previousSession = currentSession;
         System.out.println("previous session: " + previousSession.getSessionIdentifier().sessionName());
         currentSession = findSession(sessionName);
         System.out.println("current session: " + currentSession.getSessionIdentifier().sessionName());
         onSwitchSession.accept(previousSession, currentSession);
     }
 
-    private Session findSession(String sessionName) {
+    private Session<H> findSession(String sessionName) {
         System.out.println("sessions: " + sessions.values());
 
-        for (Session session : sessions.values()) {
+        for (Session<H> session : sessions.values()) {
             if (session == null) {
                 continue;
             }

@@ -21,76 +21,60 @@ import tech.fastj.network.serial.Serializer;
 import tech.fastj.network.serial.read.MessageInputStream;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 import org.slf4j.Logger;
 
-public abstract class CommandHandler<T extends ConnectionHandler<?>> {
-
-    protected final Map<UUID, Command> commands;
-    protected final Map<UUID, Classes> commandClasses;
-    protected final Map<UUID, Command.Id> idsToCommandIds;
-    protected final Set<Command.Id> commandIds;
+public abstract class CommandHandler<H extends Enum<H> & CommandAlias, T extends ConnectionHandler<H, T>> {
 
     protected final Serializer serializer;
 
-    protected CommandHandler() {
+    protected final Class<H> aliasClass;
+    protected final Map<H, Command> commands;
+    protected final H[] aliases;
+
+    protected CommandHandler(Class<H> aliasClass) {
+        this.aliasClass = aliasClass;
+        this.aliases = aliasClass.getEnumConstants();
+
         commands = new HashMap<>();
-        commandClasses = new HashMap<>();
-        idsToCommandIds = new HashMap<>();
-        commandIds = new HashSet<>();
         serializer = new Serializer();
     }
 
-    public void addCommand(Command.Id id, Command0<T> command) {
-        Classes classes = new Classes0();
-        registerCommand(id, classes, command);
+    public void addCommand(H id, Command0<T> command) {
+        registerCommand(id, command);
     }
 
-    public <T1> void addCommand(Command.Id id, Class<T1> class1, Command1<T, T1> command) {
-        Classes classes = new Classes1<>(class1);
-        registerCommand(id, classes, command);
-        tryAddSerializer(class1);
+    public <T1> void addCommand(H id, Command1<T, T1> command) {
+        registerCommand(id, command);
+        tryAddSerializer(id.commandClassesArray());
     }
 
-    public <T1, T2> void addCommand(Command.Id id, Class<T1> class1, Class<T2> class2, Command2<T, T1, T2> command) {
-        Classes classes = new Classes2<>(class1, class2);
-        registerCommand(id, classes, command);
-        tryAddSerializer(class1, class2);
+    public <T1, T2> void addCommand(H id, Command2<T, T1, T2> command) {
+        registerCommand(id, command);
+        tryAddSerializer(id.commandClassesArray());
     }
 
-    public <T1, T2, T3> void addCommand(Command.Id id, Class<T1> class1, Class<T2> class2, Class<T3> class3,
-                                        Command3<T, T1, T2, T3> command) {
-        Classes classes = new Classes3<>(class1, class2, class3);
-        registerCommand(id, classes, command);
-        tryAddSerializer(class1, class2, class3);
+    public <T1, T2, T3> void addCommand(H id, Command3<T, T1, T2, T3> command) {
+        registerCommand(id, command);
+        tryAddSerializer(id.commandClassesArray());
     }
 
-    public <T1, T2, T3, T4> void addCommand(Command.Id id, Class<T1> class1, Class<T2> class2, Class<T3> class3,
-                                            Class<T4> class4, Command4<T, T1, T2, T3, T4> command) {
-        Classes classes = new Classes4<>(class1, class2, class3, class4);
-        registerCommand(id, classes, command);
-        tryAddSerializer(class1, class2, class3, class4);
+    public <T1, T2, T3, T4> void addCommand(H id, Command4<T, T1, T2, T3, T4> command) {
+        registerCommand(id, command);
+        tryAddSerializer(id.commandClassesArray());
     }
 
-    public <T1, T2, T3, T4, T5> void addCommand(Command.Id id, Class<T1> class1, Class<T2> class2, Class<T3> class3,
-                                                Class<T4> class4, Class<T5> class5, Command5<T, T1, T2, T3, T4, T5> command) {
-        Classes classes = new Classes5<>(class1, class2, class3, class4, class5);
-        registerCommand(id, classes, command);
-        tryAddSerializer(class1, class2, class3, class4, class5);
+    public <T1, T2, T3, T4, T5> void addCommand(H id, Command5<T, T1, T2, T3, T4, T5> command) {
+        registerCommand(id, command);
+        tryAddSerializer(id.commandClassesArray());
     }
 
-    public <T1, T2, T3, T4, T5, T6> void addCommand(Command.Id id, Class<T1> class1, Class<T2> class2, Class<T3> class3,
-                                                    Class<T4> class4, Class<T5> class5, Class<T6> class6,
-                                                    Command6<T, T1, T2, T3, T4, T5, T6> command) {
-        Classes classes = new Classes6<>(class1, class2, class3, class4, class5, class6);
-        registerCommand(id, classes, command);
-        tryAddSerializer(class1, class2, class3, class4, class5, class6);
+    public <T1, T2, T3, T4, T5, T6> void addCommand(H id, Command6<T, T1, T2, T3, T4, T5, T6> command) {
+        registerCommand(id, command);
+        tryAddSerializer(id.commandClassesArray());
     }
 
     @SuppressWarnings("unchecked")
@@ -104,42 +88,8 @@ public abstract class CommandHandler<T extends ConnectionHandler<?>> {
 
     public abstract Logger getLogger();
 
-    protected void readCommand(long dataLength, UUID commandId, MessageInputStream inputStream, T client) throws IOException {
-        Classes classes = getClasses(commandId);
-
-        if (classes == null) {
-            getLogger().warn(
-                "Received unregistered command {} (Command name may have been \"{}\")",
-                commandId,
-                idsToCommandIds.get(commandId)
-            );
-
-            if (dataLength > inputStream.available()) {
-                getLogger().warn(
-                    "Received incomplete command {}\nBad data: {}",
-                    commandId,
-                    Arrays.toString(inputStream.readNBytes(inputStream.available()))
-                );
-            } else {
-                getLogger().warn(
-                    "Received incomplete command {}\nBad data: {}",
-                    commandId,
-                    Arrays.toString(inputStream.readNBytes((int) dataLength))
-                );
-            }
-
-            return;
-        }
-
-        if (dataLength > inputStream.available()) {
-            getLogger().warn(
-                "Received incomplete command {}\nBad data: {}",
-                commandId,
-                Arrays.toString(inputStream.readAllBytes())
-            );
-
-            return;
-        }
+    protected void readCommand(H commandId, MessageInputStream inputStream, T client) throws IOException {
+        Classes classes = commandId.getCommandClasses();
 
         if (classes instanceof Classes0) {
             runCommand(commandId, client);
@@ -193,70 +143,70 @@ public abstract class CommandHandler<T extends ConnectionHandler<?>> {
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected Object readObject(Class<?> objectClass, MessageInputStream inputStream) throws IOException {
         return inputStream.readObject(objectClass);
     }
 
     @SuppressWarnings("unchecked")
-    protected void runCommand(UUID id, T client) {
+    protected void runCommand(H id, T client) {
         var command = (Command0<T>) commands.get(id);
         command.runCommand(client);
     }
 
     @SuppressWarnings("unchecked")
-    protected <T1> void runCommand(UUID id, T client, T1 t1) {
+    protected <T1> void runCommand(H id, T client, T1 t1) {
         var command = (Command1<T, T1>) commands.get(id);
         command.runCommand(client, t1);
     }
 
     @SuppressWarnings("unchecked")
-    protected <T1, T2> void runCommand(UUID id, T client, T1 t1, T2 t2) {
+    protected <T1, T2> void runCommand(H id, T client, T1 t1, T2 t2) {
         var command = (Command2<T, T1, T2>) commands.get(id);
         command.runCommand(client, t1, t2);
     }
 
     @SuppressWarnings("unchecked")
-    protected <T1, T2, T3> void runCommand(UUID id, T client, T1 t1, T2 t2, T3 t3) {
+    protected <T1, T2, T3> void runCommand(H id, T client, T1 t1, T2 t2, T3 t3) {
         var command = (Command3<T, T1, T2, T3>) commands.get(id);
         command.runCommand(client, t1, t2, t3);
     }
 
     @SuppressWarnings("unchecked")
-    protected <T1, T2, T3, T4> void runCommand(UUID id, T client, T1 t1, T2 t2, T3 t3, T4 t4) {
+    protected <T1, T2, T3, T4> void runCommand(H id, T client, T1 t1, T2 t2, T3 t3, T4 t4) {
         var command = (Command4<T, T1, T2, T3, T4>) commands.get(id);
         command.runCommand(client, t1, t2, t3, t4);
     }
 
     @SuppressWarnings("unchecked")
-    protected <T1, T2, T3, T4, T5> void runCommand(UUID id, T client, T1 t1, T2 t2, T3 t3, T4 t4, T5 t5) {
+    protected <T1, T2, T3, T4, T5> void runCommand(H id, T client, T1 t1, T2 t2, T3 t3, T4 t4, T5 t5) {
         var command = (Command5<T, T1, T2, T3, T4, T5>) commands.get(id);
         command.runCommand(client, t1, t2, t3, t4, t5);
     }
 
     @SuppressWarnings("unchecked")
-    protected <T1, T2, T3, T4, T5, T6> void runCommand(UUID id, T client, T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6) {
+    protected <T1, T2, T3, T4, T5, T6> void runCommand(H id, T client, T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6) {
         var command = (Command6<T, T1, T2, T3, T4, T5, T6>) commands.get(id);
         command.runCommand(client, t1, t2, t3, t4, t5, t6);
     }
 
-    @SuppressWarnings("unchecked")
-    protected <C extends Classes> C getClasses(UUID id) {
-        return (C) commandClasses.get(id);
-    }
-
-    private void registerCommand(Command.Id id, Classes classes, Command command) {
+    private void registerCommand(H id, Command command) {
         idRegisterCheck(id);
-
-        commandIds.add(id);
-        commands.put(id.uuid(), command);
-        commandClasses.put(id.uuid(), classes);
-        idsToCommandIds.put(id.uuid(), id);
+        commandNumberCheck(id, command);
+        commands.put(id, command);
     }
 
-    protected void idRegisterCheck(Command.Id id) {
-        if (commandIds.contains(id)) {
-            getLogger().warn("Replacing command {}.", id.formattedToString());
+    private void commandNumberCheck(H id, Command command) {
+        if (id.commandCount() != command.commandArgumentCount()) {
+            throw new IllegalArgumentException(
+                "The number of command parameters must match to " + id.name()
+                    + "'s parameter count of " + id.commandCount()
+            );
+        }
+    }
+
+    protected void idRegisterCheck(H id) {
+        if (commands.containsKey(id)) {
+            getLogger().warn("Replacing command {}.", id.name());
         }
     }
 }

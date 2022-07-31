@@ -9,15 +9,17 @@ import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 
+import tech.fastj.partyhousecore.Commands;
+
 public class Main {
     public static void main(String[] args) {
-        AtomicReference<Server> server = new AtomicReference<>();
+        AtomicReference<Server<Commands>> server = new AtomicReference<>();
 
         try {
             int port = 19999;
             ServerConfig serverConfig = new ServerConfig(port);
-            BiFunction<ServerClient, String, Lobby> lobbyCreator = (serverClient, lobbyName) -> new GameLobby(server.get(), lobbyName);
-            server.set(new Server(serverConfig, lobbyCreator));
+            BiFunction<ServerClient<Commands>, String, Lobby<Commands>> lobbyCreator = (serverClient, lobbyName) -> new GameLobby(server.get(), lobbyName);
+            server.set(new Server<>(serverConfig, Commands.class, lobbyCreator));
 
             server.get().start();
             server.get().allowClients();

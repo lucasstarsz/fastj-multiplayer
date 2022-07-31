@@ -34,7 +34,7 @@ public class GameManager extends SceneManager {
         FastJEngine.getDisplay().getWindow().addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                Client client = User.getInstance().getClient();
+                var client = User.getInstance().getClient();
                 if (client != null) {
                     client.disconnect();
                 }

@@ -1,7 +1,6 @@
 package tech.fastj.network.rpc;
 
 import tech.fastj.network.config.ClientConfig;
-import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
 import tech.fastj.network.rpc.message.RequestType;
@@ -12,7 +11,6 @@ import tech.fastj.network.serial.read.MessageInputStream;
 import tech.fastj.network.serial.util.MessageUtils;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.UUID;
@@ -21,13 +19,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Client extends ConnectionHandler<Client> implements Runnable, NetworkSender {
+public class Client<H extends Enum<H> & CommandAlias> extends ConnectionHandler<H, Client<H>> implements Runnable, NetworkSender {
 
     private static final Logger ClientLogger = LoggerFactory.getLogger(Client.class);
 
@@ -53,8 +50,8 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
 
     private final ExecutorService updateFreshener;
 
-    public Client(ClientConfig clientConfig) throws IOException {
-        super(clientConfig);
+    public Client(ClientConfig clientConfig, Class<H> aliasClass) throws IOException {
+        super(clientConfig, aliasClass);
         onPingReceived = (ping) -> {
         };
         onLobbyUpdate = (oldLobby, newLobby) -> {
@@ -123,19 +120,16 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
     }
 
     private void sendPing() {
-        byte[] packetData = ByteBuffer.allocate(MessageUtils.UuidBytes + MessageUtils.EnumBytes + Long.BYTES)
-            .putLong(clientId.getMostSignificantBits())
-            .putLong(clientId.getLeastSignificantBits())
+        byte[] packetData = ByteBuffer.allocate(MessageUtils.EnumBytes + Long.BYTES)
             .putInt(SentMessageType.PingRequest.ordinal())
             .putLong(System.nanoTime())
             .array();
 
-        DatagramPacket packet = SendUtils.buildPacket(clientConfig, packetData);
-
         ClientLogger.trace("sending ping to {}:{}", clientConfig.address(), clientConfig.port());
 
         try {
-            udpSocket.send(packet);
+            tcpOut.write(packetData);
+            tcpOut.flush();
         } catch (IOException exception) {
             ClientLogger.error("Unable to send UDP ping packet. Stopping pings", exception);
             stopPings();
@@ -256,8 +250,10 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
     }
 
     @Override
-    public synchronized void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId, byte[] rawData)
+    public synchronized void sendCommand(NetworkType networkType, CommandTarget commandTarget, Enum<? extends CommandAlias> commandId, byte[] rawData)
         throws IOException {
+        assert aliasClass.isAssignableFrom(commandId.getClass());
+
         ClientLogger.trace("{} sending {} \"{}\" to {}:{}", clientId, networkType.name(), commandId.name(), clientConfig.address(), clientConfig.port());
 
         switch (networkType) {
@@ -296,6 +292,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     protected void readMessageType(NetworkType networkType, UUID senderId, MessageInputStream inputStream, SentMessageType sentMessageType)
         throws IOException {
         switch (sentMessageType) {
@@ -340,7 +337,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
                     dataLength = inputStream.available() - MessageUtils.UuidBytes;
                 }
 
-                UUID commandId = (UUID) inputStream.readObject(UUID.class);
+                H commandId = (H) inputStream.readObject(aliasClass);
                 ClientLogger.debug("RPC Command {} targeting {} with data length {}", commandId, commandTarget.name(), dataLength);
 
                 if (commandTarget != CommandTarget.Client) {
@@ -348,7 +345,7 @@ public class Client extends ConnectionHandler<Client> implements Runnable, Netwo
                     inputStream.skipNBytes(dataLength);
                 }
 
-                readCommand(dataLength, commandId, inputStream, this);
+                readCommand(commandId, inputStream, this);
             }
             default -> ClientLogger.warn(
                 "{} Received unused message type {}, discarding {}",

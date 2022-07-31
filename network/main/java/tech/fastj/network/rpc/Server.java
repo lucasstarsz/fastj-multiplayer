@@ -28,11 +28,11 @@ import java.util.function.BiFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Server extends CommandHandler<ServerClient> {
+public class Server<H extends Enum<H> & CommandAlias> extends CommandHandler<H, ServerClient<H>> {
 
-    private final List<ServerClient> allClients;
-    private final Map<UUID, Lobby> lobbies;
-    private final BiFunction<ServerClient, String, Lobby> lobbyCreator;
+    private final List<ServerClient<H>> allClients;
+    private final Map<UUID, Lobby<H>> lobbies;
+    private final BiFunction<ServerClient<H>, String, Lobby<H>> lobbyCreator;
 
     private final ServerSocket tcpServer;
     private final DatagramSocket udpServer;
@@ -44,7 +44,9 @@ public class Server extends CommandHandler<ServerClient> {
 
     private final Logger serverLogger = LoggerFactory.getLogger(Server.class);
 
-    public Server(ServerConfig serverConfig, BiFunction<ServerClient, String, Lobby> lobbyCreator) throws IOException {
+    public Server(ServerConfig serverConfig, Class<H> aliasClass, BiFunction<ServerClient<H>, String, Lobby<H>> lobbyCreator)
+        throws IOException {
+        super(aliasClass);
         this.allClients = new ArrayList<>(serverConfig.maxClients());
         this.lobbies = new LinkedHashMap<>();
         this.lobbyCreator = lobbyCreator;
@@ -53,11 +55,11 @@ public class Server extends CommandHandler<ServerClient> {
         udpServer = new DatagramSocket(serverConfig.port(), serverConfig.address());
     }
 
-    public List<ServerClient> getClients() {
+    public List<ServerClient<H>> getClients() {
         return Collections.unmodifiableList(allClients);
     }
 
-    public Map<UUID, Lobby> getLobbies() {
+    public Map<UUID, Lobby<H>> getLobbies() {
         return Collections.unmodifiableMap(lobbies);
     }
 
@@ -82,8 +84,8 @@ public class Server extends CommandHandler<ServerClient> {
         return serverLogger;
     }
 
-    public Lobby getLobby(ServerClient client) {
-        for (Lobby lobby : lobbies.values()) {
+    public Lobby<H> getLobby(ServerClient<H> client) {
+        for (Lobby<H> lobby : lobbies.values()) {
             if (lobby.hasClient(client)) {
                 return lobby;
             }
@@ -103,7 +105,7 @@ public class Server extends CommandHandler<ServerClient> {
     }
 
     public void stopAllLobbies() {
-        for (Lobby lobby : lobbies.values()) {
+        for (Lobby<H> lobby : lobbies.values()) {
             lobby.stop();
         }
 
@@ -158,8 +160,8 @@ public class Server extends CommandHandler<ServerClient> {
         serverLogger.debug("Server no longer accepting clients.");
     }
 
-    public ServerClient getClient(UUID senderId) {
-        for (ServerClient client : allClients) {
+    public ServerClient<H> getClient(UUID senderId) {
+        for (ServerClient<H> client : allClients) {
             if (senderId.equals(client.clientId)) {
                 return client;
             }
@@ -187,7 +189,7 @@ public class Server extends CommandHandler<ServerClient> {
     }
 
     private synchronized void acceptClient() throws IOException {
-        ServerClient client = null;
+        ServerClient<H> client = null;
 
         try {
             serverLogger.debug("Accepting new client...");
@@ -196,7 +198,7 @@ public class Server extends CommandHandler<ServerClient> {
 
             serverLogger.debug("Received new client, creating connection...");
 
-            client = new ServerClient(clientSocket, this, udpServer);
+            client = new ServerClient<>(clientSocket, this, udpServer, aliasClass);
             client.connect();
 
             serverLogger.debug("Client {} connected.", client.getClientId());
@@ -222,19 +224,19 @@ public class Server extends CommandHandler<ServerClient> {
         isRunning = true;
     }
 
-    public void receiveCommand(CommandTarget commandTarget, long dataLength, UUID commandId, UUID senderId, MessageInputStream stream)
+    public void receiveCommand(CommandTarget commandTarget, long dataLength, H commandId, UUID senderId, MessageInputStream stream)
         throws IOException {
-        ServerClient client = getClient(senderId);
+        ServerClient<H> client = getClient(senderId);
 
         if (client == null) {
             return;
         }
 
         switch (commandTarget) {
-            case Client -> client.readCommand(dataLength, commandId, stream, client);
-            case Server -> readCommand(dataLength, commandId, stream, client);
+            case Client -> client.readCommand(commandId, stream, client);
+            case Server -> readCommand(commandId, stream, client);
             case Lobby -> {
-                Lobby lobby = getLobby(client);
+                Lobby<H> lobby = getLobby(client);
 
                 if (lobby == null) {
                     serverLogger.warn("Couldn't find {}'s lobby to send command {}", senderId, commandId);
@@ -243,10 +245,10 @@ public class Server extends CommandHandler<ServerClient> {
                     return;
                 }
 
-                lobby.readCommand(dataLength, commandId, stream, client);
+                lobby.readCommand(commandId, stream, client);
             }
             case Session -> {
-                Lobby lobby = getLobby(client);
+                Lobby<H> lobby = getLobby(client);
 
                 if (lobby == null) {
                     serverLogger.warn("Couldn't find {}'s lobby to send command {}", senderId, commandId);
@@ -255,7 +257,7 @@ public class Server extends CommandHandler<ServerClient> {
                     return;
                 }
 
-                Session session = lobby.getClientSession(client);
+                Session<H> session = lobby.getClientSession(client);
 
                 if (session == null) {
                     serverLogger.warn("Couldn't find {}'s session to send command {}", senderId, commandId);
@@ -264,12 +266,12 @@ public class Server extends CommandHandler<ServerClient> {
                     return;
                 }
 
-                session.readCommand(dataLength, commandId, stream, client);
+                session.readCommand(commandId, stream, client);
             }
         }
     }
 
-    public void returnAvailableLobbies(ServerClient client) throws IOException {
+    public void returnAvailableLobbies(ServerClient<H> client) throws IOException {
         LobbyIdentifier[] lobbyIdentifiers = getLobbies()
             .values()
             .stream()
@@ -281,10 +283,10 @@ public class Server extends CommandHandler<ServerClient> {
         client.getTcpOut().flush();
     }
 
-    public void createLobby(ServerClient client, String lobbyName) throws IOException {
+    public void createLobby(ServerClient<H> client, String lobbyName) throws IOException {
         serverLogger.info("Creating lobby for client {}, named {}", client.getClientId(), lobbyName);
 
-        Lobby lobby = lobbyCreator.apply(client, lobbyName);
+        Lobby<H> lobby = lobbyCreator.apply(client, lobbyName);
         lobbies.put(lobby.getLobbyIdentifier().id(), lobby);
 
         lobby.receiveNewClient(client);
@@ -294,12 +296,12 @@ public class Server extends CommandHandler<ServerClient> {
     public void createLobby(String lobbyName) {
         serverLogger.info("Creating lobby named {}", lobbyName);
 
-        Lobby lobby = lobbyCreator.apply(null, lobbyName);
+        Lobby<H> lobby = lobbyCreator.apply(null, lobbyName);
         lobbies.put(lobby.getLobbyIdentifier().id(), lobby);
     }
 
-    public void joinLobby(ServerClient client, UUID lobbyId) throws IOException {
-        Lobby lobby = lobbies.get(lobbyId);
+    public void joinLobby(ServerClient<H> client, UUID lobbyId) throws IOException {
+        Lobby<H> lobby = lobbies.get(lobbyId);
 
         if (lobby == null) {
             serverLogger.warn("Couldn't find {}'s chosen lobby to join.", client.clientId);
@@ -314,7 +316,7 @@ public class Server extends CommandHandler<ServerClient> {
 
     public void receiveRequest(RequestType requestType, long dataLength, UUID senderId, MessageInputStream inputStream)
         throws IOException {
-        ServerClient client = getClient(senderId);
+        ServerClient<H> client = getClient(senderId);
 
         if (client == null) {
             serverLogger.warn("Couldn't find client {} to receive request.", senderId);
@@ -346,7 +348,7 @@ public class Server extends CommandHandler<ServerClient> {
     }
 
     public void sendPingResponse(UUID senderId, long timestamp, MessageInputStream inputStream) throws IOException {
-        ServerClient client = getClient(senderId);
+        ServerClient<H> client = getClient(senderId);
 
         if (client == null) {
             serverLogger.warn("Couldn't find client {} to send ping response.", senderId);
@@ -358,8 +360,8 @@ public class Server extends CommandHandler<ServerClient> {
         client.sendPingResponse(timestamp);
     }
 
-    public void disconnectClient(ServerClient client) {
-        Lobby lobby = getLobby(client);
+    public void disconnectClient(ServerClient<H> client) {
+        Lobby<H> lobby = getLobby(client);
         if (lobby != null) {
             lobby.clientDisconnect(client);
         }

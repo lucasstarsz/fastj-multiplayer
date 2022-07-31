@@ -24,7 +24,7 @@ import tech.fastj.partyhousecore.Commands;
 import tech.fastj.partyhousecore.PositionState;
 import tech.fastj.partyhousecore.SessionNames;
 
-public class HomeSession extends Session {
+public class HomeSession extends Session<Commands> {
 
     private static final Logger HomeSessionLogger = LoggerFactory.getLogger(HomeSession.class);
 
@@ -33,23 +33,23 @@ public class HomeSession extends Session {
     private final Map<UUID, Boolean> clientsReady;
 
     protected HomeSession(GameLobby lobby) {
-        super(lobby, SessionNames.Home, new ArrayList<>());
+        super(lobby, SessionNames.Home, new ArrayList<>(), Commands.class);
         clientGameStates = new HashMap<>();
         clientsReady = new LinkedHashMap<>();
 
         setOnClientJoin(this::addNewPositionState);
         setOnClientLeave(this::removePositionState);
-        addCommand(Commands.UpdateClientGameState, ClientInfo.class, ClientPosition.class, ClientVelocity.class, this::updatePositionState);
+        addCommand(Commands.UpdateClientGameState, this::updatePositionState);
 
-        addCommand(Commands.Ready, ClientInfo.class, this::notifyClientReady);
-        addCommand(Commands.UnReady, ClientInfo.class, this::notifyClientUnReady);
+        addCommand(Commands.Ready, this::notifyClientReady);
+        addCommand(Commands.UnReady, this::notifyClientUnReady);
     }
 
     public Map<UUID, PositionState> getClientGameStates() {
         return clientGameStates;
     }
 
-    private void addNewPositionState(Session session, ServerClient client) {
+    private void addNewPositionState(Session<Commands> session, ServerClient<Commands> client) {
         GameLobby lobby = (GameLobby) this.lobby;
         ClientInfo clientInfo = lobby.getClientInfo(client);
 
@@ -63,7 +63,7 @@ public class HomeSession extends Session {
 
         HomeSessionLogger.info("{} to notify from session about client game state adding", getClients().size());
 
-        for (ServerClient serverClient : getClients()) {
+        for (var serverClient : getClients()) {
             try {
                 HomeSessionLogger.info("sending new game state from {} to {}", client.getClientId(), serverClient.getClientId());
 
@@ -89,7 +89,7 @@ public class HomeSession extends Session {
         }
     }
 
-    private void updatePositionState(ServerClient client, ClientInfo info, ClientPosition position, ClientVelocity velocity) {
+    private void updatePositionState(ServerClient<Commands> client, ClientInfo info, ClientPosition position, ClientVelocity velocity) {
         HomeSessionLogger.info("Telling {} clients {} has moved to: {}, {}", getClients().size(), info.clientName(), position.x(), position.y());
 
         PositionState positionState = clientGameStates.get(info.clientId());
@@ -97,7 +97,7 @@ public class HomeSession extends Session {
         positionState.setClientPosition(position);
         positionState.setClientVelocity(velocity);
 
-        for (ServerClient serverClient : getClients()) {
+        for (var serverClient : getClients()) {
             if (client.getClientId().equals(serverClient.getClientId())) {
                 HomeSessionLogger.debug(
                     "Don't tell {} that {} moved",
@@ -120,17 +120,17 @@ public class HomeSession extends Session {
         }
     }
 
-    private void removePositionState(Session session, ServerClient client) {
+    private void removePositionState(Session<Commands> session, ServerClient<Commands> client) {
         clientGameStates.remove(client.getClientId());
         clientsReady.remove(client.getClientId());
     }
 
-    private void notifyClientReady(ServerClient client, ClientInfo info) {
+    private void notifyClientReady(ServerClient<Commands> client, ClientInfo info) {
         HomeSessionLogger.info("{} is ready to play", info.clientName());
 
         clientsReady.put(info.clientId(), true);
 
-        for (ServerClient serverClient : getClients()) {
+        for (var serverClient : getClients()) {
             if (client.getClientId().equals(serverClient.getClientId())) {
                 continue;
             }
@@ -168,7 +168,7 @@ public class HomeSession extends Session {
         lobby.switchCurrentSession(SessionNames.SnowballFight);
         Future<Integer> exCheck = startSessionSequence(() -> {
             for (int i = getClients().size() - 1; i >= 0; i--) {
-                ServerClient client = getClients().get(i);
+                var client = getClients().get(i);
 
                 HomeSessionLogger.info(
                     "Telling client {}:{} to switch scenes",
@@ -182,7 +182,7 @@ public class HomeSession extends Session {
             TimeUnit.SECONDS.sleep(1L);
 
             for (int i = getClients().size() - 1; i >= 0; i--) {
-                ServerClient client = getClients().get(i);
+                var client = getClients().get(i);
 
                 HomeSessionLogger.info(
                     "Moving client {}:{}",
@@ -209,12 +209,12 @@ public class HomeSession extends Session {
         }
     }
 
-    private void notifyClientUnReady(ServerClient client, ClientInfo info) {
+    private void notifyClientUnReady(ServerClient<Commands> client, ClientInfo info) {
         HomeSessionLogger.info("{} is no longer to play", info.clientName());
 
         clientsReady.put(info.clientId(), false);
 
-        for (ServerClient serverClient : getClients()) {
+        for (var serverClient : getClients()) {
             if (client.getClientId().equals(serverClient.getClientId())) {
                 continue;
             }

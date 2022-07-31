@@ -20,7 +20,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
-public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends CommandHandler<T> implements Runnable, NetworkSender {
+public abstract class ConnectionHandler<H extends Enum<H> & CommandAlias, T extends ConnectionHandler<H, T>> extends CommandHandler<H, T> implements Runnable, NetworkSender {
 
     protected final Socket tcpSocket;
     protected final DatagramSocket udpSocket;
@@ -38,7 +38,8 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
     protected ExecutorService connectionListener;
     protected boolean isListening;
 
-    protected ConnectionHandler(Socket tcpSocket, DatagramSocket udpServer) throws IOException {
+    protected ConnectionHandler(Socket tcpSocket, DatagramSocket udpServer, Class<H> aliasClass) throws IOException {
+        super(aliasClass);
         this.clientConfig = new ClientConfig(tcpSocket.getInetAddress(), tcpSocket.getPort());
         this.clientId = UUID.randomUUID();
 
@@ -49,7 +50,8 @@ public abstract class ConnectionHandler<T extends ConnectionHandler<?>> extends 
         onDisconnect = connectionHandler -> {};
     }
 
-    protected ConnectionHandler(ClientConfig clientConfig) throws IOException {
+    protected ConnectionHandler(ClientConfig clientConfig, Class<H> aliasClass) throws IOException {
+        super(aliasClass);
         this.clientConfig = clientConfig;
 
         tcpSocket = new Socket();

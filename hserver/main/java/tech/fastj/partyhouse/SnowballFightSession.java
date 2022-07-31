@@ -20,7 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.fastj.partyhousecore.*;
 
-public class SnowballFightSession extends Session {
+public class SnowballFightSession extends Session<Commands> {
 
     private static final Logger SnowballFightSessionLogger = LoggerFactory.getLogger(SnowballFightSession.class);
 
@@ -31,25 +31,25 @@ public class SnowballFightSession extends Session {
     private boolean isGameRunning;
 
     public SnowballFightSession(GameLobby lobby) {
-        super(lobby, SessionNames.SnowballFight, new ArrayList<>());
+        super(lobby, SessionNames.SnowballFight, new ArrayList<>(), Commands.class);
         clientPositions = new HashMap<>();
         clientPoints = new HashMap<>();
 
         setOnClientJoin(this::addNewClientStates);
         setOnClientLeave(this::removeClientStates);
-        addCommand(Commands.UpdateClientGameState, ClientInfo.class, ClientPosition.class, ClientVelocity.class, this::updatePositionState);
-        addCommand(Commands.SnowballThrow, SnowballInfo.class, this::notifySnowballThrow);
-        addCommand(Commands.SnowballHit, ClientInfo.class, SnowballInfo.class, this::notifySnowballHit);
+        addCommand(Commands.UpdateClientGameState, this::updatePositionState);
+        addCommand(Commands.SnowballThrow, this::notifySnowballThrow);
+        addCommand(Commands.SnowballHit, this::notifySnowballHit);
     }
 
-    private void notifySnowballThrow(ServerClient client, SnowballInfo snowballInfo) {
+    private void notifySnowballThrow(ServerClient<Commands> client, SnowballInfo snowballInfo) {
         SnowballFightSessionLogger.info(
             "Telling {} clients {} has thrown a snowball",
             getClients().size(),
             snowballInfo.clientInfo().clientName()
         );
 
-        for (ServerClient serverClient : getClients()) {
+        for (var serverClient : getClients()) {
             if (serverClient.getClientId().equals(snowballInfo.clientInfo().clientId())) {
                 continue;
             }
@@ -67,7 +67,7 @@ public class SnowballFightSession extends Session {
         }
     }
 
-    private void notifySnowballHit(ServerClient client, ClientInfo clientHit, SnowballInfo snowballInfo) {
+    private void notifySnowballHit(ServerClient<Commands> client, ClientInfo clientHit, SnowballInfo snowballInfo) {
         SnowballFightSessionLogger.info(
             "Telling {} clients {} has been hit by {}'s snowball",
             getClients().size(),
@@ -80,7 +80,7 @@ public class SnowballFightSession extends Session {
 
         clientPositions.get(clientHit.clientId()).setPlayerDead(true);
 
-        for (ServerClient serverClient : getClients()) {
+        for (var serverClient : getClients()) {
             if (serverClient.getClientId().equals(snowballInfo.clientInfo().clientId())) {
                 continue;
             }
@@ -101,7 +101,7 @@ public class SnowballFightSession extends Session {
         checkForWinner();
     }
 
-    private void addNewClientStates(Session session, ServerClient client) {
+    private void addNewClientStates(Session<Commands> session, ServerClient<Commands> client) {
         GameLobby lobby = (GameLobby) this.lobby;
         ClientInfo clientInfo = lobby.getClientInfo(client);
 
@@ -118,7 +118,7 @@ public class SnowballFightSession extends Session {
 
         SnowballFightSessionLogger.info("{} to notify from session about client game state adding", getClients().size());
 
-        for (ServerClient serverClient : getClients()) {
+        for (var serverClient : getClients()) {
             try {
                 SnowballFightSessionLogger.info("sending new game state from {} to {}", client.getClientId(), serverClient.getClientId());
 
@@ -144,7 +144,7 @@ public class SnowballFightSession extends Session {
         }
     }
 
-    private void updatePositionState(ServerClient client, ClientInfo info, ClientPosition position, ClientVelocity velocity) {
+    private void updatePositionState(ServerClient<Commands> client, ClientInfo info, ClientPosition position, ClientVelocity velocity) {
         SnowballFightSessionLogger.debug("Telling {} clients {} has moved to: {}, {}", getClients().size(), info.clientName(), position.x(), position.y());
 
         PositionState positionState = clientPositions.get(info.clientId());
@@ -152,7 +152,7 @@ public class SnowballFightSession extends Session {
         positionState.setClientPosition(position);
         positionState.setClientVelocity(velocity);
 
-        for (ServerClient serverClient : getClients()) {
+        for (var serverClient : getClients()) {
             if (client.getClientId().equals(serverClient.getClientId())) {
                 SnowballFightSessionLogger.debug(
                     "Don't tell {} that {} moved",
@@ -234,7 +234,7 @@ public class SnowballFightSession extends Session {
 
         try {
             startSessionSequence(() -> {
-                for (ServerClient client : getClients()) {
+                for (ServerClient<Commands> client : getClients()) {
                     client.sendCommand(NetworkType.TCP, CommandTarget.Client, Commands.GameFinished, winnerInfo);
                 }
 
@@ -242,7 +242,7 @@ public class SnowballFightSession extends Session {
 
                 TimeUnit.SECONDS.sleep(1L);
 
-                for (ServerClient client : getClients()) {
+                for (ServerClient<Commands> client : getClients()) {
                     var allPoints = ((GameLobby) lobby).getTotalPoints();
                     PointsState pointsState = allPoints.get(client.getClientId());
                     if (pointsState == null) {
@@ -261,7 +261,7 @@ public class SnowballFightSession extends Session {
                 lobby.switchCurrentSession(SessionNames.Home);
 
                 for (int i = getClients().size() - 1; i >= 0; i--) {
-                    ServerClient client = getClients().get(i);
+                    var client = getClients().get(i);
 
                     SnowballFightSessionLogger.info(
                         "Telling client {}:{} to switch scenes",
@@ -275,7 +275,7 @@ public class SnowballFightSession extends Session {
                 TimeUnit.SECONDS.sleep(1L);
 
                 for (int i = getClients().size() - 1; i >= 0; i--) {
-                    ServerClient client = getClients().get(i);
+                    var client = getClients().get(i);
 
                     SnowballFightSessionLogger.info(
                         "Moving client {}:{}",
@@ -294,7 +294,7 @@ public class SnowballFightSession extends Session {
         }
     }
 
-    private void removeClientStates(Session session, ServerClient client) {
+    private void removeClientStates(Session<Commands> session, ServerClient<Commands> client) {
         clientPositions.remove(client.getClientId());
         clientPoints.remove(client.getClientId());
     }

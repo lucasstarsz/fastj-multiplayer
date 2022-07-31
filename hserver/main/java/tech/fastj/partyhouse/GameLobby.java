@@ -18,7 +18,7 @@ import tech.fastj.partyhousecore.Commands;
 import tech.fastj.partyhousecore.Messages;
 import tech.fastj.partyhousecore.PointsState;
 
-public class GameLobby extends Lobby {
+public class GameLobby extends Lobby<Commands> {
 
     private static final Logger GameLobbyLogger = LoggerFactory.getLogger(GameLobby.class);
 
@@ -28,8 +28,8 @@ public class GameLobby extends Lobby {
     private final Map<UUID, ClientInfo> clientInfoMap;
     private final Map<UUID, PointsState> totalPoints;
 
-    public GameLobby(Server server, String name) {
-        super(server, 8, name);
+    public GameLobby(Server<Commands> server, String name) {
+        super(server, 8, name, Commands.class);
 
         clientInfoMap = new HashMap<>();
         totalPoints = new HashMap<>();
@@ -45,13 +45,13 @@ public class GameLobby extends Lobby {
         addSession(homeSession);
         addSession(snowballFightSession);
 
-        addCommand(Commands.UpdateClientInfo, ClientInfo.class, (client, clientInfo) -> {
+        addCommand(Commands.UpdateClientInfo, (ServerClient<Commands> client, ClientInfo clientInfo) -> {
             GameLobbyLogger.info("Updating client info of {} to {}:{}", client.getClientId(), clientInfo.clientId(), clientInfo.clientName());
 
             updateClientInfo(clientInfo);
             updateClientPoints(clientInfo);
 
-            for (ServerClient serverClient : clients) {
+            for (var serverClient : clients) {
                 if (client.getClientId().equals(serverClient.getClientId())) {
                     return;
                 }
@@ -70,7 +70,7 @@ public class GameLobby extends Lobby {
         });
     }
 
-    private void notifyClientJoined(Lobby lobby, ServerClient client) {
+    private void notifyClientJoined(Lobby<Commands> lobby, ServerClient<Commands> client) {
         Messages.updateSerializer(client.getSerializer());
 
         ClientInfo clientInfo = new ClientInfo(client.getClientId(), "Player " + (clients.size() + 1));
@@ -79,7 +79,7 @@ public class GameLobby extends Lobby {
         GameLobbyLogger.info("new client {}", clientInfo);
         GameLobbyLogger.info("{} to notify from lobby", clients.size());
 
-        for (ServerClient serverClient : getClients()) {
+        for (var serverClient : getClients()) {
             try {
                 GameLobbyLogger.info("Notifying {} on new client {}", getClientInfo(serverClient).clientName(), clientInfo.clientName());
                 serverClient.sendCommand(NetworkType.TCP, CommandTarget.Client, Commands.ClientJoinLobby, clientInfo);
@@ -96,7 +96,7 @@ public class GameLobby extends Lobby {
         }
     }
 
-    private void notifyClientLeft(Lobby lobby, ServerClient client) {
+    private void notifyClientLeft(Lobby<Commands> lobby, ServerClient<Commands> client) {
         ClientInfo clientInfo = getClientInfo(client);
 
         if (clientInfo == null) {
@@ -106,7 +106,7 @@ public class GameLobby extends Lobby {
         GameLobbyLogger.info("client {} leaving", clientInfo.clientName());
         GameLobbyLogger.info("{} to notify from lobby", clients.size());
 
-        for (ServerClient serverClient : getClients()) {
+        for (var serverClient : getClients()) {
             GameLobbyLogger.info("telling {} that {} is leaving", getClientInfo(serverClient).clientName(), clientInfo.clientName());
 
             try {
@@ -125,7 +125,7 @@ public class GameLobby extends Lobby {
         return GameLobbyLogger;
     }
 
-    public ClientInfo getClientInfo(ServerClient client) {
+    public ClientInfo getClientInfo(ServerClient<Commands> client) {
         return clientInfoMap.get(client.getClientId());
     }
 

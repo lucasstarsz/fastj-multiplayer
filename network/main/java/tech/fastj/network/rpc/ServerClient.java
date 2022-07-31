@@ -1,7 +1,6 @@
 package tech.fastj.network.rpc;
 
 import tech.fastj.network.config.ClientConfig;
-import tech.fastj.network.rpc.commands.Command;
 import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
 import tech.fastj.network.rpc.message.RequestType;
@@ -13,7 +12,6 @@ import tech.fastj.network.serial.util.MessageUtils;
 import tech.fastj.network.serial.write.MessageOutputStream;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -23,16 +21,16 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ServerClient extends ConnectionHandler<ServerClient> implements Runnable, NetworkSender {
+public class ServerClient<H extends Enum<H> & CommandAlias> extends ConnectionHandler<H, ServerClient<H>> implements Runnable, NetworkSender {
 
     private final Logger ServerClientLogger = LoggerFactory.getLogger(ServerClient.class);
 
-    private final Server server;
+    private final Server<H> server;
 
     private ClientConfig udpConfig;
 
-    public ServerClient(Socket socket, Server server, DatagramSocket udpServer) throws IOException {
-        super(socket, udpServer);
+    public ServerClient(Socket socket, Server<H> server, DatagramSocket udpServer, Class<H> aliasClass) throws IOException {
+        super(socket, udpServer, aliasClass);
         this.server = server;
         serializer.registerSerializer(SessionIdentifier.class);
         serializer.registerSerializer(LobbyIdentifier.class);
@@ -66,8 +64,10 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
     }
 
     @Override
-    public synchronized void sendCommand(NetworkType networkType, CommandTarget commandTarget, Command.Id commandId, byte[] rawData)
+    public synchronized void sendCommand(NetworkType networkType, CommandTarget commandTarget, Enum<? extends CommandAlias> commandId, byte[] rawData)
         throws IOException {
+        assert aliasClass.isAssignableFrom(commandId.getClass());
+
         ServerClientLogger.trace("{} sending {} \"{}\" to {}:{}", clientId, networkType.name(), commandId.name(), clientConfig.address(), clientConfig.port());
 
         switch (networkType) {
@@ -117,6 +117,7 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     protected void readMessageType(NetworkType networkType, UUID senderId, MessageInputStream inputStream, SentMessageType sentMessageType)
         throws IOException {
         switch (sentMessageType) {
@@ -139,7 +140,7 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
                     dataLength = inputStream.available() - MessageUtils.UuidBytes;
                 }
 
-                UUID commandId = (UUID) inputStream.readObject(UUID.class);
+                H commandId = (H) inputStream.readObject(aliasClass);
 
                 getLogger().trace("{} received RPC command \"{}\" targeting {} with length {}", senderId, commandId, commandTarget, dataLength);
 
@@ -169,17 +170,15 @@ public class ServerClient extends ConnectionHandler<ServerClient> implements Run
     }
 
     public void sendPingResponse(long timestamp) throws IOException {
-        byte[] packetData = ByteBuffer.allocate(MessageUtils.UuidBytes + MessageUtils.EnumBytes + Long.BYTES)
-            .putLong(clientId.getMostSignificantBits())
-            .putLong(clientId.getLeastSignificantBits())
+        byte[] packetData = ByteBuffer.allocate(MessageUtils.EnumBytes + Long.BYTES)
             .putInt(SentMessageType.PingResponse.ordinal())
             .putLong(timestamp)
             .array();
 
         ServerClientLogger.trace("{} sending ping response to {}:{}", clientId, clientConfig.address(), clientConfig.port());
 
-        DatagramPacket packet = SendUtils.buildPacket(udpConfig, packetData);
-        udpSocket.send(packet);
+        tcpOut.write(packetData);
+        tcpOut.flush();
     }
 
     @Override
