@@ -1,6 +1,12 @@
-package tech.fastj.network.rpc;
+package tech.fastj.network.rpc.local;
 
 import tech.fastj.network.config.ClientConfig;
+import tech.fastj.network.rpc.ClientBase;
+import tech.fastj.network.rpc.CommandAlias;
+import tech.fastj.network.rpc.ConnectionStatus;
+import tech.fastj.network.rpc.SendUtils;
+import tech.fastj.network.rpc.local.command.LocalCommand;
+import tech.fastj.network.rpc.local.command.LocalCommandReader;
 import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
 import tech.fastj.network.rpc.message.RequestType;
@@ -13,6 +19,8 @@ import tech.fastj.network.serial.util.MessageUtils;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -24,12 +32,15 @@ import java.util.function.LongConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Client<H extends Enum<H> & CommandAlias> extends ConnectionHandler<H, Client<H>> implements Runnable, NetworkSender {
+public class LocalClient<E extends Enum<E> & CommandAlias> extends ClientBase<E> implements LocalCommandReader<E> {
 
-    private static final Logger ClientLogger = LoggerFactory.getLogger(Client.class);
-
+    private static final Logger ClientLogger = LoggerFactory.getLogger(LocalClient.class);
     public static final int Leave = 1;
     public static final int Join = 0;
+
+    private final ExecutorService updateFreshener;
+    private final Class<E> aliasClass;
+    private final Map<E, LocalCommand> commands;
 
     private ScheduledExecutorService pingSender;
     private boolean isSendingPings;
@@ -37,21 +48,30 @@ public class Client<H extends Enum<H> & CommandAlias> extends ConnectionHandler<
     private ScheduledExecutorService keepAliveSender;
     private boolean isSendingKeepAlives;
 
-    private LongConsumer onPingReceived;
-
+    private LobbyIdentifier[] tempAvailableLobbies;
     private LobbyIdentifier currentLobby;
     private SessionIdentifier currentSession;
-    private LobbyIdentifier[] tempAvailableLobbies;
 
+    private LongConsumer onPingReceived;
     private BiConsumer<LobbyIdentifier, LobbyIdentifier> onLobbyUpdate;
     private BiConsumer<SessionIdentifier, SessionIdentifier> onSessionUpdate;
-
     private volatile boolean recentLobbyUpdate;
 
-    private final ExecutorService updateFreshener;
+    public LocalClient(ClientConfig clientConfig, Class<E> aliasClass) throws IOException {
+        super(clientConfig);
 
-    public Client(ClientConfig clientConfig, Class<H> aliasClass) throws IOException {
-        super(clientConfig, aliasClass);
+        this.aliasClass = aliasClass;
+        this.commands = new EnumMap<>(aliasClass);
+
+        serializer.registerSerializer(SessionIdentifier.class);
+        serializer.registerSerializer(LobbyIdentifier.class);
+
+        for (E commandAlias : aliasClass.getEnumConstants()) {
+            commandAlias.registerMessages(serializer);
+        }
+
+        resetCommands();
+
         onPingReceived = (ping) -> {
         };
         onLobbyUpdate = (oldLobby, newLobby) -> {
@@ -60,8 +80,6 @@ public class Client<H extends Enum<H> & CommandAlias> extends ConnectionHandler<
         };
 
         updateFreshener = Executors.newWorkStealingPool();
-        serializer.registerSerializer(SessionIdentifier.class);
-        serializer.registerSerializer(LobbyIdentifier.class);
     }
 
     @Override
@@ -77,7 +95,7 @@ public class Client<H extends Enum<H> & CommandAlias> extends ConnectionHandler<
         ClientLogger.debug("{} checking server connection status...", clientId);
 
         int verification = tcpIn.readInt();
-        if (verification != Client.Join) {
+        if (verification != LocalClient.Join) {
             disconnect();
             throw new IOException("Failed to join server " + clientConfig.address() + ":" + clientConfig.port() + ", connection status was " + verification + ".");
         }
@@ -91,7 +109,89 @@ public class Client<H extends Enum<H> & CommandAlias> extends ConnectionHandler<
         tcpOut.writeInt(udpSocket.getLocalPort());
         tcpOut.flush();
 
-        run();
+        startListening();
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    protected void readMessageType(NetworkType networkType, UUID senderId, MessageInputStream inputStream, SentMessageType sentMessageType)
+        throws IOException {
+        switch (sentMessageType) {
+            case KeepAlive -> {
+            }
+            case Disconnect -> disconnect();
+            case PingResponse -> {
+                long currentTimestamp = System.nanoTime();
+                long otherTimestamp = inputStream.readLong();
+                long pingNanos = currentTimestamp - otherTimestamp;
+                onPingReceived.accept(pingNanos);
+            }
+            case LobbyUpdate -> {
+                LobbyIdentifier newLobby = (LobbyIdentifier) inputStream.readObject(LobbyIdentifier.class);
+                LobbyIdentifier oldLobby = currentLobby;
+
+                currentLobby = newLobby;
+                recentLobbyUpdate = true;
+
+                updateFreshener.submit(() -> {
+                    TimeUnit.MILLISECONDS.sleep(20L);
+                    recentLobbyUpdate = false;
+                    return 0;
+                });
+
+                onLobbyUpdate.accept(oldLobby, newLobby);
+            }
+            case SessionUpdate -> {
+                SessionIdentifier newSession = (SessionIdentifier) inputStream.readObject(SessionIdentifier.class);
+                SessionIdentifier oldSession = currentSession;
+                currentSession = newSession;
+
+                onSessionUpdate.accept(oldSession, newSession);
+            }
+            case AvailableLobbiesUpdate -> tempAvailableLobbies = (LobbyIdentifier[]) inputStream.readObject(LobbyIdentifier[].class);
+            case RPCCommand -> {
+                CommandTarget commandTarget = (CommandTarget) inputStream.readObject(CommandTarget.class);
+                long dataLength;
+
+                if (networkType == NetworkType.TCP) {
+                    dataLength = inputStream.readLong();
+                } else {
+                    dataLength = inputStream.available() - MessageUtils.UuidBytes;
+                }
+
+                E commandId = (E) inputStream.readObject(aliasClass);
+
+                ClientLogger.trace("RPC Command {} targeting {} with data length {}", commandId.name(), commandTarget.name(), dataLength);
+
+                if (commandTarget != CommandTarget.Client) {
+                    ClientLogger.warn("Received command \"{}\" targeted at {} instead of client, discarding data.", commandId.name(), commandTarget.name());
+                    inputStream.skipNBytes(dataLength);
+                }
+
+                readCommand(commandId, inputStream);
+            }
+            default -> ClientLogger.warn(
+                "{} Received unused message type {}, discarding {}",
+                senderId,
+                sentMessageType.name(),
+                Arrays.toString(inputStream.readAllBytes())
+            );
+        }
+    }
+
+    @Override
+    protected void shutdown() throws IOException {
+        getLogger().debug("{} shutting down", clientId);
+
+        stopKeepAlives();
+        stopPings();
+        stopListening();
+        updateFreshener.shutdownNow();
+
+        udpSocket.close();
+        tcpSocket.close();
+
+        connectionStatus = ConnectionStatus.Disconnected;
     }
 
     public void onLobbyUpdate(BiConsumer<LobbyIdentifier, LobbyIdentifier> onLobbyUpdate) {
@@ -250,6 +350,16 @@ public class Client<H extends Enum<H> & CommandAlias> extends ConnectionHandler<
     }
 
     @Override
+    public Class<E> getAliasClass() {
+        return aliasClass;
+    }
+
+    @Override
+    public Map<E, LocalCommand> getCommands() {
+        return commands;
+    }
+
+    @Override
     public synchronized void sendCommand(NetworkType networkType, CommandTarget commandTarget, Enum<? extends CommandAlias> commandId, byte[] rawData)
         throws IOException {
         assert aliasClass.isAssignableFrom(commandId.getClass());
@@ -262,6 +372,7 @@ public class Client<H extends Enum<H> & CommandAlias> extends ConnectionHandler<
         }
     }
 
+    @Override
     public synchronized void sendRequest(NetworkType networkType, RequestType requestType, byte[] rawData) throws IOException {
         ClientLogger.debug("{} sending {} \"{}\" to {}:{}", clientId, networkType.name(), requestType.name(), clientConfig.address(), clientConfig.port());
 
@@ -283,85 +394,9 @@ public class Client<H extends Enum<H> & CommandAlias> extends ConnectionHandler<
 
     @Override
     public synchronized void sendKeepAlive(NetworkType networkType) throws IOException {
-        ClientLogger.trace("{} sending {} keep-alive to {}:{}", clientId, networkType.name(), clientConfig.address(), clientConfig.port());
-
         switch (networkType) {
             case TCP -> SendUtils.sendTCPKeepAlive(tcpOut);
             case UDP -> SendUtils.sendUDPKeepAlive(clientId, udpSocket, clientConfig);
         }
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    protected void readMessageType(NetworkType networkType, UUID senderId, MessageInputStream inputStream, SentMessageType sentMessageType)
-        throws IOException {
-        switch (sentMessageType) {
-            case KeepAlive -> ClientLogger.debug("{} Received {} keep-alive packet.", senderId, networkType);
-            case Disconnect -> disconnect();
-            case PingResponse -> {
-                long currentTimestamp = System.nanoTime();
-                long otherTimestamp = inputStream.readLong();
-                long pingNanos = currentTimestamp - otherTimestamp;
-                onPingReceived.accept(pingNanos);
-            }
-            case LobbyUpdate -> {
-                LobbyIdentifier newLobby = (LobbyIdentifier) inputStream.readObject(LobbyIdentifier.class);
-                LobbyIdentifier oldLobby = currentLobby;
-
-                currentLobby = newLobby;
-                recentLobbyUpdate = true;
-
-                updateFreshener.submit(() -> {
-                    TimeUnit.MILLISECONDS.sleep(20L);
-                    recentLobbyUpdate = false;
-                    return 0;
-                });
-
-                onLobbyUpdate.accept(oldLobby, newLobby);
-            }
-            case SessionUpdate -> {
-                SessionIdentifier newSession = (SessionIdentifier) inputStream.readObject(SessionIdentifier.class);
-                SessionIdentifier oldSession = currentSession;
-                currentSession = newSession;
-
-                onSessionUpdate.accept(oldSession, newSession);
-            }
-            case AvailableLobbiesUpdate -> tempAvailableLobbies = (LobbyIdentifier[]) inputStream.readObject(LobbyIdentifier[].class);
-            case RPCCommand -> {
-                CommandTarget commandTarget = (CommandTarget) inputStream.readObject(CommandTarget.class);
-                long dataLength;
-
-                if (networkType == NetworkType.TCP) {
-                    dataLength = inputStream.readLong();
-                } else {
-                    dataLength = inputStream.available() - MessageUtils.UuidBytes;
-                }
-
-                H commandId = (H) inputStream.readObject(aliasClass);
-                ClientLogger.debug("RPC Command {} targeting {} with data length {}", commandId, commandTarget.name(), dataLength);
-
-                if (commandTarget != CommandTarget.Client) {
-                    ClientLogger.warn("Received command \"{}\" targeted at {} instead of client", commandId, commandTarget.name());
-                    inputStream.skipNBytes(dataLength);
-                }
-
-                readCommand(commandId, inputStream, this);
-            }
-            default -> ClientLogger.warn(
-                "{} Received unused message type {}, discarding {}",
-                senderId,
-                sentMessageType.name(),
-                Arrays.toString(inputStream.readAllBytes())
-            );
-        }
-    }
-
-    @Override
-    protected void shutdown() throws IOException {
-        super.shutdown();
-        stopKeepAlives();
-        stopPings();
-        updateFreshener.shutdownNow();
-        udpSocket.close();
     }
 }

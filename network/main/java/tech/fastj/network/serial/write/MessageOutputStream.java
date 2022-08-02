@@ -55,10 +55,10 @@ public class MessageOutputStream extends DataOutputStream {
         }
     }
 
-    private <T extends Message> void writeMessage(T networkable) throws IOException {
-        writeBoolean(networkable == null);
-        if (networkable != null) {
-            networkable.getSerializer(serializer).writer().write(this, networkable);
+    private <T extends Message> void writeMessage(T message) throws IOException {
+        writeBoolean(message == null);
+        if (message != null) {
+            message.getSerializer(serializer).writer().write(this, message);
         }
     }
 

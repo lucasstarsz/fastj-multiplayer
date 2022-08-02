@@ -1,9 +1,9 @@
 package tech.fastj.partyhouse;
 
-import tech.fastj.network.rpc.ServerClient;
+import tech.fastj.network.rpc.server.ServerClient;
 import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
-import tech.fastj.network.sessions.Session;
+import tech.fastj.network.rpc.server.Session;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -31,7 +31,7 @@ public class SnowballFightSession extends Session<Commands> {
     private boolean isGameRunning;
 
     public SnowballFightSession(GameLobby lobby) {
-        super(lobby, SessionNames.SnowballFight, new ArrayList<>(), Commands.class);
+        super(lobby, SessionNames.SnowballFight, Commands.class);
         clientPositions = new HashMap<>();
         clientPoints = new HashMap<>();
 
@@ -145,7 +145,7 @@ public class SnowballFightSession extends Session<Commands> {
     }
 
     private void updatePositionState(ServerClient<Commands> client, ClientInfo info, ClientPosition position, ClientVelocity velocity) {
-        SnowballFightSessionLogger.debug("Telling {} clients {} has moved to: {}, {}", getClients().size(), info.clientName(), position.x(), position.y());
+//        SnowballFightSessionLogger.debug("Telling {} clients {} has moved to: {}, {}", getClients().size(), info.clientName(), position.x(), position.y());
 
         PositionState positionState = clientPositions.get(info.clientId());
         positionState.setClientInfo(info);
@@ -153,21 +153,21 @@ public class SnowballFightSession extends Session<Commands> {
         positionState.setClientVelocity(velocity);
 
         for (var serverClient : getClients()) {
-            if (client.getClientId().equals(serverClient.getClientId())) {
-                SnowballFightSessionLogger.debug(
-                    "Don't tell {} that {} moved",
-                    clientPositions.get(serverClient.getClientId()).getClientInfo().clientName(),
-                    clientPositions.get(client.getClientId()).getClientInfo().clientName()
-                );
+            if (info.clientId().equals(serverClient.getClientId())) {
+//                SnowballFightSessionLogger.debug(
+//                    "Don't tell {} that {} moved",
+//                    clientPositions.get(serverClient.getClientId()).getClientInfo().clientName(),
+//                    clientPositions.get(client.getClientId()).getClientInfo().clientName()
+//                );
                 continue;
             }
 
             try {
-                SnowballFightSessionLogger.debug(
-                    "Telling {} that {} moved",
-                    clientPositions.get(serverClient.getClientId()).getClientInfo().clientName(),
-                    clientPositions.get(client.getClientId()).getClientInfo().clientName()
-                );
+//                SnowballFightSessionLogger.debug(
+//                    "Telling {} that {} moved",
+//                    clientPositions.get(serverClient.getClientId()).getClientInfo().clientName(),
+//                    clientPositions.get(client.getClientId()).getClientInfo().clientName()
+//                );
                 serverClient.sendCommand(NetworkType.UDP, CommandTarget.Client, Commands.UpdateClientGameState, info, position, velocity);
             } catch (IOException exception) {
                 SnowballFightSessionLogger.warn("error while trying to send {}'s game state update: {}", serverClient.getClientId(), exception);
@@ -238,20 +238,19 @@ public class SnowballFightSession extends Session<Commands> {
                     client.sendCommand(NetworkType.TCP, CommandTarget.Client, Commands.GameFinished, winnerInfo);
                 }
 
-                ((GameLobby) lobby).updateTotalPoints(clientPoints);
+                ((GameLobby) lobby).replaceTotalPoints(clientPoints);
 
                 TimeUnit.SECONDS.sleep(1L);
 
+                var allPoints = ((GameLobby) lobby).getTotalPoints();
+
                 for (ServerClient<Commands> client : getClients()) {
-                    var allPoints = ((GameLobby) lobby).getTotalPoints();
                     PointsState pointsState = allPoints.get(client.getClientId());
+
                     if (pointsState == null) {
-                        System.out.println("fuck this shit I'm out");
                         pointsState = new PointsState();
                         pointsState.setClientInfo(clientPoints.get(client.getClientId()).getClientInfo());
                     }
-
-                    System.out.println("send to " + clientPoints.get(client.getClientId()).getClientInfo().clientName());
 
                     client.sendCommand(NetworkType.TCP, CommandTarget.Client, Commands.GameResults, pointsState.createClientPoints());
                 }

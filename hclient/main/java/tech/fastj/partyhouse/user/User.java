@@ -1,6 +1,6 @@
 package tech.fastj.partyhouse.user;
 
-import tech.fastj.network.rpc.Client;
+import tech.fastj.network.rpc.local.LocalClient;
 
 import java.net.InetAddress;
 
@@ -12,7 +12,7 @@ public class User {
 
     private static final User Instance = new User();
 
-    private Client<Commands> client;
+    private LocalClient<Commands> client;
     private ClientInfo clientInfo;
     private final PointsState pointsState;
     private final UserSettings settings;
@@ -39,11 +39,11 @@ public class User {
         return settings;
     }
 
-    public Client<Commands> getClient() {
+    public LocalClient<Commands> getClient() {
         return client;
     }
 
-    public void setClient(Client<Commands> client) {
+    public void setClient(LocalClient<Commands> client) {
         this.client = client;
     }
 

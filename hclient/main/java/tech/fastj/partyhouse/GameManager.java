@@ -7,8 +7,6 @@ import tech.fastj.graphics.display.SimpleDisplay;
 
 import tech.fastj.systems.control.SceneManager;
 
-import tech.fastj.network.rpc.Client;
-
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 

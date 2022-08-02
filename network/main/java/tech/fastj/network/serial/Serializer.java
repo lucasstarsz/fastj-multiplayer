@@ -16,9 +16,6 @@ import java.util.Set;
 import java.util.UUID;
 
 public class Serializer {
-    private final Map<MessageSerializer<?>, UUID> serializersToTypes;
-    private final Map<Class<?>, MessageSerializer<?>> typeClassesToSerializers;
-
     private static final Set<Class<?>> DefaultAllowedTypes = Set.of(
         boolean.class, Boolean.class,
         byte.class, Byte.class,
@@ -33,43 +30,54 @@ public class Serializer {
         String.class,
         UUID.class
     );
+    private final Map<MessageSerializer<?>, UUID> serializersToTypes;
+    private final Map<Class<?>, MessageSerializer<?>> typeClassesToSerializers;
 
     public Serializer() {
         serializersToTypes = new HashMap<>();
         typeClassesToSerializers = new HashMap<>();
     }
 
-    public Serializer(Map<UUID, Class<? extends Message>> premappings) {
+    @SafeVarargs
+    public Serializer(Class<? extends Message>... messageTypes) {
         this();
 
-        for (var networkableType : premappings.entrySet()) {
-            registerSerializer(networkableType.getKey(), networkableType.getValue());
+        for (Class<? extends Message> messageType : messageTypes) {
+            registerSerializer(messageType);
         }
     }
 
-    public <T extends Message> void registerSerializer(Class<T> networkableType) {
-        registerSerializer(UUID.randomUUID(), RecordSerializerUtils.generate(this, networkableType));
+    public Serializer(Map<UUID, Class<? extends Message>> messageSerializers) {
+        this();
+
+        for (var messageType : messageSerializers.entrySet()) {
+            registerSerializer(messageType.getKey(), messageType.getValue());
+        }
     }
 
-    public <T extends Message> void registerSerializer(UUID id, Class<T> networkableType) {
-        registerSerializer(id, RecordSerializerUtils.generate(this, networkableType));
+    public <T extends Message> void registerSerializer(Class<T> messageType) {
+        registerSerializer(UUID.randomUUID(), RecordSerializerUtils.generate(this, messageType));
+    }
+
+    public <T extends Message> void registerSerializer(UUID id, Class<T> messageType) {
+        registerSerializer(id, RecordSerializerUtils.generate(this, messageType));
     }
 
     public synchronized <T extends Message> void registerSerializer(UUID id, MessageSerializer<T> serializer) {
-        if (typeClassesToSerializers.containsKey(serializer.networkableClass())) {
+        if (typeClassesToSerializers.containsKey(serializer.messageClass())) {
             return;
         }
 
         serializersToTypes.put(serializer, id);
-        typeClassesToSerializers.put(serializer.networkableClass(), serializer);
+        typeClassesToSerializers.put(serializer.messageClass(), serializer);
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends Message> MessageSerializer<T> getSerializer(Class<T> networkableType) {
-        return (MessageSerializer<T>) typeClassesToSerializers.get(networkableType);
+    public <T extends Message> MessageSerializer<T> getSerializer(Class<T> messageType) {
+        return (MessageSerializer<T>) typeClassesToSerializers.get(messageType);
     }
 
-    public Message readMessage(MessageInputStream inputStream, Class<? extends Message> networkableClass)
+    public Message readMessage(MessageInputStream inputStream, Class<? extends Message> messageClass)
         throws IOException {
         try {
             boolean isMessageNull = inputStream.readBoolean();
@@ -77,54 +85,54 @@ public class Serializer {
             if (isMessageNull) {
                 return null;
             } else {
-                var type = typeClassesToSerializers.get(networkableClass);
+                var type = typeClassesToSerializers.get(messageClass);
                 return type.reader().read(inputStream);
             }
         } catch (IOException exception) {
-            throw new IOException("Unable to read networkable: " + exception.getMessage(), exception);
+            throw new IOException("Unable to read message: " + exception.getMessage(), exception);
         }
     }
 
-    public Message readMessage(InputStream inputStream, Class<? extends Message> networkableClass) throws IOException {
-        return readMessage(new MessageInputStream(inputStream, this), networkableClass);
+    public Message readMessage(InputStream inputStream, Class<? extends Message> messageClass) throws IOException {
+        return readMessage(new MessageInputStream(inputStream, this), messageClass);
     }
 
-    public Message readMessage(byte[] data, Class<? extends Message> networkableClass) throws IOException {
-        return readMessage(new ByteArrayInputStream(data), networkableClass);
+    public Message readMessage(byte[] data, Class<? extends Message> messageClass) throws IOException {
+        return readMessage(new ByteArrayInputStream(data), messageClass);
     }
 
-    public <T extends Message> void writeMessage(MessageOutputStream outputStream, T networkable) throws IOException {
+    public <T extends Message> void writeMessage(MessageOutputStream outputStream, T message) throws IOException {
         try {
-            outputStream.writeBoolean(networkable == null);
+            outputStream.writeBoolean(message == null);
 
-            if (networkable != null) {
-                UUID networkableId = serializersToTypes.get(typeClassesToSerializers.get(networkable.getClass()));
-                if (networkableId == null) {
-                    throw new IOException("Unsupported networkable type '" + networkable.getClass().getSimpleName() + "'");
+            if (message != null) {
+                UUID messageId = serializersToTypes.get(typeClassesToSerializers.get(message.getClass()));
+                if (messageId == null) {
+                    throw new IOException("Unsupported message type '" + message.getClass().getSimpleName() + "'");
                 }
 
-                networkable.getSerializer(this).writer().write(outputStream, networkable);
+                message.getSerializer(this).writer().write(outputStream, message);
             }
         } catch (IOException exception) {
-            throw new IOException("Unable to write networkable: " + exception.getMessage(), exception);
+            throw new IOException("Unable to write message: " + exception.getMessage(), exception);
         }
     }
 
-    public <T extends Message> void writeMessage(OutputStream outputStream, T networkable) throws IOException {
-        writeMessage(new MessageOutputStream(outputStream, this), networkable);
+    public <T extends Message> void writeMessage(OutputStream outputStream, T message) throws IOException {
+        writeMessage(new MessageOutputStream(outputStream, this), message);
     }
 
-    public <T extends Message> byte[] writeMessage(T networkable) throws IOException {
+    public <T extends Message> byte[] writeMessage(T message) throws IOException {
         ByteArrayOutputStream outputStream;
 
-        if (networkable == null) {
+        if (message == null) {
             outputStream = new ByteArrayOutputStream(MessageUtils.MinMessageBytes);
         } else {
-            int byteLength = networkable.getSerializer(this).byteLengthFunction().apply(networkable);
+            int byteLength = message.getSerializer(this).byteLengthFunction().apply(message);
             outputStream = new ByteArrayOutputStream(MessageUtils.MinMessageBytes + byteLength);
         }
 
-        writeMessage(outputStream, networkable);
+        writeMessage(outputStream, message);
         return outputStream.toByteArray();
     }
 
@@ -185,10 +193,10 @@ public class Serializer {
         } else if (Enum.class.isAssignableFrom(type)) {
             return;
         } else if (Message.class.isAssignableFrom(type)) {
-            UUID networkableId = serializersToTypes.get(typeClassesToSerializers.get(type));
+            UUID messageId = serializersToTypes.get(typeClassesToSerializers.get(type));
 
-            if (networkableId == null) {
-                throw new IOException("Unsupported networkable type '" + type.getSimpleName() + "'");
+            if (messageId == null) {
+                throw new IOException("Unsupported message type '" + type.getSimpleName() + "'");
             }
 
             return;

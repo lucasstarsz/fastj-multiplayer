@@ -2,17 +2,17 @@ package unittest;
 
 import tech.fastj.network.config.ClientConfig;
 import tech.fastj.network.config.ServerConfig;
-import tech.fastj.network.rpc.Client;
 import tech.fastj.network.rpc.CommandAlias;
-import tech.fastj.network.rpc.Server;
-import tech.fastj.network.rpc.ServerClient;
 import tech.fastj.network.rpc.classes.Classes;
 import tech.fastj.network.rpc.classes.Classes0;
 import tech.fastj.network.rpc.classes.Classes1;
 import tech.fastj.network.rpc.classes.Classes3;
 import tech.fastj.network.rpc.classes.Classes6;
+import tech.fastj.network.rpc.local.LocalClient;
 import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
+import tech.fastj.network.rpc.server.Server;
+import tech.fastj.network.rpc.server.ServerClient;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -45,6 +45,19 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 class ConnectionTests {
 
+    private static final InetAddress ClientTargetAddress;
+    private static final Logger ConnectionTestsLogger = LoggerFactory.getLogger(ConnectionTests.class);
+    private static final int Port = 19999;
+    private static Server<TestCommands> server;
+
+    static {
+        try {
+            ClientTargetAddress = InetAddress.getByName("partyhouse.lucasz.tech");
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     enum TestCommands implements CommandAlias {
         TCPNoData(new Classes0()),
         UDPNoData(new Classes0()),
@@ -60,37 +73,14 @@ class ConnectionTests {
 
         private final Classes commandClasses;
 
+        TestCommands(Classes commandClasses) {
+            this.commandClasses = commandClasses;
+        }
+
         @Override
         public Classes getCommandClasses() {
             return commandClasses;
         }
-
-        TestCommands(Classes commandClasses) {
-            this.commandClasses = commandClasses;
-        }
-    }
-
-    private static Server<TestCommands> server;
-    private static final InetAddress ClientTargetAddress;
-    private static final Logger ConnectionTestsLogger = LoggerFactory.getLogger(ConnectionTests.class);
-
-    static {
-        try {
-            ClientTargetAddress = InetAddress.getByName("partyhouse.lucasz.tech");
-        } catch (UnknownHostException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static final int Port = 19999;
-
-    @BeforeAll
-    static void startServer() throws IOException {
-        ServerConfig serverConfig = new ServerConfig(Port);
-
-        server = new Server<>(serverConfig, TestCommands.class, null);
-        server.start();
-        server.allowClients();
     }
 
     @AfterEach
@@ -98,16 +88,11 @@ class ConnectionTests {
         server.disconnectAllClients();
     }
 
-    @AfterAll
-    static void stopServer() {
-        server.stop();
-    }
-
     @Test
     void checkConnectClientToServer() {
         assertDoesNotThrow(() -> {
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client<TestCommands> client = new Client<>(clientConfig, TestCommands.class);
+            LocalClient<TestCommands> client = new LocalClient<>(clientConfig, TestCommands.class);
 
             client.connect();
         });
@@ -132,7 +117,7 @@ class ConnectionTests {
             });
 
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client<TestCommands> client = new Client<>(clientConfig, TestCommands.class);
+            LocalClient<TestCommands> client = new LocalClient<>(clientConfig, TestCommands.class);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
             client.sendCommand(NetworkType.TCP, CommandTarget.Server, TestCommands.TCPNoData);
@@ -177,7 +162,7 @@ class ConnectionTests {
             });
 
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client<TestCommands> client = new Client<>(clientConfig, TestCommands.class);
+            LocalClient<TestCommands> client = new LocalClient<>(clientConfig, TestCommands.class);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
             client.sendCommand(NetworkType.TCP, CommandTarget.Server, TestCommands.TCPChatMessage, tcpData);
@@ -231,7 +216,7 @@ class ConnectionTests {
             );
 
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client<TestCommands> client = new Client<>(clientConfig, TestCommands.class);
+            LocalClient<TestCommands> client = new LocalClient<>(clientConfig, TestCommands.class);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
             client.sendCommand(NetworkType.TCP, CommandTarget.Server, TestCommands.TCPMultipleChatMessage, tcpData1, tcpData2, tcpData3);
@@ -278,7 +263,7 @@ class ConnectionTests {
             });
 
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client<TestCommands> client = new Client<>(clientConfig, TestCommands.class);
+            LocalClient<TestCommands> client = new LocalClient<>(clientConfig, TestCommands.class);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
             client.sendCommand(NetworkType.TCP, CommandTarget.Server, TestCommands.TCPGameState, tcpData);
@@ -353,7 +338,7 @@ class ConnectionTests {
             );
 
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client<TestCommands> client = new Client<>(clientConfig, TestCommands.class);
+            LocalClient<TestCommands> client = new LocalClient<>(clientConfig, TestCommands.class);
             client.connect();
             client.getSerializer().registerSerializer(ChatMessage.class);
             client.sendCommand(NetworkType.TCP, CommandTarget.Server, TestCommands.TCPMultipleData, tcpData1, tcpData2, tcpData3, tcpData4, tcpData5, tcpData6);
@@ -379,12 +364,12 @@ class ConnectionTests {
         int countdownStart = 50;
         CountDownLatch latch = new CountDownLatch(countdownStart);
 
-        AtomicReference<Client<TestCommands>> client = new AtomicReference<>();
+        AtomicReference<LocalClient<TestCommands>> client = new AtomicReference<>();
         List<Long> pings = new ArrayList<>();
 
         assertDoesNotThrow(() -> {
             ClientConfig clientConfig = new ClientConfig(Port);
-            client.set(new Client<>(clientConfig, TestCommands.class));
+            client.set(new LocalClient<>(clientConfig, TestCommands.class));
             client.get().connect();
 
             client.get().onPingReceived((ping) -> {
@@ -420,10 +405,10 @@ class ConnectionTests {
 
         assertDoesNotThrow(() -> {
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client<TestCommands> client1 = new Client<>(clientConfig, TestCommands.class);
-            Client<TestCommands> client2 = new Client<>(clientConfig, TestCommands.class);
+            LocalClient<TestCommands> client1 = new LocalClient<>(clientConfig, TestCommands.class);
+            LocalClient<TestCommands> client2 = new LocalClient<>(clientConfig, TestCommands.class);
 
-            server.addCommand(TestCommands.UDPCorrectClientReceiver, client -> {
+            server.addCommand(TestCommands.UDPCorrectClientReceiver, (ServerClient<TestCommands> client) -> {
                 ConnectionTestsLogger.debug("client {} received message test", client.getClientId());
                 assertEquals(client1.getClientId(), client.getClientId());
                 latch.countDown();
@@ -446,5 +431,19 @@ class ConnectionTests {
         if (!success) {
             fail("Server failed to create lobby");
         }
+    }
+
+    @BeforeAll
+    static void startServer() throws IOException {
+        ServerConfig serverConfig = new ServerConfig(Port);
+
+        server = new Server<>(serverConfig, TestCommands.class, null);
+        server.start();
+        server.allowClients();
+    }
+
+    @AfterAll
+    static void stopServer() {
+        server.stop();
     }
 }

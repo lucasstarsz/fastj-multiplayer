@@ -1,12 +1,11 @@
 package tech.fastj.partyhouse;
 
-import tech.fastj.network.rpc.ServerClient;
 import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
-import tech.fastj.network.sessions.Session;
+import tech.fastj.network.rpc.server.ServerClient;
+import tech.fastj.network.rpc.server.Session;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -33,14 +32,14 @@ public class HomeSession extends Session<Commands> {
     private final Map<UUID, Boolean> clientsReady;
 
     protected HomeSession(GameLobby lobby) {
-        super(lobby, SessionNames.Home, new ArrayList<>(), Commands.class);
+        super(lobby, SessionNames.Home, Commands.class);
+
         clientGameStates = new HashMap<>();
         clientsReady = new LinkedHashMap<>();
 
         setOnClientJoin(this::addNewPositionState);
         setOnClientLeave(this::removePositionState);
         addCommand(Commands.UpdateClientGameState, this::updatePositionState);
-
         addCommand(Commands.Ready, this::notifyClientReady);
         addCommand(Commands.UnReady, this::notifyClientUnReady);
     }
@@ -90,29 +89,17 @@ public class HomeSession extends Session<Commands> {
     }
 
     private void updatePositionState(ServerClient<Commands> client, ClientInfo info, ClientPosition position, ClientVelocity velocity) {
-        HomeSessionLogger.info("Telling {} clients {} has moved to: {}, {}", getClients().size(), info.clientName(), position.x(), position.y());
-
         PositionState positionState = clientGameStates.get(info.clientId());
         positionState.setClientInfo(info);
         positionState.setClientPosition(position);
         positionState.setClientVelocity(velocity);
 
         for (var serverClient : getClients()) {
-            if (client.getClientId().equals(serverClient.getClientId())) {
-                HomeSessionLogger.debug(
-                    "Don't tell {} that {} moved",
-                    clientGameStates.get(serverClient.getClientId()).getClientInfo().clientName(),
-                    clientGameStates.get(client.getClientId()).getClientInfo().clientName()
-                );
+            if (info.clientId().equals(serverClient.getClientId())) {
                 continue;
             }
 
             try {
-                HomeSessionLogger.debug(
-                    "Telling {} that {} moved",
-                    clientGameStates.get(serverClient.getClientId()).getClientInfo().clientName(),
-                    clientGameStates.get(client.getClientId()).getClientInfo().clientName()
-                );
                 serverClient.sendCommand(NetworkType.UDP, CommandTarget.Client, Commands.UpdateClientGameState, info, position, velocity);
             } catch (IOException exception) {
                 HomeSessionLogger.warn("error while trying to send {}'s game state update: {}", serverClient.getClientId(), exception.getMessage());
@@ -210,7 +197,7 @@ public class HomeSession extends Session<Commands> {
     }
 
     private void notifyClientUnReady(ServerClient<Commands> client, ClientInfo info) {
-        HomeSessionLogger.info("{} is no longer to play", info.clientName());
+        HomeSessionLogger.info("{} is no longer ready to play", info.clientName());
 
         clientsReady.put(info.clientId(), false);
 

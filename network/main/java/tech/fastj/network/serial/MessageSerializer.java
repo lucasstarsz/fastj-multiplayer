@@ -7,7 +7,7 @@ import java.util.function.Function;
 
 public interface MessageSerializer<T extends Message> {
 
-    Class<T> networkableClass();
+    Class<T> messageClass();
 
     Function<T, Integer> byteLengthFunction();
 

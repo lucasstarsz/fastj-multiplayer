@@ -2,11 +2,11 @@ package unittest.session;
 
 import tech.fastj.network.config.ClientConfig;
 import tech.fastj.network.config.ServerConfig;
-import tech.fastj.network.rpc.Client;
-import tech.fastj.network.rpc.Server;
-import tech.fastj.network.rpc.ServerClient;
+import tech.fastj.network.rpc.local.LocalClient;
 import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
-import tech.fastj.network.sessions.Lobby;
+import tech.fastj.network.rpc.server.Lobby;
+import tech.fastj.network.rpc.server.Server;
+import tech.fastj.network.rpc.server.ServerClient;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -31,9 +31,11 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 class LobbyTests {
 
-    private static Server<EmptyCommands> server;
     private static final int Port = 19999;
     private static final InetAddress ClientTargetAddress;
+    private static Server<EmptyCommands> server;
+    private static final BiFunction<ServerClient<EmptyCommands>, String, Lobby<EmptyCommands>> LobbyCreator =
+        (client, serverName) -> new SimpleLobby<>(server, serverName, EmptyCommands.class);
 
     static {
         try {
@@ -43,27 +45,10 @@ class LobbyTests {
         }
     }
 
-    private static final BiFunction<ServerClient<EmptyCommands>, String, Lobby<EmptyCommands>> LobbyCreator =
-        (client, serverName) -> new SimpleLobby<>(server, serverName, EmptyCommands.class);
-
-    @BeforeAll
-    static void startServer() throws IOException {
-        ServerConfig serverConfig = new ServerConfig(Port);
-
-        server = new Server<>(serverConfig, EmptyCommands.class, LobbyCreator);
-        server.start();
-        server.allowClients();
-    }
-
     @AfterEach
     void cleanServer() {
         server.stopAllLobbies();
         server.disconnectAllClients();
-    }
-
-    @AfterAll
-    static void stopServer() {
-        server.stop();
     }
 
     @Test
@@ -73,7 +58,7 @@ class LobbyTests {
 
         assertDoesNotThrow(() -> {
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client<EmptyCommands> client = new Client<>(clientConfig, EmptyCommands.class);
+            LocalClient<EmptyCommands> client = new LocalClient<>(clientConfig, EmptyCommands.class);
             client.connect();
 
             LobbyIdentifier newLobby = client.createLobby(randomLobbyName);
@@ -103,12 +88,12 @@ class LobbyTests {
 
         assertDoesNotThrow(() -> {
             ClientConfig clientConfig = new ClientConfig(ClientTargetAddress, Port);
-            Client<EmptyCommands> client1 = new Client<>(clientConfig, EmptyCommands.class);
+            LocalClient<EmptyCommands> client1 = new LocalClient<>(clientConfig, EmptyCommands.class);
             client1.connect();
 
             LobbyIdentifier newLobby = client1.createLobby(randomLobbyName);
 
-            Client<EmptyCommands> client2 = new Client<>(clientConfig, EmptyCommands.class);
+            LocalClient<EmptyCommands> client2 = new LocalClient<>(clientConfig, EmptyCommands.class);
             client2.connect();
 
             LobbyIdentifier joinedLobby = client2.joinLobby(newLobby.id());
@@ -132,5 +117,19 @@ class LobbyTests {
         if (!success) {
             fail("Server failed to create lobby");
         }
+    }
+
+    @BeforeAll
+    static void startServer() throws IOException {
+        ServerConfig serverConfig = new ServerConfig(Port);
+
+        server = new Server<>(serverConfig, EmptyCommands.class, LobbyCreator);
+        server.start();
+        server.allowClients();
+    }
+
+    @AfterAll
+    static void stopServer() {
+        server.stop();
     }
 }

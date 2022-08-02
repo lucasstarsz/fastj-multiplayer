@@ -9,7 +9,6 @@ import tech.fastj.graphics.display.FastJCanvas;
 import tech.fastj.systems.control.Scene;
 import tech.fastj.systems.control.SceneManager;
 
-import tech.fastj.network.rpc.Client;
 import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
 
@@ -122,7 +121,7 @@ public class LobbyHome extends Scene {
     public void unload(FastJCanvas canvas) {
         Log.debug(LobbyHome.class, "unloading {}", getSceneName());
 
-        disableClientCommands();
+        user.getClient().resetCommands();
 
         otherPlayers.clear();
         otherPlayerPositionStates.clear();
@@ -182,19 +181,9 @@ public class LobbyHome extends Scene {
 
         ClientUtil.addDefault2DControlCommands(client, center, otherPlayers, otherPlayerPositionStates, this);
 
-        client.addCommand(Commands.SwitchScene, (Client<Commands> c, String sceneName) -> {
+        client.addCommand(Commands.SwitchScene, (String sceneName) -> {
             Log.info("Switching to scene \"{}\"", sceneName);
             FastJEngine.runLater(() -> FastJEngine.<SceneManager>getLogicManager().switchScenes(sceneName), CoreLoopState.LateUpdate);
         });
-    }
-
-    public void disableClientCommands() {
-        var client = user.getClient();
-
-        client.addCommand(Commands.ClientJoinLobby, (c, clientInfo) -> {});
-        client.addCommand(Commands.ClientLeaveLobby, (c, clientInfo) -> {});
-        client.addCommand(Commands.UpdateClientInfo, (c, clientInfo) -> {});
-        client.addCommand(Commands.SwitchScene, (c, sceneName) -> {});
-        client.addCommand(Commands.UpdateClientGameState, (c, clientInfo, clientPosition, clientVelocity) -> {});
     }
 }

@@ -29,12 +29,12 @@ public class MessageUtils {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T extends Message> int bytesLength(Serializer serializer, T networkable) {
-        if (networkable == null) {
+    public static <T extends Message> int bytesLength(Serializer serializer, T message) {
+        if (message == null) {
             return MinMessageBytes;
         } else {
-            MessageSerializer<T> typeSerializer = (MessageSerializer<T>) serializer.getSerializer(networkable.getClass());
-            return MinMessageBytes + typeSerializer.byteLengthFunction().apply(networkable);
+            MessageSerializer<T> typeSerializer = (MessageSerializer<T>) serializer.getSerializer(message.getClass());
+            return MinMessageBytes + typeSerializer.byteLengthFunction().apply(message);
         }
     }
 

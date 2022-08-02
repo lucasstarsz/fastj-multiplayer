@@ -12,7 +12,7 @@ import tech.fastj.systems.control.Scene;
 import tech.fastj.systems.control.SceneManager;
 
 import tech.fastj.network.config.ClientConfig;
-import tech.fastj.network.rpc.Client;
+import tech.fastj.network.rpc.local.LocalClient;
 import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
 import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
@@ -42,7 +42,6 @@ import tech.fastj.partyhouse.util.Shapes;
 import tech.fastj.partyhousecore.ClientInfo;
 import tech.fastj.partyhousecore.Commands;
 import tech.fastj.partyhousecore.Info;
-import tech.fastj.partyhousecore.Messages;
 
 public class LobbySearch extends Scene {
 
@@ -225,9 +224,9 @@ public class LobbySearch extends Scene {
     }
 
     private void trySetupClient() throws IOException {
-        var client = new Client<>(new ClientConfig(InetAddress.getByName(Info.DefaultIp), Info.DefaultPort), Commands.class);
+        var client = new LocalClient<>(new ClientConfig(InetAddress.getByName(Info.DefaultIp), Info.DefaultPort), Commands.class);
 
-        client.setOnDisconnect((c) -> {
+        client.setOnDisconnect(() -> {
             if (!FastJEngine.isRunning()) {
                 return;
             }
@@ -243,7 +242,6 @@ public class LobbySearch extends Scene {
 
         client.connect();
         client.startKeepAlives(1L, TimeUnit.SECONDS);
-        Messages.updateSerializer(client.getSerializer());
 
         user.setClient(client);
         user.setClientInfo(new ClientInfo(client.getClientId(), "???"));

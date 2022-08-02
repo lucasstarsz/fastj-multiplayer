@@ -1,10 +1,10 @@
 package tech.fastj.partyhouse;
 
-import tech.fastj.network.rpc.Server;
-import tech.fastj.network.rpc.ServerClient;
 import tech.fastj.network.rpc.message.CommandTarget;
 import tech.fastj.network.rpc.message.NetworkType;
-import tech.fastj.network.sessions.Lobby;
+import tech.fastj.network.rpc.server.Lobby;
+import tech.fastj.network.rpc.server.Server;
+import tech.fastj.network.rpc.server.ServerClient;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -15,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.fastj.partyhousecore.ClientInfo;
 import tech.fastj.partyhousecore.Commands;
-import tech.fastj.partyhousecore.Messages;
 import tech.fastj.partyhousecore.PointsState;
 
 public class GameLobby extends Lobby<Commands> {
@@ -34,47 +33,48 @@ public class GameLobby extends Lobby<Commands> {
         clientInfoMap = new HashMap<>();
         totalPoints = new HashMap<>();
 
-        Messages.updateSerializer(serializer);
-
-        setOnReceiveNewClient(this::notifyClientJoined);
-        setOnClientDisconnect(this::notifyClientLeft);
-
         homeSession = new HomeSession(this);
         snowballFightSession = new SnowballFightSession(this);
 
         addSession(homeSession);
         addSession(snowballFightSession);
 
-        addCommand(Commands.UpdateClientInfo, (ServerClient<Commands> client, ClientInfo clientInfo) -> {
-            GameLobbyLogger.info("Updating client info of {} to {}:{}", client.getClientId(), clientInfo.clientId(), clientInfo.clientName());
+        setCurrentSession(homeSession);
+        setHomeSessionId(homeSession.getSessionId());
 
-            updateClientInfo(clientInfo);
-            updateClientPoints(clientInfo);
+        setOnReceiveNewClient(this::notifyClientJoined);
+        setOnClientDisconnect(this::notifyClientLeft);
+        addCommand(Commands.UpdateClientInfo, this::notifyUpdateClientInfo);
+    }
 
-            for (var serverClient : clients) {
-                if (client.getClientId().equals(serverClient.getClientId())) {
-                    return;
-                }
+    private void notifyUpdateClientInfo(ServerClient<Commands> client, ClientInfo clientInfo) {
+        GameLobbyLogger.info("Updating client info of {} to {}:{}", clientInfo.clientId(), clientInfo.clientId(), clientInfo.clientName());
 
-                try {
-                    GameLobbyLogger.info(
-                        "Telling {}:{} that {}:{} changed its name",
-                        serverClient.getClientId(), clientInfoMap.get(serverClient.getClientId()).clientName(),
-                        client.getClientId(), clientInfoMap.get(client.getClientId()).clientName()
-                    );
-                    serverClient.sendCommand(NetworkType.TCP, CommandTarget.Client, Commands.UpdateClientInfo, clientInfo);
-                } catch (IOException exception) {
-                    GameLobbyLogger.warn("error while trying to send lobby name to " + serverClient.getClientId(), exception);
-                }
+        replaceClientInfo(clientInfo);
+        replaceClientPoints(clientInfo);
+
+        for (var serverClient : clients) {
+            if (clientInfo.clientId().equals(serverClient.getClientId())) {
+                return;
             }
-        });
+
+            try {
+                GameLobbyLogger.info(
+                    "Telling {}:{} that {}:{} changed its name",
+                    serverClient.getClientId(), clientInfoMap.get(serverClient.getClientId()).clientName(),
+                    clientInfo.clientId(), clientInfoMap.get(clientInfo.clientId()).clientName()
+                );
+                serverClient.sendCommand(NetworkType.TCP, CommandTarget.Client, Commands.UpdateClientInfo, clientInfo);
+            } catch (IOException exception) {
+                GameLobbyLogger.warn("error while trying to send lobby name to " + serverClient.getClientId(), exception);
+            }
+        }
     }
 
     private void notifyClientJoined(Lobby<Commands> lobby, ServerClient<Commands> client) {
-        Messages.updateSerializer(client.getSerializer());
-
         ClientInfo clientInfo = new ClientInfo(client.getClientId(), "Player " + (clients.size() + 1));
-        updateClientInfo(clientInfo);
+
+        replaceClientInfo(clientInfo);
 
         GameLobbyLogger.info("new client {}", clientInfo);
         GameLobbyLogger.info("{} to notify from lobby", clients.size());
@@ -129,12 +129,12 @@ public class GameLobby extends Lobby<Commands> {
         return clientInfoMap.get(client.getClientId());
     }
 
-    public void updateClientInfo(ClientInfo clientInfo) {
+    public void replaceClientInfo(ClientInfo clientInfo) {
         ClientInfo replacedInfo = clientInfoMap.put(clientInfo.clientId(), clientInfo);
         GameLobbyLogger.info("updated client info: set up {} replacing {}", clientInfo, replacedInfo);
     }
 
-    private void updateClientPoints(ClientInfo clientInfo) {
+    private void replaceClientPoints(ClientInfo clientInfo) {
         PointsState pointsState = new PointsState();
         pointsState.setClientInfo(clientInfo);
 
@@ -142,9 +142,8 @@ public class GameLobby extends Lobby<Commands> {
         GameLobbyLogger.info("updated client points: set up {} replacing {}", pointsState, replacedPoints);
     }
 
-    public void updateTotalPoints(Map<UUID, PointsState> clientPoints) {
+    public void replaceTotalPoints(Map<UUID, PointsState> clientPoints) {
         for (Map.Entry<UUID, PointsState> pointsEntry : clientPoints.entrySet()) {
-            System.out.println("updating on " + pointsEntry);
             totalPoints.get(pointsEntry.getKey()).modifyPoints(pointsEntry.getValue().getPoints());
             pointsEntry.getValue().resetPoints();
         }

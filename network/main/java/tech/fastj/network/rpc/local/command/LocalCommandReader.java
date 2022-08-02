@@ -1,5 +1,7 @@
-package tech.fastj.network.rpc;
+package tech.fastj.network.rpc.local.command;
 
+import tech.fastj.network.rpc.CommandAlias;
+import tech.fastj.network.rpc.CommandReader;
 import tech.fastj.network.rpc.classes.Classes;
 import tech.fastj.network.rpc.classes.Classes0;
 import tech.fastj.network.rpc.classes.Classes1;
@@ -8,72 +10,67 @@ import tech.fastj.network.rpc.classes.Classes3;
 import tech.fastj.network.rpc.classes.Classes4;
 import tech.fastj.network.rpc.classes.Classes5;
 import tech.fastj.network.rpc.classes.Classes6;
-import tech.fastj.network.rpc.commands.Command;
-import tech.fastj.network.rpc.commands.Command0;
-import tech.fastj.network.rpc.commands.Command1;
-import tech.fastj.network.rpc.commands.Command2;
-import tech.fastj.network.rpc.commands.Command3;
-import tech.fastj.network.rpc.commands.Command4;
-import tech.fastj.network.rpc.commands.Command5;
-import tech.fastj.network.rpc.commands.Command6;
 import tech.fastj.network.serial.Message;
-import tech.fastj.network.serial.Serializer;
 import tech.fastj.network.serial.read.MessageInputStream;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import org.slf4j.Logger;
+public interface LocalCommandReader<E extends Enum<E> & CommandAlias> extends CommandReader<E> {
 
-public abstract class CommandHandler<H extends Enum<H> & CommandAlias, T extends ConnectionHandler<H, T>> {
+    Map<Integer, LocalCommand> LocalCommandClears = Map.of(
+        0, (LocalCommand0) () -> {},
+        1, (LocalCommand1<?>) (t1) -> {},
+        2, (LocalCommand2<?, ?>) (t1, t2) -> {},
+        3, (LocalCommand3<?, ?, ?>) (t1, t2, t3) -> {},
+        4, (LocalCommand4<?, ?, ?, ?>) (t1, t2, t3, t4) -> {},
+        5, (LocalCommand5<?, ?, ?, ?, ?>) (t1, t2, t3, t4, t5) -> {},
+        6, (LocalCommand6<?, ?, ?, ?, ?, ?>) (t1, t2, t3, t4, t5, t6) -> {}
+    );
 
-    protected final Serializer serializer;
-
-    protected final Class<H> aliasClass;
-    protected final Map<H, Command> commands;
-    protected final H[] aliases;
-
-    protected CommandHandler(Class<H> aliasClass) {
-        this.aliasClass = aliasClass;
-        this.aliases = aliasClass.getEnumConstants();
-
-        commands = new HashMap<>();
-        serializer = new Serializer();
-    }
-
-    public void addCommand(H id, Command0<T> command) {
+    default void addCommand(E id, LocalCommand0 command) {
         registerCommand(id, command);
     }
 
-    public <T1> void addCommand(H id, Command1<T, T1> command) {
+    default <T1> void addCommand(E id, LocalCommand1<T1> command) {
         registerCommand(id, command);
         tryAddSerializer(id.commandClassesArray());
     }
 
-    public <T1, T2> void addCommand(H id, Command2<T, T1, T2> command) {
+    default <T1, T2> void addCommand(E id, LocalCommand2<T1, T2> command) {
         registerCommand(id, command);
         tryAddSerializer(id.commandClassesArray());
     }
 
-    public <T1, T2, T3> void addCommand(H id, Command3<T, T1, T2, T3> command) {
+    default <T1, T2, T3> void addCommand(E id, LocalCommand3<T1, T2, T3> command) {
         registerCommand(id, command);
         tryAddSerializer(id.commandClassesArray());
     }
 
-    public <T1, T2, T3, T4> void addCommand(H id, Command4<T, T1, T2, T3, T4> command) {
+    default <T1, T2, T3, T4> void addCommand(E id, LocalCommand4<T1, T2, T3, T4> command) {
         registerCommand(id, command);
         tryAddSerializer(id.commandClassesArray());
     }
 
-    public <T1, T2, T3, T4, T5> void addCommand(H id, Command5<T, T1, T2, T3, T4, T5> command) {
+    default <T1, T2, T3, T4, T5> void addCommand(E id, LocalCommand5<T1, T2, T3, T4, T5> command) {
         registerCommand(id, command);
         tryAddSerializer(id.commandClassesArray());
     }
 
-    public <T1, T2, T3, T4, T5, T6> void addCommand(H id, Command6<T, T1, T2, T3, T4, T5, T6> command) {
+    default <T1, T2, T3, T4, T5, T6> void addCommand(E id, LocalCommand6<T1, T2, T3, T4, T5, T6> command) {
         registerCommand(id, command);
+        tryAddSerializer(id.commandClassesArray());
+    }
+
+    @Override
+    Map<E, LocalCommand> getCommands();
+
+    @Override
+    default void clearCommand(E id) {
+        LocalCommand clearCommand = LocalCommandClears.get(id.commandCount());
+
+        registerCommand(id, clearCommand);
         tryAddSerializer(id.commandClassesArray());
     }
 
@@ -81,31 +78,27 @@ public abstract class CommandHandler<H extends Enum<H> & CommandAlias, T extends
     private void tryAddSerializer(Class<?>... possibleClasses) {
         for (Class<?> possibleClass : possibleClasses) {
             if (Message.class.isAssignableFrom(possibleClass)) {
-                serializer.registerSerializer(UUID.randomUUID(), (Class<? extends Message>) possibleClass);
+                getSerializer().registerSerializer(UUID.randomUUID(), (Class<? extends Message>) possibleClass);
             }
         }
     }
 
-    public abstract Logger getLogger();
-
-    protected void readCommand(H commandId, MessageInputStream inputStream, T client) throws IOException {
+    default void readCommand(E commandId, MessageInputStream inputStream) throws IOException {
         Classes classes = commandId.getCommandClasses();
 
         if (classes instanceof Classes0) {
-            runCommand(commandId, client);
+            runCommand(commandId);
         } else if (classes instanceof Classes1<?> classes1) {
-            runCommand(commandId, client, readObject(classes1.t1(), inputStream));
+            runCommand(commandId, readObject(classes1.t1(), inputStream));
         } else if (classes instanceof Classes2<?, ?> classes2) {
             runCommand(
                 commandId,
-                client,
                 readObject(classes2.t1(), inputStream),
                 readObject(classes2.t2(), inputStream)
             );
         } else if (classes instanceof Classes3<?, ?, ?> classes3) {
             runCommand(
                 commandId,
-                client,
                 readObject(classes3.t1(), inputStream),
                 readObject(classes3.t2(), inputStream),
                 readObject(classes3.t3(), inputStream)
@@ -113,7 +106,6 @@ public abstract class CommandHandler<H extends Enum<H> & CommandAlias, T extends
         } else if (classes instanceof Classes4<?, ?, ?, ?> classes4) {
             runCommand(
                 commandId,
-                client,
                 readObject(classes4.t1(), inputStream),
                 readObject(classes4.t2(), inputStream),
                 readObject(classes4.t3(), inputStream),
@@ -122,7 +114,6 @@ public abstract class CommandHandler<H extends Enum<H> & CommandAlias, T extends
         } else if (classes instanceof Classes5<?, ?, ?, ?, ?> classes5) {
             runCommand(
                 commandId,
-                client,
                 readObject(classes5.t1(), inputStream),
                 readObject(classes5.t2(), inputStream),
                 readObject(classes5.t3(), inputStream),
@@ -132,7 +123,6 @@ public abstract class CommandHandler<H extends Enum<H> & CommandAlias, T extends
         } else if (classes instanceof Classes6<?, ?, ?, ?, ?, ?> classes6) {
             runCommand(
                 commandId,
-                client,
                 readObject(classes6.t1(), inputStream),
                 readObject(classes6.t2(), inputStream),
                 readObject(classes6.t3(), inputStream),
@@ -143,59 +133,54 @@ public abstract class CommandHandler<H extends Enum<H> & CommandAlias, T extends
         }
     }
 
-    protected Object readObject(Class<?> objectClass, MessageInputStream inputStream) throws IOException {
-        return inputStream.readObject(objectClass);
+    default void runCommand(E id) {
+        var command = (LocalCommand0) getCommands().get(id);
+        command.runCommand();
     }
 
     @SuppressWarnings("unchecked")
-    protected void runCommand(H id, T client) {
-        var command = (Command0<T>) commands.get(id);
-        command.runCommand(client);
+    default <T1> void runCommand(E id, T1 t1) {
+        var command = (LocalCommand1<T1>) getCommands().get(id);
+        command.runCommand(t1);
     }
 
     @SuppressWarnings("unchecked")
-    protected <T1> void runCommand(H id, T client, T1 t1) {
-        var command = (Command1<T, T1>) commands.get(id);
-        command.runCommand(client, t1);
+    default <T1, T2> void runCommand(E id, T1 t1, T2 t2) {
+        var command = (LocalCommand2<T1, T2>) getCommands().get(id);
+        command.runCommand(t1, t2);
     }
 
     @SuppressWarnings("unchecked")
-    protected <T1, T2> void runCommand(H id, T client, T1 t1, T2 t2) {
-        var command = (Command2<T, T1, T2>) commands.get(id);
-        command.runCommand(client, t1, t2);
+    default <T1, T2, T3> void runCommand(E id, T1 t1, T2 t2, T3 t3) {
+        var command = (LocalCommand3<T1, T2, T3>) getCommands().get(id);
+        command.runCommand(t1, t2, t3);
     }
 
     @SuppressWarnings("unchecked")
-    protected <T1, T2, T3> void runCommand(H id, T client, T1 t1, T2 t2, T3 t3) {
-        var command = (Command3<T, T1, T2, T3>) commands.get(id);
-        command.runCommand(client, t1, t2, t3);
+    default <T1, T2, T3, T4> void runCommand(E id, T1 t1, T2 t2, T3 t3, T4 t4) {
+        var command = (LocalCommand4<T1, T2, T3, T4>) getCommands().get(id);
+        command.runCommand(t1, t2, t3, t4);
     }
 
     @SuppressWarnings("unchecked")
-    protected <T1, T2, T3, T4> void runCommand(H id, T client, T1 t1, T2 t2, T3 t3, T4 t4) {
-        var command = (Command4<T, T1, T2, T3, T4>) commands.get(id);
-        command.runCommand(client, t1, t2, t3, t4);
+    default <T1, T2, T3, T4, T5> void runCommand(E id, T1 t1, T2 t2, T3 t3, T4 t4, T5 t5) {
+        var command = (LocalCommand5<T1, T2, T3, T4, T5>) getCommands().get(id);
+        command.runCommand(t1, t2, t3, t4, t5);
     }
 
     @SuppressWarnings("unchecked")
-    protected <T1, T2, T3, T4, T5> void runCommand(H id, T client, T1 t1, T2 t2, T3 t3, T4 t4, T5 t5) {
-        var command = (Command5<T, T1, T2, T3, T4, T5>) commands.get(id);
-        command.runCommand(client, t1, t2, t3, t4, t5);
+    default <T1, T2, T3, T4, T5, T6> void runCommand(E id, T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6) {
+        var command = (LocalCommand6<T1, T2, T3, T4, T5, T6>) getCommands().get(id);
+        command.runCommand(t1, t2, t3, t4, t5, t6);
     }
 
-    @SuppressWarnings("unchecked")
-    protected <T1, T2, T3, T4, T5, T6> void runCommand(H id, T client, T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6) {
-        var command = (Command6<T, T1, T2, T3, T4, T5, T6>) commands.get(id);
-        command.runCommand(client, t1, t2, t3, t4, t5, t6);
-    }
-
-    private void registerCommand(H id, Command command) {
+    private void registerCommand(E id, LocalCommand command) {
         idRegisterCheck(id);
         commandNumberCheck(id, command);
-        commands.put(id, command);
+        getCommands().put(id, command);
     }
 
-    private void commandNumberCheck(H id, Command command) {
+    private void commandNumberCheck(E id, LocalCommand command) {
         if (id.commandCount() != command.commandArgumentCount()) {
             throw new IllegalArgumentException(
                 "The number of command parameters must match to " + id.name()
@@ -204,9 +189,9 @@ public abstract class CommandHandler<H extends Enum<H> & CommandAlias, T extends
         }
     }
 
-    protected void idRegisterCheck(H id) {
-        if (commands.containsKey(id)) {
-            getLogger().warn("Replacing command {}.", id.name());
+    default void idRegisterCheck(E id) {
+        if (getCommands().containsKey(id)) {
+            getLogger().debug("Updating command {}.", id.name());
         }
     }
 }

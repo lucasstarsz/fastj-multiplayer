@@ -6,8 +6,6 @@ import tech.fastj.logging.Log;
 import tech.fastj.logging.LogLevel;
 import tech.fastj.graphics.dialog.DialogConfig;
 
-import tech.fastj.network.rpc.Client;
-
 import javax.swing.JTextArea;
 import javax.swing.UIManager;
 import java.awt.Font;
@@ -33,13 +31,13 @@ public class Main {
             FastJEngine.configureExceptionAction(ExceptionAction.Throw);
 
             FastJEngine.run();
-
-            Client client = User.getInstance().getClient();
+        } catch (Exception exception) {
+            gameCrashed("Error while running FastJ.", exception);
+        } finally {
+            var client = User.getInstance().getClient();
             if (client != null) {
                 client.disconnect();
             }
-        } catch (Exception exception) {
-            gameCrashed("Error while running FastJ.", exception);
         }
     }
 

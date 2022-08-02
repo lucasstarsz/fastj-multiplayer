@@ -1,8 +1,8 @@
 package mock;
 
 import tech.fastj.network.rpc.CommandAlias;
-import tech.fastj.network.rpc.Server;
-import tech.fastj.network.sessions.Lobby;
+import tech.fastj.network.rpc.server.Lobby;
+import tech.fastj.network.rpc.server.Server;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +15,10 @@ public class SingleSessionLobby<H extends Enum<H> & CommandAlias> extends Lobby<
         super(server, 10, lobbyName, aliasClass);
 
         SimpleSession<H> session = new SimpleSession<>(this, lobbyName + "_Session1", aliasClass);
+
         addSession(session);
+        setCurrentSession(session);
+        setHomeSessionId(session.getSessionId());
     }
 
     @Override

@@ -18,21 +18,24 @@ public class RecordSerializerUtils {
     private static final Map<MessageType<?>, RecordSerializer<?>> generatedMessageTypes = new HashMap<>();
 
     @SuppressWarnings("unchecked")
-    public static <T extends Message> RecordSerializer<T> get(Serializer serializer, Class<T> networkableType) {
+    public static <T extends Message> RecordSerializer<T> get(Serializer serializer, Class<T> messageType) {
         return (RecordSerializer<T>) generatedMessageTypes.computeIfAbsent(
-            new MessageType<>(serializer, networkableType),
-            messageType -> generate(serializer, (Class<T>) messageType.networkableType())
+            new MessageType<>(serializer, messageType),
+            type -> generate(serializer, (Class<T>) type.messageType())
         );
     }
 
-    public static <T extends Message> RecordSerializer<T> generate(Serializer serializer, Class<T> networkableType) {
-        RecordComponent[] components = networkableType.getRecordComponents();
+    public static <T extends Message> RecordSerializer<T> generate(Serializer serializer, Class<T> messageType) {
+        RecordComponent[] components = messageType.getRecordComponents();
+
         if (components == null) {
-            throw new IllegalArgumentException("Cannot generate a MessageTypeSerializer for non-record class " + networkableType.getSimpleName());
+            throw new IllegalArgumentException("Cannot generate a MessageTypeSerializer for non-record class " + messageType.getSimpleName());
         }
+
         Constructor<T> constructor;
+
         try {
-            constructor = networkableType.getDeclaredConstructor(
+            constructor = messageType.getDeclaredConstructor(
                 Arrays.stream(components)
                     .map(RecordComponent::getType)
                     .toArray(Class<?>[]::new)
@@ -40,8 +43,9 @@ public class RecordSerializerUtils {
         } catch (NoSuchMethodException exception) {
             throw new IllegalArgumentException(exception);
         }
+
         return new RecordSerializer<>(
-            networkableType,
+            messageType,
             generateByteSizeFunction(serializer, components),
             generateReader(constructor),
             generateWriter(components)
@@ -49,15 +53,17 @@ public class RecordSerializerUtils {
     }
 
     private static <T extends Message> Function<T, Integer> generateByteSizeFunction(Serializer serializer, RecordComponent[] components) {
-        return networkable -> {
+        return message -> {
             int size = 0;
+
             for (var component : components) {
                 try {
-                    size += MessageUtils.bytesLength(serializer, component.getAccessor().invoke(networkable));
+                    size += MessageUtils.bytesLength(serializer, component.getAccessor().invoke(message));
                 } catch (ReflectiveOperationException exception) {
                     throw new IllegalStateException(exception);
                 }
             }
+
             return size;
         };
     }
@@ -79,10 +85,10 @@ public class RecordSerializerUtils {
     }
 
     private static <T extends Message> MessageWriter<T> generateWriter(RecordComponent[] components) {
-        return (outputStream, networkable) -> {
+        return (outputStream, message) -> {
             for (var component : components) {
                 try {
-                    outputStream.writeObject(component.getAccessor().invoke(networkable), component.getType());
+                    outputStream.writeObject(component.getAccessor().invoke(message), component.getType());
                 } catch (ReflectiveOperationException exception) {
                     throw new IllegalStateException(exception);
                 }

@@ -1,8 +1,8 @@
 package mock;
 
 import tech.fastj.network.rpc.CommandAlias;
-import tech.fastj.network.rpc.Server;
-import tech.fastj.network.sessions.Lobby;
+import tech.fastj.network.rpc.server.Lobby;
+import tech.fastj.network.rpc.server.Server;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

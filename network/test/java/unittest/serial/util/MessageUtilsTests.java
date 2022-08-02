@@ -31,7 +31,7 @@ class MessageUtilsTests {
         UUID chatMessageId = UUID.randomUUID();
         serializer.registerSerializer(chatMessageId, ChatMessage.class);
 
-        assertEquals(MessageUtils.MinMessageBytes, MessageUtils.bytesLength(serializer, (Message) null), "The length of a written null networkable should be the minimum amount.");
+        assertEquals(MessageUtils.MinMessageBytes, MessageUtils.bytesLength(serializer, (Message) null), "The length of a written null message should be the minimum amount.");
         assertEquals(expectedMessageSize, MessageUtils.bytesLength(serializer, chatMessage));
         assertEquals(4 * expectedMessageSize, MessageUtils.bytesLength(serializer, chatMessage, chatMessage, chatMessage, chatMessage));
 

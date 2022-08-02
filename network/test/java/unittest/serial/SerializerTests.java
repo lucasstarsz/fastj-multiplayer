@@ -21,12 +21,12 @@ class SerializerTests {
     @Test
     void checkCreateSerializer_withMessageMapping() {
         UUID chatMessageId = UUID.randomUUID();
-        Map<UUID, Class<? extends Message>> networkableTypes = Map.of(chatMessageId, ChatMessage.class);
-        Serializer serializer = new Serializer(networkableTypes);
+        Map<UUID, Class<? extends Message>> messageTypes = Map.of(chatMessageId, ChatMessage.class);
+        Serializer serializer = new Serializer(messageTypes);
 
         assertNotNull(
             serializer.getSerializer(ChatMessage.class),
-            "After constructing a serializer with a map of a networkable and id, the networkable should be registered in the serializer."
+            "After constructing a serializer with a map of a message and id, the message should be registered in the serializer."
         );
     }
 
@@ -45,11 +45,11 @@ class SerializerTests {
 
         assertEquals(
             MessageUtils.bytesLength(serializer, messageOut), data.length,
-            "The length of the written networkable should only involve the networkable data."
+            "The length of the written message should only involve the message data."
         );
 
         ChatMessage messageIn = (ChatMessage) serializer.readMessage(new ByteArrayInputStream(data), ChatMessage.class);
-        assertEquals(messageOut, messageIn, "The networkable read in should match the networkable written out.");
+        assertEquals(messageOut, messageIn, "The message read in should match the message written out.");
     }
 
     @Test
@@ -65,10 +65,10 @@ class SerializerTests {
 
         assertEquals(
             MessageUtils.bytesLength(serializer, messageOut), data.length,
-            "The length of the written networkable should only involve the networkable data."
+            "The length of the written message should only involve the message data."
         );
 
         ChatMessage messageIn = (ChatMessage) serializer.readMessage(data, ChatMessage.class);
-        assertEquals(messageOut, messageIn, "The networkable read in should match the networkable written out.");
+        assertEquals(messageOut, messageIn, "The message read in should match the message written out.");
     }
 }

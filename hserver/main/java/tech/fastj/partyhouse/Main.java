@@ -1,9 +1,9 @@
 package tech.fastj.partyhouse;
 
 import tech.fastj.network.config.ServerConfig;
-import tech.fastj.network.rpc.Server;
-import tech.fastj.network.rpc.ServerClient;
-import tech.fastj.network.sessions.Lobby;
+import tech.fastj.network.rpc.server.Server;
+import tech.fastj.network.rpc.server.ServerClient;
+import tech.fastj.network.rpc.server.Lobby;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;

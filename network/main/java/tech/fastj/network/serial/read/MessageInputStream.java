@@ -13,7 +13,6 @@ import java.io.InputStream;
 import java.lang.reflect.Array;
 import java.util.UUID;
 
-
 public class MessageInputStream extends DataInputStream {
 
     private final Serializer serializer;
@@ -52,22 +51,22 @@ public class MessageInputStream extends DataInputStream {
         } else if (objectType.isAssignableFrom(int[].class)) {
             return readIntArray();
         } else if (objectType.isArray() && Message.class.isAssignableFrom(objectType.getComponentType())) {
-            var networkableType = RecordSerializerUtils.get(serializer, (Class<? extends Message>) objectType.getComponentType());
-            return readArray(networkableType);
+            var messageType = RecordSerializerUtils.get(serializer, (Class<? extends Message>) objectType.getComponentType());
+            return readArray(messageType);
         } else if (Message.class.isAssignableFrom(objectType)) {
-            var networkableType = RecordSerializerUtils.get(serializer, (Class<? extends Message>) objectType);
-            return readMessage(networkableType);
+            var messageType = RecordSerializerUtils.get(serializer, (Class<? extends Message>) objectType);
+            return readMessage(messageType);
         } else {
             throw new IOException("Unsupported object type: " + objectType.getSimpleName());
         }
     }
 
-    private <T extends Message> T readMessage(RecordSerializer<T> networkableType) throws IOException {
+    private <T extends Message> T readMessage(RecordSerializer<T> messageType) throws IOException {
         boolean isMessageNull = readBoolean();
         if (isMessageNull) {
             return null;
         } else {
-            return networkableType.reader().read(this);
+            return messageType.reader().read(this);
         }
     }
 
@@ -83,7 +82,6 @@ public class MessageInputStream extends DataInputStream {
 
     private String readString() throws IOException {
         int stringLength = readInt();
-        System.out.println("string of " + stringLength + " length");
 
         if (stringLength == MessageUtils.Null) {
             return null;
@@ -151,8 +149,7 @@ public class MessageInputStream extends DataInputStream {
         if (arrayLength == MessageUtils.Null) {
             return null;
         } else {
-            T[] array = (T[]) Array.newInstance(serializer.networkableClass(), arrayLength);
-            System.out.println("array of " + arrayLength + " \"" + serializer.networkableClass() + "\"s");
+            T[] array = (T[]) Array.newInstance(serializer.messageClass(), arrayLength);
             for (int i = 0; i < arrayLength; i++) {
                 array[i] = (T) readMessage((RecordSerializer<?>) serializer);
             }
