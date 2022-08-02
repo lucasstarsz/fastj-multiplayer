@@ -145,7 +145,6 @@ public class MessageInputStream extends DataInputStream {
     @SuppressWarnings("unchecked")
     private <T extends Message> T[] readArray(MessageSerializer<T> serializer) throws IOException {
         int arrayLength = readInt();
-        System.out.println("length of " + serializer.messageClass() + " array: " + arrayLength);
 
         if (arrayLength == MessageUtils.Null) {
             return null;
