@@ -55,7 +55,8 @@ public interface NetworkSender {
         this.sendRequest(networkType, requestType, rawData);
     }
 
-    default void sendRequest(NetworkType networkType, RequestType requestType, Message... messages) throws IOException {
+    default void sendRequest(NetworkType networkType, RequestType requestType, Message... messages)
+        throws IOException {
         byte[] rawData = getSerializer().writeMessages(messages);
         this.sendRequest(networkType, requestType, rawData);
     }

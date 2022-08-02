@@ -151,21 +151,19 @@ public class LocalClient<E extends Enum<E> & CommandAlias> extends ClientBase<E>
             case AvailableLobbiesUpdate -> tempAvailableLobbies = (LobbyIdentifier[]) inputStream.readObject(LobbyIdentifier[].class);
             case RPCCommand -> {
                 CommandTarget commandTarget = (CommandTarget) inputStream.readObject(CommandTarget.class);
-                long dataLength;
-
-                if (networkType == NetworkType.TCP) {
-                    dataLength = inputStream.readLong();
-                } else {
-                    dataLength = inputStream.available() - MessageUtils.UuidBytes;
-                }
-
                 E commandId = (E) inputStream.readObject(aliasClass);
 
-                ClientLogger.trace("RPC Command {} targeting {} with data length {}", commandId.name(), commandTarget.name(), dataLength);
+                ClientLogger.trace("{} received RPC command \"{}\" on {} targeting {}", senderId, commandId, networkType, commandTarget);
 
                 if (commandTarget != CommandTarget.Client) {
-                    ClientLogger.warn("Received command \"{}\" targeted at {} instead of client, discarding data.", commandId.name(), commandTarget.name());
-                    inputStream.skipNBytes(dataLength);
+                    ClientLogger.warn(
+                        "Received command \"{}\" targeted at {} instead of client, discarding {}.",
+                        commandId.name(),
+                        commandTarget.name(),
+                        Arrays.toString(inputStream.readAllBytes())
+                    );
+
+                    return;
                 }
 
                 readCommand(commandId, inputStream);

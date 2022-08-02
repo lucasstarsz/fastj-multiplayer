@@ -197,6 +197,7 @@ public abstract class ClientBase<H extends Enum<H> & CommandAlias> implements Ne
 
                 byte[] data = new byte[packet.getLength()];
                 System.arraycopy(packet.getData(), 0, data, 0, data.length);
+                System.out.println(Arrays.toString(data));
 
                 MessageInputStream tempStream = new MessageInputStream(new ByteArrayInputStream(data), getSerializer());
                 UUID senderId = (UUID) tempStream.readObject(UUID.class);

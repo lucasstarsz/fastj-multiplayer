@@ -19,7 +19,9 @@ public interface CommandAlias {
     @SuppressWarnings("unchecked")
     default void registerMessages(Serializer serializer) {
         for (Class<?> possiblySerializable : commandClassesArray()) {
-            if (Message.class.isAssignableFrom(possiblySerializable)) {
+            if (possiblySerializable.isArray() && Message.class.isAssignableFrom(possiblySerializable.getComponentType())) {
+                serializer.registerSerializer((Class<? extends Message>) possiblySerializable.getComponentType());
+            } else if (Message.class.isAssignableFrom(possiblySerializable)) {
                 serializer.registerSerializer((Class<? extends Message>) possiblySerializable);
             }
         }

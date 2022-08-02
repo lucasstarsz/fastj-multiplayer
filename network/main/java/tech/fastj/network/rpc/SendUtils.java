@@ -59,17 +59,15 @@ public class SendUtils {
         ByteBuffer packetDataBuffer;
 
         if (rawData == null) {
-            packetDataBuffer = ByteBuffer.allocate(Long.BYTES + (MessageUtils.EnumBytes * 3));
+            packetDataBuffer = ByteBuffer.allocate((MessageUtils.EnumBytes * 3));
             return packetDataBuffer.putInt(SentMessageType.RPCCommand.ordinal())
                 .putInt(commandTarget.ordinal())
-                .putLong(0L)
                 .putInt(commandId.ordinal())
                 .array();
         } else {
-            packetDataBuffer = ByteBuffer.allocate(Long.BYTES + (MessageUtils.EnumBytes * 3) + rawData.length);
+            packetDataBuffer = ByteBuffer.allocate((MessageUtils.EnumBytes * 3) + rawData.length);
             return packetDataBuffer.putInt(SentMessageType.RPCCommand.ordinal())
                 .putInt(commandTarget.ordinal())
-                .putLong(rawData.length)
                 .putInt(commandId.ordinal())
                 .put(rawData)
                 .array();
@@ -124,16 +122,14 @@ public class SendUtils {
         ByteBuffer packetDataBuffer;
 
         if (rawData == null) {
-            packetDataBuffer = ByteBuffer.allocate(Long.BYTES + MessageUtils.EnumBytes * 2);
+            packetDataBuffer = ByteBuffer.allocate(MessageUtils.EnumBytes * 2);
             return packetDataBuffer.putInt(SentMessageType.Request.ordinal())
                 .putInt(requestType.ordinal())
-                .putLong(0L)
                 .array();
         } else {
-            packetDataBuffer = ByteBuffer.allocate(Long.BYTES + (MessageUtils.EnumBytes * 2) + rawData.length);
+            packetDataBuffer = ByteBuffer.allocate((MessageUtils.EnumBytes * 2) + rawData.length);
             return packetDataBuffer.putInt(SentMessageType.Request.ordinal())
                 .putInt(requestType.ordinal())
-                .putLong(rawData.length)
                 .put(rawData)
                 .array();
         }

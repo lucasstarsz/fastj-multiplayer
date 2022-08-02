@@ -99,6 +99,7 @@ public interface ServerCommandReader<E extends Enum<E> & CommandAlias> extends C
                 readObject(classes2.t2(), inputStream)
             );
         } else if (classes instanceof Classes3<?, ?, ?> classes3) {
+            System.out.println(inputStream.available());
             runCommand(
                 commandId,
                 client,

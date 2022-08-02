@@ -10,6 +10,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -143,11 +144,26 @@ public class Serializer {
             length += MessageUtils.bytesLength(this, message);
         }
 
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream(length);
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream(length + Integer.BYTES);
         var writeStream = new MessageOutputStream(outputStream, this);
 
-        for (Message message : messages) {
-            writeMessage(writeStream, message);
+        System.out.println(Arrays.toString(messages));
+
+        System.out.println("array " + messages.getClass());
+        if (messages.getClass() != null) {
+            System.out.println(messages.getClass().componentType());
+        } else {
+            throw new IOException("no");
+        }
+
+        if (!messages.getClass().componentType().equals(Message.class)) {
+            System.out.println("write array");
+            writeStream.writeArray(messages);
+        } else {
+            System.out.println("write separate messages");
+            for (Message message : messages) {
+                writeMessage(writeStream, message);
+            }
         }
 
         return outputStream.toByteArray();

@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 
 public class ServerClient<E extends Enum<E> & CommandAlias> extends ClientBase<E> implements ServerCommandReader<E> {
 
-    private final Logger ServerClientLogger = LoggerFactory.getLogger(ServerClient.class);
+    private static final Logger ServerClientLogger = LoggerFactory.getLogger(ServerClient.class);
 
     private final Server<E> server;
     private final Class<E> aliasClass;
@@ -111,33 +111,19 @@ public class ServerClient<E extends Enum<E> & CommandAlias> extends ClientBase<E
             }
             case RPCCommand -> {
                 CommandTarget commandTarget = (CommandTarget) inputStream.readObject(CommandTarget.class);
-                long dataLength;
-
-                if (networkType == NetworkType.TCP) {
-                    dataLength = inputStream.readLong();
-                } else {
-                    dataLength = inputStream.available() - MessageUtils.UuidBytes;
-                }
 
                 E commandId = (E) inputStream.readObject(aliasClass);
 
-                getLogger().trace("{} received RPC command \"{}\" targeting {} with length {}", senderId, commandId, commandTarget, dataLength);
+                ServerClientLogger.trace("{} received RPC command \"{}\" on {} targeting {}", senderId, commandId, networkType, commandTarget);
 
-                server.receiveCommand(commandTarget, dataLength, commandId, senderId, inputStream);
+                server.receiveCommand(commandTarget, commandId, senderId, inputStream);
             }
             case Request -> {
                 RequestType requestType = (RequestType) inputStream.readObject(RequestType.class);
-                long dataLength;
-
-                if (networkType == NetworkType.TCP) {
-                    dataLength = inputStream.readLong();
-                } else {
-                    dataLength = inputStream.available() - MessageUtils.UuidBytes;
-                }
 
                 getLogger().trace("{} received special request: {}", senderId, requestType);
 
-                server.receiveRequest(requestType, dataLength, senderId, inputStream);
+                server.receiveRequest(requestType, senderId, inputStream);
             }
             default -> ServerClientLogger.warn(
                 "{} Received unused message type {}, discarding {}",

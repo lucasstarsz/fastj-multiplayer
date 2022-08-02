@@ -12,6 +12,7 @@ import tech.fastj.network.rpc.server.command.ServerCommand;
 import tech.fastj.network.rpc.server.command.ServerCommandReader;
 import tech.fastj.network.serial.Serializer;
 import tech.fastj.network.serial.read.MessageInputStream;
+import tech.fastj.network.serial.util.MessageUtils;
 
 import java.io.IOException;
 import java.net.DatagramSocket;
@@ -258,7 +259,7 @@ public class Server<E extends Enum<E> & CommandAlias> implements ServerCommandRe
         isRunning = true;
     }
 
-    public void receiveCommand(CommandTarget commandTarget, long dataLength, E commandId, UUID senderId, MessageInputStream stream)
+    public void receiveCommand(CommandTarget commandTarget, E commandId, UUID senderId, MessageInputStream stream)
         throws IOException {
         ServerClient<E> client = getClient(senderId);
 
@@ -274,7 +275,7 @@ public class Server<E extends Enum<E> & CommandAlias> implements ServerCommandRe
 
                 if (lobby == null) {
                     serverLogger.warn("Couldn't find {}'s lobby to send command {}", senderId, commandId);
-                    stream.skipNBytes(dataLength);
+                    stream.skipNBytes(stream.available());
 
                     return;
                 }
@@ -286,7 +287,7 @@ public class Server<E extends Enum<E> & CommandAlias> implements ServerCommandRe
 
                 if (lobby == null) {
                     serverLogger.warn("Couldn't find {}'s lobby to send command {}", senderId, commandId);
-                    stream.skipNBytes(dataLength);
+                    stream.skipNBytes(stream.available());
 
                     return;
                 }
@@ -295,7 +296,7 @@ public class Server<E extends Enum<E> & CommandAlias> implements ServerCommandRe
 
                 if (session == null) {
                     serverLogger.warn("Couldn't find {}'s session to send command {}", senderId, commandId);
-                    stream.skipNBytes(dataLength);
+                    stream.skipNBytes(stream.available());
 
                     return;
                 }
@@ -348,14 +349,13 @@ public class Server<E extends Enum<E> & CommandAlias> implements ServerCommandRe
         client.setOnDisconnect(() -> disconnectClient(client));
     }
 
-    public void receiveRequest(RequestType requestType, long dataLength, UUID senderId, MessageInputStream inputStream)
+    public void receiveRequest(RequestType requestType, UUID senderId, MessageInputStream inputStream)
         throws IOException {
         ServerClient<E> client = getClient(senderId);
 
         if (client == null) {
             serverLogger.warn("Couldn't find client {} to receive request.", senderId);
-
-            inputStream.skipNBytes(dataLength);
+            inputStream.skipNBytes(inputStream.available());
             return;
         }
 
@@ -366,7 +366,7 @@ public class Server<E extends Enum<E> & CommandAlias> implements ServerCommandRe
                 createLobby(client, lobbyName);
             }
             case JoinLobby -> {
-                if (inputStream.available() < dataLength) {
+                if (inputStream.available() < MessageUtils.UuidBytes) {
                     serverLogger.warn(
                         "Unable to read {}'s lobby \"{}\" to join",
                         senderId,

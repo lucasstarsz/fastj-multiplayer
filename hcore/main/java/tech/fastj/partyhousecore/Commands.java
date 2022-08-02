@@ -21,7 +21,7 @@ public enum Commands implements CommandAlias {
     ModifyPoints(),
     SetPoints(),
     GameFinished(ClientInfo.class),
-    GameResults(ClientPoints.class),
+    GameResults(ClientPoints[].class),
     SwitchScene(String.class),
 
     SnowballThrow(SnowballInfo.class),
