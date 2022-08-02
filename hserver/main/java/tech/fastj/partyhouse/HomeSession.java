@@ -100,7 +100,7 @@ public class HomeSession extends Session<Commands> {
             }
 
             try {
-                serverClient.sendCommand(NetworkType.UDP, CommandTarget.Client, Commands.UpdateClientGameState, info, position, velocity);
+                serverClient.sendCommand(NetworkType.TCP, CommandTarget.Client, Commands.UpdateClientGameState, info, position, velocity);
             } catch (IOException exception) {
                 HomeSessionLogger.warn("error while trying to send {}'s game state update: {}", serverClient.getClientId(), exception.getMessage());
             }

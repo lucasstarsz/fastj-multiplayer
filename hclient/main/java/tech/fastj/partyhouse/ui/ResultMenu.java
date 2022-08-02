@@ -23,6 +23,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import tech.fastj.partyhouse.user.User;
 import tech.fastj.partyhouse.util.Colors;
 import tech.fastj.partyhouse.util.Fonts;
 import tech.fastj.partyhouse.util.Shapes;
@@ -32,13 +33,13 @@ import tech.fastj.partyhousecore.Info;
 
 public class ResultMenu extends UIElement<MouseActionEvent> {
 
-    private Polygon2D alphaScreen;
-    private Polygon2D backgroundScreen;
-    private Text2D gameEndText;
-    private Text2D winnerText;
-    private Text2D nextText;
-    private ContentBox playerScore;
+    private final Polygon2D alphaScreen;
+    private final Polygon2D backgroundScreen;
+    private final Text2D gameEndText;
+    private final Text2D winnerText;
+    private final ContentBox playerScore;
     private List<ContentBox> otherPlayerScores;
+    private Text2D nextText;
 
     private int timeLeft;
     private ScheduledExecutorService timeLeftProgressor;
@@ -126,46 +127,45 @@ public class ResultMenu extends UIElement<MouseActionEvent> {
     public void destroy(GameHandler origin) {
         super.destroyTheRest(origin);
 
-        if (alphaScreen != null) {
-            alphaScreen.destroy(origin);
-            alphaScreen = null;
-        }
-
-        if (backgroundScreen != null) {
-            backgroundScreen.destroy(origin);
-            backgroundScreen = null;
-        }
-
-        if (gameEndText != null) {
-            gameEndText.destroy(origin);
-            gameEndText = null;
-        }
-
-        if (playerScore != null) {
-            playerScore.destroy(origin);
-            playerScore = null;
-        }
-
-        if (winnerText != null) {
-            winnerText.destroy(origin);
-            winnerText = null;
-        }
-
         if (otherPlayerScores != null) {
-            for (ContentBox otherPlayerScore : otherPlayerScores) {
-                otherPlayerScore.destroy(origin);
-            }
-
             otherPlayerScores.clear();
         }
     }
 
-    public void addPointsResults(ClientPoints totalPoints, Scene origin, String nextTextString) {
+    public void addPointsResults(ClientPoints[] totalPoints, Scene origin, String nextTextString) {
         if (otherPlayerScores == null) {
             otherPlayerScores = new ArrayList<>();
         }
 
-        playerScore.setContent("" + totalPoints.points());
+        final int offsetAmount = 20;
+        int yOffset = 0;
+
+        for (ClientPoints clientPoints : totalPoints) {
+            if (clientPoints.clientInfo().clientId().equals(User.getInstance().getClientInfo().clientId())) {
+                playerScore.setContent("" + clientPoints.points());
+                continue;
+            }
+
+            ContentBox otherPlayerScore = new ContentBox(
+                origin,
+                clientPoints.clientInfo().clientName() + "'s Score",
+                "" + clientPoints.points()
+            );
+
+            otherPlayerScore.getStatDisplay().setFont(Fonts.StatTextFont);
+            otherPlayerScore.getStatDisplay().setFill(Colors.Snowy);
+            otherPlayerScore.translate(
+                Pointf.add(
+                    FastJEngine.getCanvas().getCanvasCenter(),
+                    playerScore.width(),
+                    -50f + (yOffset * offsetAmount)
+                )
+            );
+
+            yOffset++;
+
+            otherPlayerScores.add(otherPlayerScore);
+        }
 
         if (timeLeftProgressor != null) {
             timeLeftProgressor.shutdownNow();

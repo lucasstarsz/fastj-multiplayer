@@ -203,7 +203,7 @@ public class SnowballFight extends Scene {
             resultMenu = new ResultMenu(this, winnerInfo);
         }, CoreLoopState.LateUpdate));
 
-        client.addCommand(Commands.GameResults, (ClientPoints clientPoints) -> {
+        client.addCommand(Commands.GameResults, (ClientPoints[] clientPoints) -> {
             if (resultMenu != null) {
                 System.out.println("ok but actually");
             } else {

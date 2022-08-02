@@ -69,7 +69,7 @@ public class PositionState {
     public void sendUpdate(NetworkSender sender, CommandTarget target) throws IOException {
         needsUpdate = false;
         if (!isPlayerDead) {
-            sender.sendCommand(NetworkType.UDP, target, Commands.UpdateClientGameState, clientInfo, clientPosition, clientVelocity);
+            sender.sendCommand(NetworkType.TCP, target, Commands.UpdateClientGameState, clientInfo, clientPosition, clientVelocity);
         }
     }
 
