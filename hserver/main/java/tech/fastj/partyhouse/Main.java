@@ -10,14 +10,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 
 import tech.fastj.partyhousecore.Commands;
+import tech.fastj.partyhousecore.Info;
 
 public class Main {
     public static void main(String[] args) {
         AtomicReference<Server<Commands>> server = new AtomicReference<>();
 
         try {
-            int port = 19999;
-            ServerConfig serverConfig = new ServerConfig(port);
+            ServerConfig serverConfig = new ServerConfig(Info.DefaultPort);
             BiFunction<ServerClient<Commands>, String, Lobby<Commands>> lobbyCreator = (serverClient, lobbyName) -> new GameLobby(server.get(), lobbyName);
             server.set(new Server<>(serverConfig, Commands.class, lobbyCreator));
 
