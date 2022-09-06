@@ -5,7 +5,7 @@ import tech.fastj.logging.Log;
 import tech.fastj.math.Pointf;
 import tech.fastj.graphics.display.FastJCanvas;
 
-import tech.fastj.systems.collections.Pair;
+import tech.fastj.partyhousecore.SnowballHitInfo;
 import tech.fastj.systems.control.Scene;
 import tech.fastj.systems.control.SceneManager;
 
@@ -50,7 +50,7 @@ public class SnowballFight extends Scene {
 
     private final Map<UUID, PositionState> otherPlayerPositionStates;
     private final Map<UUID, Player> otherPlayers;
-    private final Map<Pair<UUID, UUID>, Snowball> snowballs;
+    private final Map<SnowballHitInfo, Snowball> snowballs;
 
     private PositionState playerPositionState;
     private Player player;
@@ -176,7 +176,7 @@ public class SnowballFight extends Scene {
             System.out.println(snowball.getCenter());
             System.out.println(drawableManager().getGameObjects().get(snowball.getID()));
 
-            Snowball replaced = snowballs.put(Pair.of(snowballInfo.clientInfo().clientId(), snowballInfo.snowballId()), snowball);
+            Snowball replaced = snowballs.put(snowballInfo.hitInfo(), snowball);
 
             if (replaced != null) {
                 System.out.println("replacing " + replaced);
@@ -253,7 +253,7 @@ public class SnowballFight extends Scene {
     }
 
     public Snowball removeSnowball(SnowballInfo snowballInfo) {
-        return snowballs.remove(Pair.of(snowballInfo.clientInfo().clientId(), snowballInfo.snowballId()));
+        return snowballs.remove(snowballInfo.hitInfo());
     }
 
     public void deathBySnowball(SnowballInfo snowballInfo) {

@@ -1,10 +1,10 @@
 [versions]
-fastj-core = "4be136b7cb"
+fastj-core = "1.7.0-SNAPSHOT-2"
 slf4j-simple = "2.0.0-alpha7"
 junit-test = "5.8.2"
 
 [libraries]
-fastj-library = { module = "com.github.lucasstarsz:FastJ", version.ref = "fastj-core" }
+fastj-library = { module = "io.github.lucasstarsz.fastj:fastj-library", version.ref = "fastj-core" }
 fastj-logging = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j-simple" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-test" }
 junit-launcher = { module = "org.junit.platform:junit-platform-launcher" }
