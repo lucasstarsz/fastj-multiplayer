@@ -6,6 +6,7 @@ plugins {
 
 group = "io.github.lucasstarsz.fastj"
 version = "0.0.3"
+description = "An open-source TCP/UDP networking library and safe serializer, for FastJ."
 
 sourceSets {
     main {
