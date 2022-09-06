@@ -63,6 +63,8 @@ jlink {
 
         addExtraDependencies("slf4j", "gson")
 
+        skipInstaller = true
+
         installerOptions.addAll(
             listOf(
                 "--name", "partyhouse",
