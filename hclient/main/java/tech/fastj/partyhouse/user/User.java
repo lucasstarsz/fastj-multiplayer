@@ -1,12 +1,13 @@
 package tech.fastj.partyhouse.user;
 
 import tech.fastj.network.rpc.local.LocalClient;
-
-import java.net.InetAddress;
-
 import tech.fastj.partyhousecore.ClientInfo;
 import tech.fastj.partyhousecore.Commands;
+import tech.fastj.partyhousecore.Info;
 import tech.fastj.partyhousecore.PointsState;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 public class User {
 
@@ -21,6 +22,12 @@ public class User {
     private User() {
         settings = new UserSettings();
         pointsState = new PointsState();
+
+        try {
+            customIp = InetAddress.getByName(Info.DefaultIp);
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void setCustomIp(InetAddress customIp) {

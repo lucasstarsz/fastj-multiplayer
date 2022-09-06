@@ -20,7 +20,6 @@ import tech.fastj.network.rpc.message.prebuilt.LobbyIdentifier;
 import javax.swing.SwingUtilities;
 import java.io.IOException;
 import java.net.ConnectException;
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -224,7 +223,7 @@ public class LobbySearch extends Scene {
     }
 
     private void trySetupClient() throws IOException {
-        var client = new LocalClient<>(new ClientConfig(InetAddress.getByName(Info.DefaultIp), Info.DefaultPort), Commands.class);
+        var client = new LocalClient<>(new ClientConfig(user.getCustomIp(), Info.DefaultPort), Commands.class);
 
         client.setOnDisconnect(() -> {
             if (!FastJEngine.isRunning()) {
