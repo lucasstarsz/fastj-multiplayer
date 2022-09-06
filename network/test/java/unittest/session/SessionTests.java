@@ -38,7 +38,7 @@ class SessionTests {
 
     static {
         try {
-            ClientTargetAddress = InetAddress.getByName("partyhouse.lucasz.tech");
+            ClientTargetAddress = InetAddress.getLocalHost();
         } catch (UnknownHostException e) {
             throw new RuntimeException(e);
         }
