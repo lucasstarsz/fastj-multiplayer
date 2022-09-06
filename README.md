@@ -22,6 +22,12 @@ https://user-images.githubusercontent.com/64715411/181523676-b83c3428-7ae2-468c-
 
 ## Version Logs
 
+#### v0.0.3
+- General bug fixes
+- networking library design overhaul
+- fixed issue where users are unable to set custom ip
+- updated game engine version to fastj 1.7.0 snapshot 2
+
 #### v0.0.2
 - General bug fixes
 - fix invalid name bug causing inability to open client/server
